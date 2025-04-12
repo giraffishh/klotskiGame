@@ -20,6 +20,12 @@ public interface LoginView {
     void setPasswordError(boolean isError);
     
     /**
+     * 设置确认密码错误状态
+     * @param isError 是否显示错误
+     */
+    void setConfirmPasswordError(boolean isError);
+
+    /**
      * 清除所有错误状态
      */
     void clearAllErrors();

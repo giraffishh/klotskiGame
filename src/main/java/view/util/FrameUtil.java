@@ -177,12 +177,24 @@ public class FrameUtil {
      * @return 包含标签和输入字段的面板
      */
     public static JPanel createInputPanel(String labelText, JComponent component) {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
-        JLabel label = new JLabel(labelText);
+        JPanel panel = new JPanel(new BorderLayout(10, 0)); // 使用BorderLayout，设置水平间距为10
+
+        // 创建一个固定宽度的标签面板，确保所有标签右对齐
+        JPanel labelPanel = new JPanel(new BorderLayout());
+        labelPanel.setPreferredSize(new Dimension(138, 30)); // 确保较长文本完整显示
+
+        JLabel label = new JLabel(labelText, JLabel.RIGHT);
         label.setFont(FontManager.getRegularFont());
+
+        labelPanel.add(label, BorderLayout.CENTER);
         
-        panel.add(label);
-        panel.add(component);
+        // 创建一个输入组件面板
+        JPanel componentPanel = new JPanel(new BorderLayout());
+        componentPanel.add(component, BorderLayout.CENTER);
+        
+        // 将两个面板添加到主面板
+        panel.add(labelPanel, BorderLayout.WEST);
+        panel.add(componentPanel, BorderLayout.CENTER);
         
         return panel;
     }

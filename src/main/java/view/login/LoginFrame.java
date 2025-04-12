@@ -1,7 +1,6 @@
 package view.login;
 
 import controller.LoginController;
-import service.DatabaseService;
 import view.util.FontManager;
 import view.util.FrameUtil;
 import view.game.GameFrame;
@@ -19,10 +18,16 @@ import java.awt.event.FocusEvent;
  * 使用 FlatLaf 浅色主题
  */
 public class LoginFrame extends JFrame implements LoginView {
+    // 窗口尺寸常量
+    private static final Dimension LOGIN_MODE_SIZE = new Dimension(480, 370);     // 登录模式窗口尺寸
+    private static final Dimension REGISTER_MODE_SIZE = new Dimension(480, 420);  // 注册模式窗口尺寸
+
     // 用户名输入框
     private JTextField username;
     // 密码输入框
     private JPasswordField password;
+    // 确认密码输入框
+    private JPasswordField confirmPassword;
     // 提交按钮
     private JButton submitBtn;
     // 重置按钮
@@ -30,6 +35,18 @@ public class LoginFrame extends JFrame implements LoginView {
     // 错误提示标签
     private JLabel usernameErrorLabel;
     private JLabel passwordErrorLabel;
+    private JLabel confirmPasswordErrorLabel;
+
+    // 确认密码相关面板
+    private JPanel confirmPasswordPanel;
+    private JPanel confirmPasswordErrorPanel;
+
+    // 主面板
+    private JPanel mainPanel;
+    private JPanel formPanel;
+
+    // 是否处于注册模式
+    private boolean isRegistrationMode = false;
 
     // 控制器引用
     private LoginController controller;
@@ -49,7 +66,7 @@ public class LoginFrame extends JFrame implements LoginView {
         this.setLayout(new BorderLayout());
         
         // 创建主面板，使用 BorderLayout 进行布局
-        JPanel mainPanel = FrameUtil.createPaddedPanel(new BorderLayout(), 30, 40, 30, 40);
+        mainPanel = FrameUtil.createPaddedPanel(new BorderLayout(), 30, 40, 30, 40);
         
         // 添加标题
         JLabel titleLabel = FrameUtil.createTitleLabel("Welcome to Game", JLabel.CENTER);
@@ -59,13 +76,14 @@ public class LoginFrame extends JFrame implements LoginView {
         mainPanel.add(titleLabel, BorderLayout.NORTH);
         
         // 创建表单面板 - 改用BoxLayout替代GridLayout，更灵活地控制组件大小
-        JPanel formPanel = new JPanel();
+        formPanel = new JPanel();
         formPanel.setLayout(new BoxLayout(formPanel, BoxLayout.Y_AXIS));
         FrameUtil.setPadding(formPanel, 0, 0, 20, 0);
         
         // 创建用户名输入面板
         username = FrameUtil.createStyledTextField(15);
         JPanel usernamePanel = FrameUtil.createInputPanel("Username:", username);
+        FrameUtil.setPadding(usernamePanel, 0, 0, 0, 50);
         
         // 创建用户名错误提示标签 - 放在一个固定高度的面板中
         usernameErrorLabel = new JLabel("Username cannot be empty");
@@ -73,12 +91,14 @@ public class LoginFrame extends JFrame implements LoginView {
         usernameErrorLabel.setFont(FontManager.getRegularFont(12));
         usernameErrorLabel.setVisible(false);
         JPanel usernameErrorPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        usernameErrorPanel.setPreferredSize(new Dimension(width, 20)); // 固定高度
+        usernameErrorPanel.setPreferredSize(new Dimension(width, 22)); // 固定高度
+        FrameUtil.setPadding(usernameErrorPanel, 0, 70, 0, 0);
         usernameErrorPanel.add(usernameErrorLabel);
         
         // 创建密码输入面板
         password = FrameUtil.createStyledPasswordField(15);
         JPanel passwordPanel = FrameUtil.createInputPanel("Password:", password);
+        FrameUtil.setPadding(passwordPanel, 0, 0, 0, 50);
         
         // 创建密码错误提示标签 - 放在一个固定高度的面板中
         passwordErrorLabel = new JLabel("Password cannot be empty");
@@ -86,9 +106,27 @@ public class LoginFrame extends JFrame implements LoginView {
         passwordErrorLabel.setFont(FontManager.getRegularFont(12));
         passwordErrorLabel.setVisible(false);
         JPanel passwordErrorPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        passwordErrorPanel.setPreferredSize(new Dimension(width, 20)); // 固定高度
+        passwordErrorPanel.setPreferredSize(new Dimension(width, 22)); // 固定高度
+        FrameUtil.setPadding(passwordErrorPanel, 0, 70, 0, 0);
         passwordErrorPanel.add(passwordErrorLabel);
         
+        // 创建确认密码输入面板
+        confirmPassword = FrameUtil.createStyledPasswordField(15);
+        confirmPasswordPanel = FrameUtil.createInputPanel("Confirm Password:", confirmPassword);
+        FrameUtil.setPadding(confirmPasswordPanel, 0, 0, 0, 50);
+        confirmPasswordPanel.setVisible(false); // 初始隐藏
+
+        // 创建确认密码错误提示标签
+        confirmPasswordErrorLabel = new JLabel("Passwords do not match");
+        confirmPasswordErrorLabel.setForeground(FrameUtil.ERROR_COLOR);
+        confirmPasswordErrorLabel.setFont(FontManager.getRegularFont(12));
+        confirmPasswordErrorLabel.setVisible(false);
+        confirmPasswordErrorPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        confirmPasswordErrorPanel.setPreferredSize(new Dimension(width, 22));
+        FrameUtil.setPadding(confirmPasswordErrorPanel, 0, 70, 0, 0);
+        confirmPasswordErrorPanel.add(confirmPasswordErrorLabel);
+        confirmPasswordErrorPanel.setVisible(false); // 初始隐藏
+
         // 创建按钮
         submitBtn = FrameUtil.createStyledButton("Login / Register", true);
         resetBtn = FrameUtil.createStyledButton("Reset", false);
@@ -106,6 +144,10 @@ public class LoginFrame extends JFrame implements LoginView {
         formPanel.add(passwordPanel);
         formPanel.add(Box.createVerticalStrut(0));
         formPanel.add(passwordErrorPanel);
+        formPanel.add(Box.createVerticalStrut(10));
+        formPanel.add(confirmPasswordPanel);
+        formPanel.add(Box.createVerticalStrut(0));
+        formPanel.add(confirmPasswordErrorPanel);
         formPanel.add(Box.createVerticalStrut(15));
         formPanel.add(buttonPanel);
         
@@ -130,14 +172,17 @@ public class LoginFrame extends JFrame implements LoginView {
                     if (userExists) {
                         submitBtn.setText("Login");
                         submitBtn.setBackground(FrameUtil.LOGIN_COLOR);
+                        setRegistrationMode(false); // 隐藏确认密码区域
                     } else {
                         submitBtn.setText("Register");
                         submitBtn.setBackground(FrameUtil.REGISTER_COLOR);
+                        setRegistrationMode(true); // 显示确认密码区域
                     }
                 } else {
                     // 如果用户名为空，恢复原按钮文本和颜色
                     submitBtn.setText("Login / Register");
                     submitBtn.setBackground(FrameUtil.PRIMARY_COLOR);
+                    setRegistrationMode(false); // 隐藏确认密码区域
                 }
             }
         });
@@ -146,15 +191,48 @@ public class LoginFrame extends JFrame implements LoginView {
         submitBtn.addActionListener(e -> {
             String usernameText = username.getText().trim();
             String passwordText = new String(password.getPassword());
-            controller.processLoginOrRegister(usernameText, passwordText);
+            String confirmPasswordText = new String(confirmPassword.getPassword());
+
+            // 根据是否为注册模式调用不同的处理逻辑
+            if (isRegistrationMode) {
+                controller.processRegister(usernameText, passwordText, confirmPasswordText);
+            } else {
+                controller.processLogin(usernameText, passwordText);
+            }
         });
         
         // 添加重置按钮事件监听器 - 使用控制器处理逻辑
         resetBtn.addActionListener(e -> controller.resetForm());
 
-        this.setSize(width, height); // 设置窗口尺寸
+        // 设置初始窗口大小为登录模式尺寸
+        this.setSize(LOGIN_MODE_SIZE);
         this.setLocationRelativeTo(null); // 窗口居中显示
         this.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE); // 设置关闭操作
+    }
+
+    /**
+     * 设置是否处于注册模式，显示或隐藏确认密码区域
+     * @param isRegistration 是否为注册模式
+     */
+    public void setRegistrationMode(boolean isRegistration) {
+        this.isRegistrationMode = isRegistration;
+        confirmPasswordPanel.setVisible(isRegistration);
+        confirmPasswordErrorPanel.setVisible(isRegistration);
+
+        if (isRegistration) {
+            // 注册模式，使用预定义的注册窗口尺寸
+            this.setSize(REGISTER_MODE_SIZE);
+        } else {
+            // 登录模式，使用预定义的登录窗口尺寸
+            this.setSize(LOGIN_MODE_SIZE);
+            // 清除确认密码字段和错误提示
+            confirmPassword.setText("");
+            setConfirmPasswordError(false);
+        }
+
+        // 刷新窗口布局
+        this.revalidate();
+        this.repaint();
     }
 
     @Override
@@ -180,18 +258,32 @@ public class LoginFrame extends JFrame implements LoginView {
     }
     
     @Override
+    public void setConfirmPasswordError(boolean isError) {
+        if (isError) {
+            confirmPassword.setBorder(BorderFactory.createLineBorder(FrameUtil.ERROR_COLOR, 2));
+            confirmPasswordErrorLabel.setVisible(true);
+        } else {
+            confirmPassword.setBorder(UIManager.getBorder("TextField.border"));
+            confirmPasswordErrorLabel.setVisible(false);
+        }
+    }
+
+    @Override
     public void clearAllErrors() {
         setUsernameError(false);
         setPasswordError(false);
+        setConfirmPasswordError(false);
     }
     
     @Override
     public void resetForm() {
         username.setText(""); // 清空用户名
         password.setText(""); // 清空密码
+        confirmPassword.setText(""); // 清空确认密码
         clearAllErrors();    // 清除所有错误状态
         submitBtn.setText("Login / Register");
         submitBtn.setBackground(FrameUtil.PRIMARY_COLOR);
+        setRegistrationMode(false); // 恢复登录模式
     }
 
     /**
@@ -239,6 +331,27 @@ public class LoginFrame extends JFrame implements LoginView {
                 setPasswordError(false);
             }
         });
+
+        // 为确认密码输入框添加文档监听器
+        confirmPassword.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                setConfirmPasswordError(false);
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                // 当内容为空时不清除错误状态
+                if (confirmPassword.getPassword().length > 0) {
+                    setConfirmPasswordError(false);
+                }
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                setConfirmPasswordError(false);
+            }
+        });
     }
 
     @Override
@@ -276,3 +389,4 @@ public class LoginFrame extends JFrame implements LoginView {
         this.controller.setGameFrame(gameFrame);
     }
 }
+
