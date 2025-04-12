@@ -10,7 +10,7 @@ import java.awt.*;
  */
 public class FrameUtil {
     // 默认颜色常量
-    public static final Color PRIMARY_COLOR = new Color(100, 180, 255);
+    public static final Color PRIMARY_COLOR = new Color(84, 173, 255);
     public static final Color SECONDARY_COLOR = new Color(240, 240, 240);
     public static final Color TEXT_COLOR = Color.DARK_GRAY;
     public static final Color ACCENT_COLOR = new Color(255, 153, 0);
