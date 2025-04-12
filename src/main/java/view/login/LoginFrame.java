@@ -1,5 +1,6 @@
 package view.login;
 
+import service.DatabaseService;
 import view.util.FontManager;
 import view.util.FrameUtil;
 import view.game.GameFrame;
@@ -58,7 +59,7 @@ public class LoginFrame extends JFrame {
         JPanel passwordPanel = FrameUtil.createInputPanel("Password:", password);
         
         // 创建按钮
-        submitBtn = FrameUtil.createStyledButton("Login", true);
+        submitBtn = FrameUtil.createStyledButton("Login / Register", true);
         resetBtn = FrameUtil.createStyledButton("Reset", false);
         
         // 创建按钮面板
@@ -79,19 +80,54 @@ public class LoginFrame extends JFrame {
         
         // 添加提交按钮事件监听器
         submitBtn.addActionListener(e -> {
-            System.out.println("Username = " + username.getText());
-            System.out.println("Password = " + new String(password.getPassword()));
+            String usernameText = username.getText().trim();
+            String passwordText = new String(password.getPassword());
             
             // 简单的校验
-            if (username.getText().trim().isEmpty() || password.getPassword().length == 0) {
-                JOptionPane.showMessageDialog(this, "用户名和密码不能为空", "登录失败", JOptionPane.WARNING_MESSAGE);
+            if (usernameText.isEmpty() || passwordText.isEmpty()) {
+                showStyledMessage(
+                    "Username and password cannot be empty", 
+                    "Login Failed", 
+                    JOptionPane.WARNING_MESSAGE);
                 return;
             }
             
-            // 如果游戏窗口已创建，则显示游戏窗口并隐藏登录窗口
-            if (this.gameFrame != null) {
-                this.gameFrame.setVisible(true);
-                this.setVisible(false);
+            // 尝试登录或注册
+            int result = DatabaseService.getInstance().loginOrRegister(usernameText, passwordText);
+            switch (result) {
+                case 0:
+                    showStyledMessage(
+                        "Login successful!", 
+                        "Welcome", 
+                        JOptionPane.INFORMATION_MESSAGE);
+                    // 显示游戏窗口
+                    if (this.gameFrame != null) {
+                        this.gameFrame.setVisible(true);
+                        this.setVisible(false);
+                    }
+                    break;
+                case 1:
+                    showStyledMessage(
+                        "Register successfully!",
+                        "Welcome",
+                        JOptionPane.INFORMATION_MESSAGE);
+                    // 显示游戏窗口
+                    if (this.gameFrame != null) {
+                        this.gameFrame.setVisible(true);
+                        this.setVisible(false);
+                    }
+                    break;
+                case 2:
+                    showStyledMessage(
+                        "Incorrect password",
+                        "Login Failed",
+                        JOptionPane.ERROR_MESSAGE);
+                    break;
+                default:
+                    showStyledMessage(
+                        "Error during login process",
+                        "Error",
+                        JOptionPane.ERROR_MESSAGE);
             }
         });
         
@@ -104,6 +140,39 @@ public class LoginFrame extends JFrame {
         this.setSize(width, height); // 设置窗口尺寸
         this.setLocationRelativeTo(null); // 窗口居中显示
         this.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE); // 设置关闭操作
+    }
+
+    /**
+     * 显示带有自定义字体的消息对话框
+     *
+     * @param message 消息内容
+     * @param title 对话框标题
+     * @param messageType 消息类型
+     */
+    private void showStyledMessage(String message, String title, int messageType) {
+        // 创建自定义选项面板
+        JLabel label = new JLabel(message);
+        label.setFont(FontManager.getRegularFont(16)); // 使用更大的字体
+
+        // 显示自定义对话框
+        JOptionPane optionPane = new JOptionPane(
+            label,
+            messageType,
+            JOptionPane.DEFAULT_OPTION);
+
+        // 设置标题字体
+        UIManager.put("OptionPane.messageFont", FontManager.getRegularFont(16));
+        UIManager.put("OptionPane.buttonFont", FontManager.getButtonFont());
+        UIManager.put("OptionPane.titleFont", FontManager.getTitleFont(14));
+
+        // 创建并显示对话框
+        JDialog dialog = optionPane.createDialog(this, title);
+        dialog.setVisible(true);
+
+        // 恢复默认UI设置
+        UIManager.put("OptionPane.messageFont", null);
+        UIManager.put("OptionPane.buttonFont", null);
+        UIManager.put("OptionPane.titleFont", null);
     }
 
     /**
