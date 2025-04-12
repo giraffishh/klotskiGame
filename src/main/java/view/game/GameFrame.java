@@ -49,17 +49,20 @@ public class GameFrame extends JFrame {
         // 创建游戏控制器，关联面板和模型
         this.controller = new GameController(gamePanel, mapModel);
 
-        // 创建重新开始按钮
-        this.restartBtn = FrameUtil.createButton(this, "Restart", new Point(gamePanel.getWidth() + 80, 120), 80, 50);
-        restartBtn.setFont(FontManager.getButtonFont());
+        // 步数显示标签
+        this.stepLabel = FrameUtil.createTitleLabel("Start", JLabel.CENTER);
+        stepLabel.setBounds(gamePanel.getWidth() + 80, 70, 180, 50);
+        this.add(stepLabel);
 
-        // 创建加载游戏按钮
-        this.loadBtn = FrameUtil.createButton(this, "Load", new Point(gamePanel.getWidth() + 80, 210), 80, 50);
-        loadBtn.setFont(FontManager.getButtonFont());
+        // 重新开始按钮
+        this.restartBtn = FrameUtil.createStyledButton("Restart", true);
+        restartBtn.setBounds(gamePanel.getWidth() + 80, 120, 120, 50);
+        this.add(restartBtn);
 
-        // 创建步数显示标签
-        this.stepLabel = FrameUtil.createJLabel(this, "Start", FontManager.getTitleFont(20),
-                new Point(gamePanel.getWidth() + 80, 70), 180, 50);
+        // 加载游戏按钮
+        this.loadBtn = FrameUtil.createStyledButton("Load", false);
+        loadBtn.setBounds(gamePanel.getWidth() + 80, 210, 120, 50);
+        this.add(loadBtn);
 
         // 将步数标签设置到游戏面板中
         gamePanel.setStepLabel(stepLabel);
@@ -74,12 +77,17 @@ public class GameFrame extends JFrame {
         
         // 为加载游戏按钮添加点击事件监听器
         this.loadBtn.addActionListener(e -> {
-            // 弹出输入对话框获取游戏存档路径，使用输入字体
-            JTextField inputField = new JTextField();
-            inputField.setFont(FontManager.getInputFont());
+            JTextField inputField = FrameUtil.createStyledTextField(20);
+            JPanel panel = FrameUtil.createInputPanel("Enter Path:", inputField);
 
-            String string = JOptionPane.showInputDialog(this, "Input path:");
-            System.out.println(string);
+            int result = JOptionPane.showConfirmDialog(this, panel, "Load Game",
+                    JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+
+            if (result == JOptionPane.OK_OPTION) {
+                String path = inputField.getText();
+                System.out.println(path);
+            }
+
             // 将焦点设置回游戏面板以便接收键盘事件
             gamePanel.requestFocusInWindow();
         });

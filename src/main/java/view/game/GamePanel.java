@@ -3,6 +3,7 @@ package view.game;
 import controller.GameController;
 import model.Direction;
 import model.MapModel;
+import view.util.FrameUtil;
 import view.util.FontManager;
 
 import javax.swing.*;
@@ -71,24 +72,24 @@ public class GamePanel extends ListenerPanel {
                 BoxComponent box = null;
                 if (map[i][j] == 1) {
                     // 创建1x1橙色盒子
-                    box = new BoxComponent(Color.ORANGE, i, j);
+                    box = new BoxComponent(FrameUtil.ACCENT_COLOR, i, j);
                     box.setSize(GRID_SIZE, GRID_SIZE);
                     map[i][j] = 0;
                 } else if (map[i][j] == 2) {
                     // 创建2x1粉色水平盒子
-                    box = new BoxComponent(Color.PINK, i, j);
+                    box = new BoxComponent(FrameUtil.PRIMARY_COLOR, i, j);
                     box.setSize(GRID_SIZE * 2, GRID_SIZE);
                     map[i][j] = 0;
                     map[i][j + 1] = 0;
                 } else if (map[i][j] == 3) {
                     // 创建1x2蓝色垂直盒子
-                    box = new BoxComponent(Color.BLUE, i, j);
+                    box = new BoxComponent(new Color(100, 149, 237), i, j);
                     box.setSize(GRID_SIZE, GRID_SIZE * 2);
                     map[i][j] = 0;
                     map[i + 1][j] = 0;
                 } else if (map[i][j] == 4) {
                     // 创建2x2绿色大盒子
-                    box = new BoxComponent(Color.GREEN, i, j);
+                    box = new BoxComponent(new Color(102, 187, 106), i, j);
                     box.setSize(GRID_SIZE * 2, GRID_SIZE * 2);
                     map[i][j] = 0;
                     map[i + 1][j] = 0;
@@ -112,10 +113,12 @@ public class GamePanel extends ListenerPanel {
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
-        g.setColor(Color.LIGHT_GRAY);
+        g.setColor(FrameUtil.SECONDARY_COLOR);
         g.fillRect(0, 0, this.getWidth(), this.getHeight());
-        Border border = BorderFactory.createLineBorder(Color.DARK_GRAY, 2);
-        this.setBorder(border);
+        this.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(FrameUtil.TEXT_COLOR, 2),
+            BorderFactory.createEmptyBorder(1, 1, 1, 1)
+        ));
     }
 
     /**
@@ -205,12 +208,8 @@ public class GamePanel extends ListenerPanel {
      */
     public void afterMove() {
         this.steps++;
-        this.stepLabel.setText(String.format("Step: %d", this.steps));
-
-        // 如果stepLabel为null，避免空指针异常
         if (this.stepLabel != null) {
-            // 确保步数标签使用适当的字体
-            this.stepLabel.setFont(FontManager.getTitleFont(20));
+            this.stepLabel.setText(String.format("Steps: %d", this.steps));
         }
     }
 
@@ -220,10 +219,8 @@ public class GamePanel extends ListenerPanel {
      */
     public void setStepLabel(JLabel stepLabel) {
         this.stepLabel = stepLabel;
-        // 确保步数标签使用适当的字体
         if (this.stepLabel != null) {
-            this.stepLabel.setFont(FontManager.getTitleFont(20));
-            this.stepLabel.setText("Step: 0");
+            this.stepLabel.setText("Steps: 0");
         }
     }
 
@@ -251,3 +248,4 @@ public class GamePanel extends ListenerPanel {
         return GRID_SIZE;
     }
 }
+

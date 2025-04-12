@@ -1,5 +1,7 @@
 package view.game;
 
+import view.util.FrameUtil;
+
 import javax.swing.*;
 import javax.swing.border.Border;
 import java.awt.*;
@@ -42,20 +44,27 @@ public class BoxComponent extends JComponent {
     @Override
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
+
+        // 创建圆角矩形区域
+        Graphics2D g2d = (Graphics2D) g;
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
         // 填充方块颜色
-        g.setColor(color);
-        g.fillRect(0, 0, getWidth(), getHeight());
+        g2d.setColor(color);
+        g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
         
         // 根据选中状态设置不同的边框
-        Border border;
         if(isSelected){
             // 选中状态：红色粗边框
-            border = BorderFactory.createLineBorder(Color.red,3);
-        }else {
+            g2d.setColor(FrameUtil.ACCENT_COLOR.darker());
+            g2d.setStroke(new BasicStroke(3f));
+            g2d.drawRoundRect(1, 1, getWidth() - 3, getHeight() - 3, 8, 8);
+        } else {
             // 未选中状态：深灰色细边框
-            border = BorderFactory.createLineBorder(Color.DARK_GRAY, 1);
+            g2d.setColor(FrameUtil.TEXT_COLOR);
+            g2d.setStroke(new BasicStroke(1f));
+            g2d.drawRoundRect(1, 1, getWidth() - 3, getHeight() - 3, 8, 8);
         }
-        this.setBorder(border);
     }
 
     /**

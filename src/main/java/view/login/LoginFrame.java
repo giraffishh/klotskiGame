@@ -37,66 +37,34 @@ public class LoginFrame extends JFrame {
         this.setLayout(new BorderLayout());
         
         // 创建主面板，使用 BorderLayout 进行布局
-        JPanel mainPanel = new JPanel(new BorderLayout());
-        mainPanel.setBorder(new EmptyBorder(30, 40, 30, 40));
+        JPanel mainPanel = FrameUtil.createPaddedPanel(new BorderLayout(), 30, 40, 30, 40);
         
-        // Add title
-        JLabel titleLabel = new JLabel("Welcome to Game", JLabel.CENTER);
-        titleLabel.setFont(FontManager.getTitleFont());
-        titleLabel.setBorder(new EmptyBorder(0, 0, 30, 0));
+        // 添加标题
+        JLabel titleLabel = FrameUtil.createTitleLabel("Welcome to Game", JLabel.CENTER);
+        FrameUtil.setPadding(titleLabel, 0, 0, 30, 0);
         
         // 将标题添加到主面板顶部
         mainPanel.add(titleLabel, BorderLayout.NORTH);
         
         // 创建表单面板
-        JPanel formPanel = new JPanel(new GridLayout(3, 1, 0, 20));
-        formPanel.setBorder(new EmptyBorder(0, 0, 20, 0));
+        JPanel formPanel = FrameUtil.createPaddedPanel(new GridLayout(3, 1, 0, 20), 0, 0, 20, 0);
         
-        // 用户名面板 - 使用 FlowLayout 使组件保持自然大小
-        JPanel usernamePanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
-        JLabel userLabel = new JLabel("Username:");
-        userLabel.setFont(FontManager.getRegularFont());
-        username = new JTextField();
-        // 设置输入框宽度更大
-        username.setColumns(15);
-        // 使用支持中文的字体
-        username.setFont(FontManager.getInputFont());
-        // 增加输入框高度
-        username.setPreferredSize(new Dimension(username.getPreferredSize().width, 30));
-        usernamePanel.add(userLabel);
-        usernamePanel.add(username);
+        // 创建用户名输入面板
+        username = FrameUtil.createStyledTextField(15);
+        JPanel usernamePanel = FrameUtil.createInputPanel("Username:", username);
         
-        // 密码面板 - 使用 FlowLayout 使组件保持自然大小
-        JPanel passwordPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
-        JLabel passLabel = new JLabel("Password:");
-        passLabel.setFont(FontManager.getRegularFont());
-        password = new JPasswordField();
-        // 设置密码框宽度与用户名输入框一致
-        password.setColumns(15);
-        // 使用支持中文的字体
-        password.setFont(FontManager.getInputFont());
-        // 增加输入框高度
-        password.setPreferredSize(new Dimension(password.getPreferredSize().width, 30));
-        passwordPanel.add(passLabel);
-        passwordPanel.add(password);
+        // 创建密码输入面板
+        password = FrameUtil.createStyledPasswordField(15);
+        JPanel passwordPanel = FrameUtil.createInputPanel("Password:", password);
         
-        // 按钮面板
-        JPanel buttonPanel = new JPanel(new GridLayout(1, 2, 15, 0));
-        buttonPanel.setBorder(new EmptyBorder(10, 20, 0, 20));
-        submitBtn = new JButton("Login");
-        resetBtn = new JButton("Reset");
+        // 创建按钮
+        submitBtn = FrameUtil.createStyledButton("Login", true);
+        resetBtn = FrameUtil.createStyledButton("Reset", false);
         
-        // 美化按钮，增加按钮大小
-        submitBtn.setBackground(new Color(100, 180, 255));
-        submitBtn.setForeground(Color.WHITE);
-        submitBtn.setFont(FontManager.getButtonFont());
-        submitBtn.setPreferredSize(new Dimension(submitBtn.getPreferredSize().width, 40));
-        
-        resetBtn.setFont(FontManager.getButtonFont());
-        resetBtn.setPreferredSize(new Dimension(resetBtn.getPreferredSize().width, 40));
-        
-        buttonPanel.add(submitBtn);
-        buttonPanel.add(resetBtn);
+        // 创建按钮面板
+        JButton[] buttons = {submitBtn, resetBtn};
+        JPanel buttonPanel = FrameUtil.createButtonPanel(buttons, 15);
+        FrameUtil.setPadding(buttonPanel, 10, 20, 0, 20);
         
         // 将元素添加到表单面板
         formPanel.add(usernamePanel);
