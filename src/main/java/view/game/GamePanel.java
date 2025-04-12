@@ -247,5 +247,31 @@ public class GamePanel extends ListenerPanel {
     public int getGRID_SIZE() {
         return GRID_SIZE;
     }
-}
 
+    /**
+     * 重置游戏面板
+     * 清除所有方块组件并重新初始化
+     */
+    public void resetGame() {
+        // 清除选中状态
+        if (selectedBox != null) {
+            selectedBox.setSelected(false);
+            selectedBox = null;
+        }
+
+        // 清除所有方块组件
+        for (BoxComponent box : boxes) {
+            this.remove(box);
+        }
+        boxes.clear();
+
+        // 重置步数
+        this.steps = 0;
+        if (this.stepLabel != null) {
+            this.stepLabel.setText("Steps: 0");
+        }
+
+        // 重新初始化游戏
+        initialGame();
+    }
+}

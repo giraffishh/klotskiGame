@@ -28,10 +28,18 @@ public class GameController {
 
     /**
      * 重新开始游戏的方法
-     * 目前仅打印消息，需要进一步实现重置游戏状态的逻辑
+     * 重置地图模型到初始状态，并重置游戏面板
      */
     public void restartGame() {
-        System.out.println("Do restart game here");
+        System.out.println("Restarting game...");
+
+        // 重置地图模型到初始状态
+        model.resetToInitialState();
+
+        // 重置游戏面板
+        view.resetGame();
+
+        System.out.println("Game restarted successfully");
     }
 
     /**
@@ -392,3 +400,4 @@ public class GameController {
 
     //todo: 添加其他方法如loadGame, saveGame等游戏功能
 }
+
