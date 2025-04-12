@@ -3,10 +3,15 @@ package service;
 import model.User;
 import java.sql.*;
 import java.io.File;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.util.Base64;
 
 /**
  * 数据库服务类，提供用户登录和注册功能
  * 使用H2轻量级数据库存储用户信息
+ * 密码使用SHA-256加盐哈希存储，提高安全性
  */
 public class DatabaseService {
     private static final String DB_URL = "jdbc:h2:file:./gamedb";
@@ -39,10 +44,27 @@ public class DatabaseService {
     private void initDatabase() {
         try (Connection conn = getConnection()) {
             Statement stmt = conn.createStatement();
-            // 创建用户表(如果不存在)
+            // 创建用户表(如果不存在)，包含密码哈希和盐值列
             stmt.execute("CREATE TABLE IF NOT EXISTS users (" +
                          "username VARCHAR(255) PRIMARY KEY, " +
-                         "password VARCHAR(255) NOT NULL)");
+                         "password_hash VARCHAR(255) NOT NULL, " +
+                         "salt VARCHAR(255) NOT NULL)");
+
+            // 检查是否存在旧表结构（没有salt列）
+            try {
+                ResultSet rs = conn.getMetaData().getColumns(null, null, "USERS", "SALT");
+                if (!rs.next()) {
+                    // 如果不存在salt列，说明是旧表结构，需要删除重建
+                    stmt.execute("DROP TABLE users");
+                    stmt.execute("CREATE TABLE users (" +
+                                "username VARCHAR(255) PRIMARY KEY, " +
+                                "password_hash VARCHAR(255) NOT NULL, " +
+                                "salt VARCHAR(255) NOT NULL)");
+                    System.out.println("数据库表结构已更新");
+                }
+            } catch (SQLException e) {
+                System.out.println("检查表结构时出错: " + e.getMessage());
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -57,6 +79,47 @@ public class DatabaseService {
         return DriverManager.getConnection(DB_URL, USER, PASS);
     }
     
+    /**
+     * 生成随机盐值
+     * @return Base64编码的盐值字符串
+     */
+    private String generateSalt() {
+        SecureRandom random = new SecureRandom();
+        byte[] salt = new byte[16];
+        random.nextBytes(salt);
+        return Base64.getEncoder().encodeToString(salt);
+    }
+
+    /**
+     * 使用SHA-256算法和盐值对密码进行哈希处理
+     * @param password 明文密码
+     * @param salt 盐值
+     * @return 哈希后的密码
+     */
+    private String hashPassword(String password, String salt) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            md.update(salt.getBytes());
+            byte[] hashedPassword = md.digest(password.getBytes());
+            return Base64.getEncoder().encodeToString(hashedPassword);
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    /**
+     * 验证密码是否正确
+     * @param password 输入的明文密码
+     * @param storedHash 存储的密码哈希值
+     * @param salt 存储的盐值
+     * @return 密码是否正确
+     */
+    private boolean verifyPassword(String password, String storedHash, String salt) {
+        String newHash = hashPassword(password, salt);
+        return newHash != null && newHash.equals(storedHash);
+    }
+
     /**
      * 检查用户名是否已经注册
      * @param username 用户名
@@ -86,24 +149,30 @@ public class DatabaseService {
         try (Connection conn = getConnection()) {
             // 检查用户是否存在
             PreparedStatement checkStmt = conn.prepareStatement(
-                "SELECT password FROM users WHERE username = ?");
+                "SELECT password_hash, salt FROM users WHERE username = ?");
             checkStmt.setString(1, username);
             ResultSet rs = checkStmt.executeQuery();
             
             if (rs.next()) {
                 // 用户存在，检查密码
-                String storedPassword = rs.getString("password");
-                if (storedPassword.equals(password)) {
+                String storedHash = rs.getString("password_hash");
+                String salt = rs.getString("salt");
+
+                if (verifyPassword(password, storedHash, salt)) {
                     return 0; // 登录成功
                 } else {
                     return 2; // 密码错误
                 }
             } else {
                 // 用户不存在，创建新用户
+                String salt = generateSalt();
+                String passwordHash = hashPassword(password, salt);
+
                 PreparedStatement insertStmt = conn.prepareStatement(
-                    "INSERT INTO users (username, password) VALUES (?, ?)");
+                    "INSERT INTO users (username, password_hash, salt) VALUES (?, ?, ?)");
                 insertStmt.setString(1, username);
-                insertStmt.setString(2, password);
+                insertStmt.setString(2, passwordHash);
+                insertStmt.setString(3, salt);
                 insertStmt.executeUpdate();
                 return 1; // 注册成功
             }

@@ -33,6 +33,10 @@ public class LoginFrame extends JFrame {
     private JLabel usernameErrorLabel;
     private JLabel passwordErrorLabel;
 
+    // 定义按钮颜色常量
+    private static final Color LOGIN_COLOR = new Color(60, 131, 236); // 登录时的深蓝色
+    private static final Color REGISTER_COLOR = new Color(53, 135, 57); // 注册时的深绿色
+
     /**
      * 创建登录窗口
      * @param width 窗口宽度
@@ -122,15 +126,18 @@ public class LoginFrame extends JFrame {
                 if (!usernameText.isEmpty()) {
                     // 检查用户名是否已注册
                     boolean userExists = DatabaseService.getInstance().checkUserExists(usernameText);
-                    // 根据检查结果更新按钮文本
+                    // 根据检查结果更新按钮文本和颜色
                     if (userExists) {
                         submitBtn.setText("Login");
+                        submitBtn.setBackground(LOGIN_COLOR); // 设置为登录深色
                     } else {
                         submitBtn.setText("Register");
+                        submitBtn.setBackground(REGISTER_COLOR); // 设置为注册深色
                     }
                 } else {
-                    // 如果用户名为空，恢复原按钮文本
+                    // 如果用户名为空，恢复原按钮文本和颜色
                     submitBtn.setText("Login / Register");
+                    submitBtn.setBackground(FrameUtil.PRIMARY_COLOR); // 恢复默认颜色
                 }
             }
         });
