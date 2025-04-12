@@ -24,14 +24,6 @@ public class BoxComponent extends JComponent {
     // 鼠标悬停效果
     private boolean isHovered;
 
-    // 边框颜色常量 - 修改为与方块颜色形成更鲜明对比的颜色
-    private static final Color HOVER_BORDER_COLOR = new Color(255, 222, 30);  // 金色边框，与蓝色形成鲜明对比
-    private static final Color SELECTED_BORDER_COLOR = new Color(255, 0, 0); // 红色边框
-    private static final Color NORMAL_BORDER_COLOR = new Color(50, 50, 50, 150); // 深灰色，降低存在感
-
-    // 边框发光效果
-    private static final Color HOVER_GLOW = new Color(255, 215, 0, 80);    // 金色光晕，降低不透明度
-
     /**
      * 创建一个游戏方块组件
      * 
@@ -133,28 +125,28 @@ public class BoxComponent extends JComponent {
         // 简化边框绘制逻辑，避免多重边框叠加
         if (isSelected) {
             // 选中状态
-            g2d.setColor(SELECTED_BORDER_COLOR);
+            g2d.setColor(FrameUtil.SELECTED_BORDER_COLOR);
             g2d.setStroke(new BasicStroke(3.0f));
             g2d.drawRoundRect(2, 2, getWidth() - 5, getHeight() - 5, arcSize, arcSize);
         } else if (isHovered) {
             // 悬停状态：金色边框
-            g2d.setColor(HOVER_BORDER_COLOR);
+            g2d.setColor(FrameUtil.HOVER_BORDER_COLOR);
             g2d.setStroke(new BasicStroke(2.5f));
             g2d.drawRoundRect(2, 2, getWidth() - 5, getHeight() - 5, arcSize, arcSize);
             
             // 添加轻微的外发光效果
             g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f));
-            g2d.setColor(HOVER_GLOW);
+            g2d.setColor(FrameUtil.HOVER_GLOW);
             g2d.setStroke(new BasicStroke(4.0f));
             g2d.drawRoundRect(1, 1, getWidth() - 3, getHeight() - 3, arcSize+1, arcSize+1);
         } else {
             // 普通状态：简单的深灰色细边框
-            g2d.setColor(NORMAL_BORDER_COLOR);
+            g2d.setColor(FrameUtil.NORMAL_BORDER_COLOR);
             g2d.setStroke(new BasicStroke(1.0f));
             g2d.drawRoundRect(1, 1, getWidth() - 3, getHeight() - 3, arcSize, arcSize);
 
             // 添加微妙的高光效果
-            g2d.setColor(new Color(255, 255, 255, 30));
+            g2d.setColor(FrameUtil.HIGHLIGHT_COLOR);
             g2d.drawLine(4, 4, getWidth() - 5, 4);
             g2d.drawLine(4, 4, 4, getHeight() - 5);
         }

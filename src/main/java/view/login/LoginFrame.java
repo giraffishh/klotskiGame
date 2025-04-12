@@ -1,12 +1,12 @@
 package view.login;
 
+import controller.LoginController;
 import service.DatabaseService;
 import view.util.FontManager;
 import view.util.FrameUtil;
 import view.game.GameFrame;
 
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.*;
@@ -18,7 +18,7 @@ import java.awt.event.FocusEvent;
  * 登录成功后可跳转到游戏主界面
  * 使用 FlatLaf 浅色主题
  */
-public class LoginFrame extends JFrame {
+public class LoginFrame extends JFrame implements LoginView {
     // 用户名输入框
     private JTextField username;
     // 密码输入框
@@ -27,15 +27,12 @@ public class LoginFrame extends JFrame {
     private JButton submitBtn;
     // 重置按钮
     private JButton resetBtn;
-    // 游戏主窗口引用
-    private GameFrame gameFrame;
     // 错误提示标签
     private JLabel usernameErrorLabel;
     private JLabel passwordErrorLabel;
 
-    // 定义按钮颜色常量
-    private static final Color LOGIN_COLOR = new Color(60, 131, 236); // 登录时的深蓝色
-    private static final Color REGISTER_COLOR = new Color(53, 135, 57); // 注册时的深绿色
+    // 控制器引用
+    private LoginController controller;
 
     /**
      * 创建登录窗口
@@ -43,7 +40,10 @@ public class LoginFrame extends JFrame {
      * @param height 窗口高度
      */
     public LoginFrame(int width, int height) {
-        this.setTitle("Game Login"); // Set window title
+        this.setTitle("Game Login");
+
+        // 初始化控制器
+        this.controller = new LoginController(this);
         
         // 使用 BorderLayout 和面板组合而不是绝对布局
         this.setLayout(new BorderLayout());
@@ -69,7 +69,7 @@ public class LoginFrame extends JFrame {
         
         // 创建用户名错误提示标签 - 放在一个固定高度的面板中
         usernameErrorLabel = new JLabel("Username cannot be empty");
-        usernameErrorLabel.setForeground(Color.RED);
+        usernameErrorLabel.setForeground(FrameUtil.ERROR_COLOR);
         usernameErrorLabel.setFont(FontManager.getRegularFont(12));
         usernameErrorLabel.setVisible(false);
         JPanel usernameErrorPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
@@ -82,7 +82,7 @@ public class LoginFrame extends JFrame {
         
         // 创建密码错误提示标签 - 放在一个固定高度的面板中
         passwordErrorLabel = new JLabel("Password cannot be empty");
-        passwordErrorLabel.setForeground(Color.RED);
+        passwordErrorLabel.setForeground(FrameUtil.ERROR_COLOR);
         passwordErrorLabel.setFont(FontManager.getRegularFont(12));
         passwordErrorLabel.setVisible(false);
         JPanel passwordErrorPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
@@ -124,108 +124,43 @@ public class LoginFrame extends JFrame {
             public void focusLost(FocusEvent e) {
                 String usernameText = username.getText().trim();
                 if (!usernameText.isEmpty()) {
-                    // 检查用户名是否已注册
-                    boolean userExists = DatabaseService.getInstance().checkUserExists(usernameText);
+                    // 检查用户名是否已注册 - 使用控制器
+                    boolean userExists = controller.checkUserExists(usernameText);
                     // 根据检查结果更新按钮文本和颜色
                     if (userExists) {
                         submitBtn.setText("Login");
-                        submitBtn.setBackground(LOGIN_COLOR); // 设置为登录深色
+                        submitBtn.setBackground(FrameUtil.LOGIN_COLOR);
                     } else {
                         submitBtn.setText("Register");
-                        submitBtn.setBackground(REGISTER_COLOR); // 设置为注册深色
+                        submitBtn.setBackground(FrameUtil.REGISTER_COLOR);
                     }
                 } else {
                     // 如果用户名为空，恢复原按钮文本和颜色
                     submitBtn.setText("Login / Register");
-                    submitBtn.setBackground(FrameUtil.PRIMARY_COLOR); // 恢复默认颜色
+                    submitBtn.setBackground(FrameUtil.PRIMARY_COLOR);
                 }
             }
         });
 
-        // 添加提交按钮事件监听器
+        // 添加提交按钮事件监听器 - 使用控制器处理逻辑
         submitBtn.addActionListener(e -> {
             String usernameText = username.getText().trim();
             String passwordText = new String(password.getPassword());
-            
-            // 重置所有错误状态
-            clearAllErrors();
-            
-            // 校验用户名和密码不为空
-            boolean hasError = false;
-            
-            if (usernameText.isEmpty()) {
-                setUsernameError(true);
-                hasError = true;
-            }
-            
-            if (passwordText.isEmpty()) {
-                setPasswordError(true);
-                hasError = true;
-            }
-            
-            // 如果有错误，不继续提交
-            if (hasError) {
-                return;
-            }
-            
-            // 尝试登录或注册
-            int result = DatabaseService.getInstance().loginOrRegister(usernameText, passwordText);
-            switch (result) {
-                case 0:
-                    showStyledMessage(
-                        "Login successful!", 
-                        "Welcome", 
-                        JOptionPane.INFORMATION_MESSAGE);
-                    // 显示游戏窗口
-                    if (this.gameFrame != null) {
-                        this.gameFrame.setVisible(true);
-                        this.setVisible(false);
-                    }
-                    break;
-                case 1:
-                    showStyledMessage(
-                        "Register successfully!",
-                        "Welcome",
-                        JOptionPane.INFORMATION_MESSAGE);
-                    // 显示游戏窗口
-                    if (this.gameFrame != null) {
-                        this.gameFrame.setVisible(true);
-                        this.setVisible(false);
-                    }
-                    break;
-                case 2:
-                    showStyledMessage(
-                        "Incorrect password",
-                        "Login Failed",
-                        JOptionPane.ERROR_MESSAGE);
-                    break;
-                default:
-                    showStyledMessage(
-                        "Error during login process",
-                        "Error",
-                        JOptionPane.ERROR_MESSAGE);
-            }
+            controller.processLoginOrRegister(usernameText, passwordText);
         });
         
-        // 添加重置按钮事件监听器
-        resetBtn.addActionListener(e -> {
-            username.setText(""); // 清空用户名
-            password.setText(""); // 清空密码
-            clearAllErrors();    // 清除所有错误状态
-        });
+        // 添加重置按钮事件监听器 - 使用控制器处理逻辑
+        resetBtn.addActionListener(e -> controller.resetForm());
 
         this.setSize(width, height); // 设置窗口尺寸
         this.setLocationRelativeTo(null); // 窗口居中显示
         this.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE); // 设置关闭操作
     }
 
-    /**
-     * 设置用户名错误状态
-     * @param isError 是否显示错误
-     */
-    private void setUsernameError(boolean isError) {
+    @Override
+    public void setUsernameError(boolean isError) {
         if (isError) {
-            username.setBorder(BorderFactory.createLineBorder(Color.RED, 2));
+            username.setBorder(BorderFactory.createLineBorder(FrameUtil.ERROR_COLOR, 2));
             usernameErrorLabel.setVisible(true);
         } else {
             username.setBorder(UIManager.getBorder("TextField.border"));
@@ -233,13 +168,10 @@ public class LoginFrame extends JFrame {
         }
     }
     
-    /**
-     * 设置密码错误状态
-     * @param isError 是否显示错误
-     */
-    private void setPasswordError(boolean isError) {
+    @Override
+    public void setPasswordError(boolean isError) {
         if (isError) {
-            password.setBorder(BorderFactory.createLineBorder(Color.RED, 2));
+            password.setBorder(BorderFactory.createLineBorder(FrameUtil.ERROR_COLOR, 2));
             passwordErrorLabel.setVisible(true);
         } else {
             password.setBorder(UIManager.getBorder("TextField.border"));
@@ -247,14 +179,21 @@ public class LoginFrame extends JFrame {
         }
     }
     
-    /**
-     * 清除所有错误状态
-     */
-    private void clearAllErrors() {
+    @Override
+    public void clearAllErrors() {
         setUsernameError(false);
         setPasswordError(false);
     }
     
+    @Override
+    public void resetForm() {
+        username.setText(""); // 清空用户名
+        password.setText(""); // 清空密码
+        clearAllErrors();    // 清除所有错误状态
+        submitBtn.setText("Login / Register");
+        submitBtn.setBackground(FrameUtil.PRIMARY_COLOR);
+    }
+
     /**
      * 为输入框添加监听器，在用户输入时清除错误状态
      */
@@ -302,14 +241,8 @@ public class LoginFrame extends JFrame {
         });
     }
 
-    /**
-     * 显示带有自定义字体的消息对话框
-     *
-     * @param message 消息内容
-     * @param title 对话框标题
-     * @param messageType 消息类型
-     */
-    private void showStyledMessage(String message, String title, int messageType) {
+    @Override
+    public void showStyledMessage(String message, String title, int messageType) {
         // 创建自定义选项面板
         JLabel label = new JLabel(message);
         label.setFont(FontManager.getRegularFont(16)); // 使用更大的字体
@@ -340,7 +273,6 @@ public class LoginFrame extends JFrame {
      * @param gameFrame 游戏主窗口实例
      */
     public void setGameFrame(GameFrame gameFrame) {
-        this.gameFrame = gameFrame;
+        this.controller.setGameFrame(gameFrame);
     }
 }
-

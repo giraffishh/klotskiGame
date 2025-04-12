@@ -83,13 +83,13 @@ public class GamePanel extends ListenerPanel {
                     map[i][j + 1] = 0;
                 } else if (map[i][j] == 3) {
                     // 创建1x2蓝色垂直盒子
-                    box = new BoxComponent(new Color(100, 149, 237), i, j);
+                    box = new BoxComponent(FrameUtil.VERTICAL_BLOCK_COLOR, i, j);
                     box.setSize(GRID_SIZE, GRID_SIZE * 2);
                     map[i][j] = 0;
                     map[i + 1][j] = 0;
                 } else if (map[i][j] == 4) {
                     // 创建2x2绿色大盒子
-                    box = new BoxComponent(new Color(102, 187, 106), i, j);
+                    box = new BoxComponent(FrameUtil.BIG_BLOCK_COLOR, i, j);
                     box.setSize(GRID_SIZE * 2, GRID_SIZE * 2);
                     map[i][j] = 0;
                     map[i + 1][j] = 0;
@@ -120,13 +120,13 @@ public class GamePanel extends ListenerPanel {
 
         // 创建渐变背景 - 使用更柔和的米灰色调
         GradientPaint gradient = new GradientPaint(
-            0, 0, new Color(230, 228, 225),
-            getWidth(), getHeight(), new Color(215, 213, 210));
+            0, 0, FrameUtil.PANEL_BACKGROUND_LIGHT,
+            getWidth(), getHeight(), FrameUtil.PANEL_BACKGROUND_DARK);
         g2d.setPaint(gradient);
         g2d.fillRect(0, 0, getWidth(), getHeight());
 
         // 绘制网格线 - 使用更柔和的淡灰色线条
-        g2d.setColor(new Color(200, 198, 195));
+        g2d.setColor(FrameUtil.GRID_LINE_COLOR);
         g2d.setStroke(new BasicStroke(0.5f));
 
         // 绘制水平线
@@ -141,7 +141,7 @@ public class GamePanel extends ListenerPanel {
 
         // 边框 - 使用柔和的深灰色边框
         this.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(120, 120, 130), 2),
+            BorderFactory.createLineBorder(FrameUtil.PANEL_BORDER_COLOR, 2),
             BorderFactory.createEmptyBorder(1, 1, 1, 1)
         ));
     }

@@ -9,11 +9,35 @@ import java.awt.*;
  * 用于简化UI组件的创建和添加过程，支持FlatLaf美化界面。
  */
 public class FrameUtil {
-    // 默认颜色常量
-    public static final Color PRIMARY_COLOR = new Color(84, 173, 255);
-    public static final Color SECONDARY_COLOR = new Color(240, 240, 240);
-    public static final Color TEXT_COLOR = Color.DARK_GRAY;
-    public static final Color ACCENT_COLOR = new Color(255, 153, 0);
+    // 主题基础颜色
+    public static final Color PRIMARY_COLOR = new Color(84, 173, 255);    // 主色调-蓝色
+    public static final Color SECONDARY_COLOR = new Color(240, 240, 240); // 次要色调-浅灰色
+    public static final Color TEXT_COLOR = Color.DARK_GRAY;               // 文本颜色
+    public static final Color ACCENT_COLOR = new Color(255, 153, 0);      // 强调色-橙色
+
+    // 登录界面相关颜色
+    public static final Color ERROR_COLOR = new Color(220, 53, 69);       // 错误提示-红色
+    public static final Color LOGIN_COLOR = new Color(62, 137, 243);       // 登录按钮-绿色
+    public static final Color REGISTER_COLOR = new Color(59, 151, 63);    // 注册按钮-橙色
+
+    // 方块颜色
+    public static final Color VERTICAL_BLOCK_COLOR = new Color(100, 149, 237);  // 垂直方块-蓝色
+    public static final Color BIG_BLOCK_COLOR = new Color(102, 187, 106);       // 大方块-绿色
+
+    // 边框颜色
+    public static final Color HOVER_BORDER_COLOR = new Color(255, 251, 0);     // 悬停边框-金色
+    public static final Color SELECTED_BORDER_COLOR = new Color(255, 0, 0);     // 选中边框-红色
+    public static final Color NORMAL_BORDER_COLOR = new Color(50, 50, 50, 150); // 普通边框-深灰色
+    public static final Color HOVER_GLOW = new Color(255, 215, 0, 80);          // 悬停光晕-金色
+
+    // 游戏面板背景颜色
+    public static final Color PANEL_BACKGROUND_LIGHT = new Color(230, 228, 225); // 面板渐变浅色
+    public static final Color PANEL_BACKGROUND_DARK = new Color(215, 213, 210);  // 面板渐变深色
+    public static final Color GRID_LINE_COLOR = new Color(200, 198, 195);        // 网格线颜色
+    public static final Color PANEL_BORDER_COLOR = new Color(120, 120, 130);     // 面板边框颜色
+
+    // 添加高光效果颜色
+    public static final Color HIGHLIGHT_COLOR = new Color(255, 255, 255, 30);    // 高光效果-半透明白色
     
     /**
      * 创建标准文本标签
@@ -218,3 +242,4 @@ public class FrameUtil {
         return panel;
     }
 }
+
