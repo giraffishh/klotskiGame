@@ -2,8 +2,7 @@ package view.game;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.KeyEvent;
-import java.awt.event.MouseEvent;
+import java.awt.event.*;
 
 /**
  * 该类用于启用键盘和鼠标事件监听功能。
@@ -16,7 +15,15 @@ public abstract class ListenerPanel extends JPanel {
      */
     public ListenerPanel() {
         enableEvents(AWTEvent.KEY_EVENT_MASK);
-        enableEvents(AWTEvent.MOUSE_EVENT_MASK);
+
+        // 替换原来的鼠标事件处理为MouseListener实现
+        this.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                doMouseClick(e.getPoint());
+            }
+        });
+
         this.setFocusable(true);
     }
 
@@ -37,20 +44,7 @@ public abstract class ListenerPanel extends JPanel {
             }
         }
     }
-    
-    /**
-     * 处理鼠标事件
-     * 当鼠标被点击时，调用doMouseClick方法
-     * @param e 鼠标事件对象
-     */
-    @Override
-    protected void processMouseEvent(MouseEvent e) {
-        super.processMouseEvent(e);
-        if (e.getID() == MouseEvent.MOUSE_CLICKED) {
-            doMouseClick(e.getPoint());
-        }
-    }
-    
+
     /**
      * 处理鼠标点击事件的抽象方法
      * @param point 点击的坐标位置
