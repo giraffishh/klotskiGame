@@ -35,7 +35,7 @@ public class Main {
 
         SwingUtilities.invokeLater(() -> {
             // 创建登录窗口并显示，增加窗口尺寸以适应更大的组件
-            LoginFrame loginFrame = new LoginFrame(460, 360);
+            LoginFrame loginFrame = new LoginFrame(460, 370);
             loginFrame.setVisible(true);
 
             // 创建地图模型，初始化游戏数据

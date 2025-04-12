@@ -58,6 +58,25 @@ public class DatabaseService {
     }
     
     /**
+     * 检查用户名是否已经注册
+     * @param username 用户名
+     * @return 如果用户名已注册返回true，否则返回false
+     */
+    public boolean checkUserExists(String username) {
+        try (Connection conn = getConnection()) {
+            PreparedStatement checkStmt = conn.prepareStatement(
+                "SELECT username FROM users WHERE username = ?");
+            checkStmt.setString(1, username);
+            ResultSet rs = checkStmt.executeQuery();
+
+            return rs.next(); // 如果有数据返回，说明用户名已注册
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false; // 出错时返回false
+        }
+    }
+
+    /**
      * 尝试登录或注册用户
      * @param username 用户名
      * @param password 密码
