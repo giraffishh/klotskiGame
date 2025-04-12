@@ -23,7 +23,7 @@ public class GamePanel extends ListenerPanel {
     private GameController controller;       // 游戏控制器
     private JLabel stepLabel;                // 步数显示标签
     private int steps;                       // 当前步数
-    private final int GRID_SIZE = 50;        // 网格大小（像素）
+    private final int GRID_SIZE = 70;        // 网格大小（像素），调整为更大尺寸
     private BoxComponent selectedBox;        // 当前选中的盒子
 
 
@@ -275,3 +275,4 @@ public class GamePanel extends ListenerPanel {
         initialGame();
     }
 }
+
