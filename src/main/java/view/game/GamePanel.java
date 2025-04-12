@@ -23,7 +23,7 @@ public class GamePanel extends ListenerPanel {
     private GameController controller;       // 游戏控制器
     private JLabel stepLabel;                // 步数显示标签
     private int steps;                       // 当前步数
-    private final int GRID_SIZE = 50;        // 网格大小（像素）
+    private final int GRID_SIZE = 70;        // 网格大小（像素），调整为更大尺寸
     private BoxComponent selectedBox;        // 当前选中的盒子
 
 
@@ -113,10 +113,35 @@ public class GamePanel extends ListenerPanel {
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
-        g.setColor(FrameUtil.SECONDARY_COLOR);
-        g.fillRect(0, 0, this.getWidth(), this.getHeight());
+
+        // 使用更现代的背景效果
+        Graphics2D g2d = (Graphics2D) g;
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        // 创建渐变背景 - 使用更柔和的米灰色调
+        GradientPaint gradient = new GradientPaint(
+            0, 0, new Color(230, 228, 225),
+            getWidth(), getHeight(), new Color(215, 213, 210));
+        g2d.setPaint(gradient);
+        g2d.fillRect(0, 0, getWidth(), getHeight());
+
+        // 绘制网格线 - 使用更柔和的淡灰色线条
+        g2d.setColor(new Color(200, 198, 195));
+        g2d.setStroke(new BasicStroke(0.5f));
+
+        // 绘制水平线
+        for (int i = 0; i <= model.getHeight(); i++) {
+            g2d.drawLine(0, i * GRID_SIZE, model.getWidth() * GRID_SIZE, i * GRID_SIZE);
+        }
+
+        // 绘制垂直线
+        for (int i = 0; i <= model.getWidth(); i++) {
+            g2d.drawLine(i * GRID_SIZE, 0, i * GRID_SIZE, model.getHeight() * GRID_SIZE);
+        }
+
+        // 边框 - 使用柔和的深灰色边框
         this.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(FrameUtil.TEXT_COLOR, 2),
+            BorderFactory.createLineBorder(new Color(120, 120, 130), 2),
             BorderFactory.createEmptyBorder(1, 1, 1, 1)
         ));
     }
@@ -128,22 +153,38 @@ public class GamePanel extends ListenerPanel {
      */
     @Override
     public void doMouseClick(Point point) {
-        Component component = this.getComponentAt(point);
-        if (component instanceof BoxComponent clickedComponent) {
+        // 改进点击检测：先检查视觉上包含点的方块
+        BoxComponent clickedBox = null;
+        for (BoxComponent box : boxes) {
+            Rectangle bounds = box.getBounds();
+            // 扩大点击区域，使用户更容易点击到方块边缘
+            bounds.grow(2, 2);
+            if (bounds.contains(point)) {
+                clickedBox = box;
+                break;
+            }
+        }
+
+        if (clickedBox != null) {
+            // 点击音效反馈可以在这里添加
+            // playClickSound();
+            
             if (selectedBox == null) {
                 // 没有选中的盒子，选中当前盒子
-                selectedBox = clickedComponent;
+                selectedBox = clickedBox;
                 selectedBox.setSelected(true);
-            } else if (selectedBox != clickedComponent) {
+            } else if (selectedBox != clickedBox) {
                 // 已有选中的盒子，切换到点击的盒子
                 selectedBox.setSelected(false);
-                clickedComponent.setSelected(true);
-                selectedBox = clickedComponent;
+                clickedBox.setSelected(true);
+                selectedBox = clickedBox;
             } else {
                 // 点击已选中的盒子，取消选中
-                clickedComponent.setSelected(false);
+                clickedBox.setSelected(false);
                 selectedBox = null;
             }
+            // 确保面板获取焦点以接收键盘事件
+            this.requestFocusInWindow();
         }
     }
 
@@ -275,3 +316,4 @@ public class GamePanel extends ListenerPanel {
         initialGame();
     }
 }
+

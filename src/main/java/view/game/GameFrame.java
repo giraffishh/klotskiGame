@@ -38,30 +38,37 @@ public class GameFrame extends JFrame {
         this.setTitle("2025 CS109 Project Demo");
         // 使用绝对布局
         this.setLayout(null);
-        // 设置窗口大小
-        this.setSize(width, height);
         
-        // 创建游戏面板并居中显示
+        // 创建游戏面板
         gamePanel = new GamePanel(mapModel);
-        gamePanel.setLocation(30, height / 2 - gamePanel.getHeight() / 2);
+        
+        // 调整窗口大小以适应更大的棋盘
+        int windowWidth = Math.max(width, gamePanel.getWidth() + 250);
+        int windowHeight = Math.max(height, gamePanel.getHeight() + 80);
+        this.setSize(windowWidth, windowHeight);
+        
+        // 将游戏面板居中放置
+        int panelX = (windowWidth - gamePanel.getWidth()) / 2 - 60; // 左移一点给右侧控制区留空间
+        int panelY = (windowHeight - gamePanel.getHeight()) / 2;
+        gamePanel.setLocation(panelX, panelY);
         this.add(gamePanel);
         
         // 创建游戏控制器，关联面板和模型
         this.controller = new GameController(gamePanel, mapModel);
 
-        // 步数显示标签
+        // 步数显示标签 - 调整位置到游戏面板右侧
         this.stepLabel = FrameUtil.createTitleLabel("Start", JLabel.CENTER);
-        stepLabel.setBounds(gamePanel.getWidth() + 80, 70, 180, 50);
+        stepLabel.setBounds(panelX + gamePanel.getWidth() + 40, panelY + 20, 180, 50);
         this.add(stepLabel);
 
-        // 重新开始按钮
+        // 重新开始按钮 - 调整位置
         this.restartBtn = FrameUtil.createStyledButton("Restart", true);
-        restartBtn.setBounds(gamePanel.getWidth() + 80, 120, 120, 50);
+        restartBtn.setBounds(panelX + gamePanel.getWidth() + 40, panelY + 90, 120, 50);
         this.add(restartBtn);
 
-        // 加载游戏按钮
+        // 加载游戏按钮 - 调整位置
         this.loadBtn = FrameUtil.createStyledButton("Load", false);
-        loadBtn.setBounds(gamePanel.getWidth() + 80, 210, 120, 50);
+        loadBtn.setBounds(panelX + gamePanel.getWidth() + 40, panelY + 160, 120, 50);
         this.add(loadBtn);
 
         // 将步数标签设置到游戏面板中

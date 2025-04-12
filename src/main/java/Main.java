@@ -46,8 +46,8 @@ public class Main {
                     {0, 0, 4, 4}
             });
 
-            // 创建游戏窗口，但初始不显示
-            GameFrame gameFrame = new GameFrame(600, 450, mapModel);
+            // 创建游戏窗口，增加窗口尺寸以适应更大的棋盘
+            GameFrame gameFrame = new GameFrame(700, 550, mapModel);
             gameFrame.setVisible(false);
 
             // 设置登录窗口与游戏窗口的关联，以便登录后显示游戏
