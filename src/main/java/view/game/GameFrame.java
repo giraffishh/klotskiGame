@@ -4,16 +4,19 @@ import controller.GameController;
 import model.MapModel;
 import view.util.FrameUtil;
 import view.util.FontManager;
+import service.UserSession;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 /**
  * 游戏主窗口类
  * 包含游戏面板和控制按钮等组件
  * 负责显示游戏界面和处理用户交互
  */
-public class GameFrame extends JFrame {
+public class GameFrame extends JFrame implements UserSession.UserSessionListener {
 
     // 游戏控制器，处理游戏逻辑
     private GameController controller;
@@ -109,10 +112,45 @@ public class GameFrame extends JFrame {
 
         //todo: add other button here
         
+        // 更新按钮状态
+        updateButtonsState();
+
+        // 将此窗口注册为用户会话监听器
+        UserSession.getInstance().addListener(this);
+
+        // 窗口关闭时取消注册监听器
+        this.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                UserSession.getInstance().removeListener(GameFrame.this);
+            }
+        });
+
         // 窗口居中显示
         this.setLocationRelativeTo(null);
         // 设置关闭窗口时退出程序
         this.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
     }
-}
 
+    /**
+     * 实现UserSessionListener接口方法，在用户会话状态变化时调用
+     */
+    @Override
+    public void onSessionStateChanged() {
+        // 在UI线程中安全地更新按钮状态
+        SwingUtilities.invokeLater(this::updateButtonsState);
+    }
+
+    /**
+     * 更新按钮状态
+     * 根据用户会话状态启用或禁用保存和加载按钮
+     */
+    public void updateButtonsState() {
+        UserSession session = UserSession.getInstance();
+        boolean isGuest = session.isGuest();
+
+        // 访客模式下禁用保存和加载功能
+        loadBtn.setEnabled(!isGuest);
+        saveBtn.setEnabled(!isGuest);
+    }
+}

@@ -30,8 +30,8 @@ public class LoginFrame extends JFrame implements LoginView {
     private JPasswordField confirmPassword;
     // 提交按钮
     private JButton submitBtn;
-    // 重置按钮
-    private JButton resetBtn;
+    // 访客登录按钮
+    private JButton guestLoginBtn;
     // 错误提示标签
     private JLabel usernameErrorLabel;
     private JLabel passwordErrorLabel;
@@ -129,10 +129,11 @@ public class LoginFrame extends JFrame implements LoginView {
 
         // 创建按钮
         submitBtn = FrameUtil.createStyledButton("Login / Register", true);
-        resetBtn = FrameUtil.createStyledButton("Reset", false);
-        
+        // 访客登录按钮
+        guestLoginBtn = FrameUtil.createStyledButton("Guest Login", false);
+
         // 创建按钮面板
-        JButton[] buttons = {submitBtn, resetBtn};
+        JButton[] buttons = {submitBtn, guestLoginBtn};
         JPanel buttonPanel = FrameUtil.createButtonPanel(buttons, 15);
         FrameUtil.setPadding(buttonPanel, 10, 20, 0, 20);
         
@@ -201,8 +202,8 @@ public class LoginFrame extends JFrame implements LoginView {
             }
         });
         
-        // 添加重置按钮事件监听器 - 使用控制器处理逻辑
-        resetBtn.addActionListener(e -> controller.resetForm());
+        // 添加访客登录按钮事件监听器
+        guestLoginBtn.addActionListener(e -> controller.processGuestLogin());
 
         // 设置初始窗口大小为登录模式尺寸
         this.setSize(LOGIN_MODE_SIZE);
@@ -387,4 +388,3 @@ public class LoginFrame extends JFrame implements LoginView {
         this.controller.setGameFrame(gameFrame);
     }
 }
-

@@ -34,6 +34,15 @@ public class SaveManager {
      * @return 加载是否成功
      */
     public boolean loadGameState() {
+        // 检查用户是否为访客
+        if (UserSession.getInstance().isGuest()) {
+            JOptionPane.showMessageDialog(view,
+                    "Unable to load game: Please login first",
+                    "Load Failed",
+                    JOptionPane.ERROR_MESSAGE);
+            return false;
+        }
+
         // 检查用户是否已登录
         if (!UserSession.getInstance().isLoggedIn()) {
             System.out.println("Unable to load game: Login status is abnormal");
@@ -120,6 +129,15 @@ public class SaveManager {
      * @return 保存是否成功
      */
     public boolean saveGameState() {
+        // 检查用户是否为访客
+        if (UserSession.getInstance().isGuest()) {
+            JOptionPane.showMessageDialog(view,
+                    "Unable to save game: Please login first",
+                    "Save Failed",
+                    JOptionPane.ERROR_MESSAGE);
+            return false;
+        }
+
         // 检查用户是否已登录
         if (!UserSession.getInstance().isLoggedIn()) {
             System.out.println("Unable to save game: Login status is abnormal");
@@ -183,7 +201,7 @@ public class SaveManager {
      * @return 用户是否已有存档
      */
     public boolean hasUserSave() {
-        if (!UserSession.getInstance().isLoggedIn()) {
+        if (!UserSession.getInstance().isLoggedIn() || UserSession.getInstance().isGuest()) {
             return false;
         }
 

@@ -76,8 +76,8 @@ public class GamePanel extends ListenerPanel {
                     box.setSize(GRID_SIZE, GRID_SIZE);
                     map[i][j] = 0;
                 } else if (map[i][j] == 2) {
-                    // 创建2x1粉色水平盒子
-                    box = new BoxComponent(FrameUtil.PRIMARY_COLOR, i, j);
+                    // 创建2x1紫色水平盒子
+                    box = new BoxComponent(FrameUtil.HORIZOTAL_BLOCK_COLOR, i, j);
                     box.setSize(GRID_SIZE * 2, GRID_SIZE);
                     map[i][j] = 0;
                     map[i][j + 1] = 0;

@@ -197,6 +197,27 @@ public class LoginController {
     }
 
     /**
+     * 处理访客登录请求
+     */
+    public void processGuestLogin() {
+        // 设置访客状态
+        User guestUser = new User("Guest", "");
+        userSession.setCurrentUser(guestUser);
+        userSession.setGuest(true);
+
+        loginView.showStyledMessage(
+            "Logged in as guest",
+            "Welcome Guest",
+            JOptionPane.INFORMATION_MESSAGE);
+
+        // 显示游戏窗口
+        if (this.gameFrame != null) {
+            this.gameFrame.setVisible(true);
+            loginView.setVisible(false);
+        }
+    }
+
+    /**
      * 获取当前登录用户
      * @return 当前登录用户，如未登录返回null
      */
