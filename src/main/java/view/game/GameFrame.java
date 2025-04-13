@@ -56,17 +56,17 @@ public class GameFrame extends JFrame {
         // 创建游戏控制器，关联面板和模型
         this.controller = new GameController(gamePanel, mapModel);
 
-        // 步数显示标签 - 调整位置到游戏面板右侧
+        // 步数显示标签
         this.stepLabel = FrameUtil.createTitleLabel("Start", JLabel.CENTER);
         stepLabel.setBounds(panelX + gamePanel.getWidth() + 40, panelY + 20, 180, 50);
         this.add(stepLabel);
 
-        // 重新开始按钮 - 调整位置
+        // 重新开始按钮
         this.restartBtn = FrameUtil.createStyledButton("Restart", true);
         restartBtn.setBounds(panelX + gamePanel.getWidth() + 40, panelY + 90, 120, 50);
         this.add(restartBtn);
 
-        // 加载游戏按钮 - 调整位置
+        // 加载游戏按钮
         this.loadBtn = FrameUtil.createStyledButton("Load", false);
         loadBtn.setBounds(panelX + gamePanel.getWidth() + 40, panelY + 160, 120, 50);
         this.add(loadBtn);

@@ -159,6 +159,10 @@ public class DatabaseService {
                 String salt = rs.getString("salt");
 
                 if (verifyPassword(password, storedHash, salt)) {
+                    // 创建User对象表示登录成功的用户
+                    User user = new User(username, null); // 不保存明文密码
+                    // 将用户信息存入会话
+                    UserSession.getInstance().setCurrentUser(user);
                     return 0; // 登录成功
                 } else {
                     return 2; // 密码错误
@@ -174,6 +178,11 @@ public class DatabaseService {
                 insertStmt.setString(2, passwordHash);
                 insertStmt.setString(3, salt);
                 insertStmt.executeUpdate();
+
+                // 创建User对象表示注册成功的用户
+                User user = new User(username, null); // 不保存明文密码
+                // 将用户信息存入会话
+                UserSession.getInstance().setCurrentUser(user);
                 return 1; // 注册成功
             }
         } catch (SQLException e) {
@@ -181,4 +190,31 @@ public class DatabaseService {
             return -1; // 发生错误
         }
     }
+
+    /**
+     * 获取用户对象
+     * @param username 用户名
+     * @return 对应的User对象，如果用户不存在则返回null
+     */
+    public User getUser(String username) {
+        if (username == null || username.isEmpty()) {
+            return null;
+        }
+
+        try (Connection conn = getConnection()) {
+            PreparedStatement stmt = conn.prepareStatement(
+                "SELECT username FROM users WHERE username = ?");
+            stmt.setString(1, username);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                return new User(rs.getString("username"), null); // 不返回密码
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
 }
+
