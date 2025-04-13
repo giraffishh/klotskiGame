@@ -1,5 +1,6 @@
 import com.formdev.flatlaf.FlatLightLaf;
 import model.MapModel;
+import service.DatabaseService;
 import view.util.FontManager;
 import view.game.GameFrame;
 import view.login.LoginFrame;
@@ -29,9 +30,12 @@ public class Main {
             System.err.println("无法初始化字体管理器");
         }
 
+        // 初始化数据库服务
+        DatabaseService.getInstance();
+
         SwingUtilities.invokeLater(() -> {
             // 创建登录窗口并显示，增加窗口尺寸以适应更大的组件
-            LoginFrame loginFrame = new LoginFrame(450, 360);
+            LoginFrame loginFrame = new LoginFrame(460, 370);
             loginFrame.setVisible(true);
 
             // 创建地图模型，初始化游戏数据
@@ -42,8 +46,8 @@ public class Main {
                     {0, 0, 4, 4}
             });
 
-            // 创建游戏窗口，但初始不显示
-            GameFrame gameFrame = new GameFrame(600, 450, mapModel);
+            // 创建游戏窗口，增加窗口尺寸以适应更大的棋盘
+            GameFrame gameFrame = new GameFrame(700, 550, mapModel);
             gameFrame.setVisible(false);
 
             // 设置登录窗口与游戏窗口的关联，以便登录后显示游戏

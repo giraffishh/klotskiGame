@@ -3,6 +3,7 @@ package view.game;
 import controller.GameController;
 import model.Direction;
 import model.MapModel;
+import view.util.FrameUtil;
 import view.util.FontManager;
 
 import javax.swing.*;
@@ -22,7 +23,7 @@ public class GamePanel extends ListenerPanel {
     private GameController controller;       // 游戏控制器
     private JLabel stepLabel;                // 步数显示标签
     private int steps;                       // 当前步数
-    private final int GRID_SIZE = 50;        // 网格大小（像素）
+    private final int GRID_SIZE = 70;        // 网格大小（像素），调整为更大尺寸
     private BoxComponent selectedBox;        // 当前选中的盒子
 
 
@@ -71,24 +72,24 @@ public class GamePanel extends ListenerPanel {
                 BoxComponent box = null;
                 if (map[i][j] == 1) {
                     // 创建1x1橙色盒子
-                    box = new BoxComponent(Color.ORANGE, i, j);
+                    box = new BoxComponent(FrameUtil.ACCENT_COLOR, i, j);
                     box.setSize(GRID_SIZE, GRID_SIZE);
                     map[i][j] = 0;
                 } else if (map[i][j] == 2) {
                     // 创建2x1粉色水平盒子
-                    box = new BoxComponent(Color.PINK, i, j);
+                    box = new BoxComponent(FrameUtil.PRIMARY_COLOR, i, j);
                     box.setSize(GRID_SIZE * 2, GRID_SIZE);
                     map[i][j] = 0;
                     map[i][j + 1] = 0;
                 } else if (map[i][j] == 3) {
                     // 创建1x2蓝色垂直盒子
-                    box = new BoxComponent(Color.BLUE, i, j);
+                    box = new BoxComponent(FrameUtil.VERTICAL_BLOCK_COLOR, i, j);
                     box.setSize(GRID_SIZE, GRID_SIZE * 2);
                     map[i][j] = 0;
                     map[i + 1][j] = 0;
                 } else if (map[i][j] == 4) {
                     // 创建2x2绿色大盒子
-                    box = new BoxComponent(Color.GREEN, i, j);
+                    box = new BoxComponent(FrameUtil.BIG_BLOCK_COLOR, i, j);
                     box.setSize(GRID_SIZE * 2, GRID_SIZE * 2);
                     map[i][j] = 0;
                     map[i + 1][j] = 0;
@@ -112,10 +113,37 @@ public class GamePanel extends ListenerPanel {
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
-        g.setColor(Color.LIGHT_GRAY);
-        g.fillRect(0, 0, this.getWidth(), this.getHeight());
-        Border border = BorderFactory.createLineBorder(Color.DARK_GRAY, 2);
-        this.setBorder(border);
+
+        // 使用更现代的背景效果
+        Graphics2D g2d = (Graphics2D) g;
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        // 创建渐变背景 - 使用更柔和的米灰色调
+        GradientPaint gradient = new GradientPaint(
+            0, 0, FrameUtil.PANEL_BACKGROUND_LIGHT,
+            getWidth(), getHeight(), FrameUtil.PANEL_BACKGROUND_DARK);
+        g2d.setPaint(gradient);
+        g2d.fillRect(0, 0, getWidth(), getHeight());
+
+        // 绘制网格线 - 使用更柔和的淡灰色线条
+        g2d.setColor(FrameUtil.GRID_LINE_COLOR);
+        g2d.setStroke(new BasicStroke(0.5f));
+
+        // 绘制水平线
+        for (int i = 0; i <= model.getHeight(); i++) {
+            g2d.drawLine(0, i * GRID_SIZE, model.getWidth() * GRID_SIZE, i * GRID_SIZE);
+        }
+
+        // 绘制垂直线
+        for (int i = 0; i <= model.getWidth(); i++) {
+            g2d.drawLine(i * GRID_SIZE, 0, i * GRID_SIZE, model.getHeight() * GRID_SIZE);
+        }
+
+        // 边框 - 使用柔和的深灰色边框
+        this.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(FrameUtil.PANEL_BORDER_COLOR, 2),
+            BorderFactory.createEmptyBorder(1, 1, 1, 1)
+        ));
     }
 
     /**
@@ -125,22 +153,38 @@ public class GamePanel extends ListenerPanel {
      */
     @Override
     public void doMouseClick(Point point) {
-        Component component = this.getComponentAt(point);
-        if (component instanceof BoxComponent clickedComponent) {
+        // 改进点击检测：先检查视觉上包含点的方块
+        BoxComponent clickedBox = null;
+        for (BoxComponent box : boxes) {
+            Rectangle bounds = box.getBounds();
+            // 扩大点击区域，使用户更容易点击到方块边缘
+            bounds.grow(2, 2);
+            if (bounds.contains(point)) {
+                clickedBox = box;
+                break;
+            }
+        }
+
+        if (clickedBox != null) {
+            // 点击音效反馈可以在这里添加
+            // playClickSound();
+            
             if (selectedBox == null) {
                 // 没有选中的盒子，选中当前盒子
-                selectedBox = clickedComponent;
+                selectedBox = clickedBox;
                 selectedBox.setSelected(true);
-            } else if (selectedBox != clickedComponent) {
+            } else if (selectedBox != clickedBox) {
                 // 已有选中的盒子，切换到点击的盒子
                 selectedBox.setSelected(false);
-                clickedComponent.setSelected(true);
-                selectedBox = clickedComponent;
+                clickedBox.setSelected(true);
+                selectedBox = clickedBox;
             } else {
                 // 点击已选中的盒子，取消选中
-                clickedComponent.setSelected(false);
+                clickedBox.setSelected(false);
                 selectedBox = null;
             }
+            // 确保面板获取焦点以接收键盘事件
+            this.requestFocusInWindow();
         }
     }
 
@@ -205,12 +249,8 @@ public class GamePanel extends ListenerPanel {
      */
     public void afterMove() {
         this.steps++;
-        this.stepLabel.setText(String.format("Step: %d", this.steps));
-
-        // 如果stepLabel为null，避免空指针异常
         if (this.stepLabel != null) {
-            // 确保步数标签使用适当的字体
-            this.stepLabel.setFont(FontManager.getTitleFont(20));
+            this.stepLabel.setText(String.format("Steps: %d", this.steps));
         }
     }
 
@@ -220,10 +260,8 @@ public class GamePanel extends ListenerPanel {
      */
     public void setStepLabel(JLabel stepLabel) {
         this.stepLabel = stepLabel;
-        // 确保步数标签使用适当的字体
         if (this.stepLabel != null) {
-            this.stepLabel.setFont(FontManager.getTitleFont(20));
-            this.stepLabel.setText("Step: 0");
+            this.stepLabel.setText("Steps: 0");
         }
     }
 
@@ -250,4 +288,32 @@ public class GamePanel extends ListenerPanel {
     public int getGRID_SIZE() {
         return GRID_SIZE;
     }
+
+    /**
+     * 重置游戏面板
+     * 清除所有方块组件并重新初始化
+     */
+    public void resetGame() {
+        // 清除选中状态
+        if (selectedBox != null) {
+            selectedBox.setSelected(false);
+            selectedBox = null;
+        }
+
+        // 清除所有方块组件
+        for (BoxComponent box : boxes) {
+            this.remove(box);
+        }
+        boxes.clear();
+
+        // 重置步数
+        this.steps = 0;
+        if (this.stepLabel != null) {
+            this.stepLabel.setText("Steps: 0");
+        }
+
+        // 重新初始化游戏
+        initialGame();
+    }
 }
+

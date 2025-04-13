@@ -1,0 +1,199 @@
+package controller;
+
+import service.DatabaseService;
+import view.game.GameFrame;
+import view.login.LoginView;
+
+import javax.swing.*;
+
+/**
+ * 登录控制器，处理登录和注册相关的业务逻辑
+ * 遵循MVC设计模式，将业务逻辑与UI显示分离
+ */
+public class LoginController {
+    // 数据库服务
+    private final DatabaseService databaseService;
+    // 视图引用
+    private final LoginView loginView;
+    // 游戏窗口引用
+    private GameFrame gameFrame;
+
+    /**
+     * 创建登录控制器
+     * @param loginView 登录视图
+     */
+    public LoginController(LoginView loginView) {
+        this.loginView = loginView;
+        this.databaseService = DatabaseService.getInstance();
+    }
+
+    /**
+     * 设置游戏窗口引用
+     * @param gameFrame 游戏主窗口
+     */
+    public void setGameFrame(GameFrame gameFrame) {
+        this.gameFrame = gameFrame;
+    }
+
+    /**
+     * 检查用户是否存在
+     * @param username 用户名
+     * @return true: 用户已注册; false: 用户未注册
+     */
+    public boolean checkUserExists(String username) {
+        return databaseService.checkUserExists(username);
+    }
+
+    /**
+     * 验证登录表单输入
+     * @param username 用户名
+     * @param password 密码
+     * @return true: 验证通过; false: 验证失败
+     */
+    private boolean validateLoginForm(String username, String password) {
+        boolean isValid = true;
+
+        // 验证用户名
+        if (username.isEmpty()) {
+            loginView.setUsernameError(true);
+            isValid = false;
+        }
+
+        // 验证密码
+        if (password.isEmpty()) {
+            loginView.setPasswordError(true);
+            isValid = false;
+        }
+
+        return isValid;
+    }
+
+    /**
+     * 验证注册表单输入
+     * @param username 用户名
+     * @param password 密码
+     * @param confirmPassword 确认密码
+     * @return true: 验证通过; false: 验证失败
+     */
+    private boolean validateRegisterForm(String username, String password, String confirmPassword) {
+        boolean isValid = true;
+        
+        // 验证用户名
+        if (username.isEmpty()) {
+            loginView.setUsernameError(true);
+            isValid = false;
+        }
+        
+        // 验证密码
+        if (password.isEmpty()) {
+            loginView.setPasswordError(true);
+            isValid = false;
+        }
+        
+        // 验证确认密码
+        if (confirmPassword.isEmpty()) {
+            loginView.setConfirmPasswordError(true);
+            isValid = false;
+        } else if (!password.equals(confirmPassword)) {
+            loginView.setConfirmPasswordError(true);
+            isValid = false;
+        }
+
+        return isValid;
+    }
+
+    /**
+     * 处理登录请求
+     * @param username 用户名
+     * @param password 密码
+     */
+    public void processLogin(String username, String password) {
+        // 清除所有错误状态
+        loginView.clearAllErrors();
+
+        // 验证表单
+        if (!validateLoginForm(username, password)) {
+            return;
+        }
+
+        // 检查用户是否存在
+        if (!databaseService.checkUserExists(username)) {
+            loginView.showStyledMessage(
+                "User does not exist",
+                "Login Failed",
+                JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // 尝试登录
+        int result = databaseService.loginOrRegister(username, password);
+        if (result == 0) {
+            loginView.showStyledMessage(
+                "Login successful!",
+                "Welcome",
+                JOptionPane.INFORMATION_MESSAGE);
+            // 显示游戏窗口
+            if (this.gameFrame != null) {
+                this.gameFrame.setVisible(true);
+                loginView.setVisible(false);
+            }
+        } else {
+            loginView.showStyledMessage(
+                "Incorrect password",
+                "Login Failed",
+                JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    /**
+     * 处理注册请求
+     * @param username 用户名
+     * @param password 密码
+     * @param confirmPassword 确认密码
+     */
+    public void processRegister(String username, String password, String confirmPassword) {
+        // 清除所有错误状态
+        loginView.clearAllErrors();
+
+        // 验证表单
+        if (!validateRegisterForm(username, password, confirmPassword)) {
+            return;
+        }
+
+        // 检查用户是否已存在
+        if (databaseService.checkUserExists(username)) {
+            loginView.showStyledMessage(
+                "Username already exists",
+                "Registration Failed",
+                JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // 尝试注册
+        int result = databaseService.loginOrRegister(username, password);
+        if (result == 1) {
+            loginView.showStyledMessage(
+                "Register successfully!",
+                "Welcome",
+                JOptionPane.INFORMATION_MESSAGE);
+            // 显示游戏窗口
+            if (this.gameFrame != null) {
+                this.gameFrame.setVisible(true);
+                loginView.setVisible(false);
+            }
+        } else {
+            loginView.showStyledMessage(
+                "Error during registration",
+                "Registration Failed",
+                JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+
+    /**
+     * 重置表单
+     */
+    public void resetForm() {
+        loginView.resetForm();
+    }
+}

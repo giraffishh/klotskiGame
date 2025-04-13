@@ -5,10 +5,15 @@ package model;
  */
 public class MapModel {
     int[][] matrix;
-
+    int[][] initialMatrix; // 保存初始地图状态
 
     public MapModel(int[][] matrix) {
         this.matrix = matrix;
+        // 保存初始地图状态的深拷贝
+        this.initialMatrix = new int[matrix.length][matrix[0].length];
+        for (int i = 0; i < matrix.length; i++) {
+            System.arraycopy(matrix[i], 0, initialMatrix[i], 0, matrix[i].length);
+        }
     }
 
     public int getWidth() {
@@ -33,5 +38,14 @@ public class MapModel {
 
     public boolean checkInHeightSize(int row) {
         return row >= 0 && row < matrix.length;
+    }
+
+    /**
+     * 重置地图到初始状态
+     */
+    public void resetToInitialState() {
+        for (int i = 0; i < matrix.length; i++) {
+            System.arraycopy(initialMatrix[i], 0, matrix[i], 0, matrix[i].length);
+        }
     }
 }
