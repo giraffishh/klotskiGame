@@ -95,8 +95,11 @@ public class SaveManager {
             String mapState = saveData.getMapState();
             int steps = saveData.getSteps();
 
-            // 使用序列化工具将字符串转为矩阵
-            int[][] newMatrix = MapStateSerializer.convertStringToMatrix(mapState);
+            // 将字符串类型的地图状态转换为长整型
+            long mapStateLong = Long.parseLong(mapState);
+
+            // 使用序列化工具将长整型转为矩阵
+            int[][] newMatrix = MapStateSerializer.convertLongToMatrix(mapStateLong, model.getHeight(), model.getWidth());
 
             // 更新模型数据
             model.setMatrix(newMatrix);
@@ -147,8 +150,11 @@ public class SaveManager {
         // 获取当前登录用户名
         String username = UserSession.getInstance().getCurrentUser().getUsername();
 
-        // 使用序列化工具将地图状态转换为字符串
-        String mapState = MapStateSerializer.convertMatrixToString(model.getMatrix());
+        // 使用序列化工具将地图状态转换为长整型
+        long mapStateLong = MapStateSerializer.convertMatrixToLong(model.getMatrix());
+
+        // 将长整型转换为字符串以便存储
+        String mapState = String.valueOf(mapStateLong);
 
         // 获取当前步数
         int steps = view.getSteps();
