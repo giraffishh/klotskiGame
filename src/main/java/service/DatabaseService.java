@@ -65,6 +65,18 @@ public class DatabaseService {
             } catch (SQLException e) {
                 System.out.println("检查表结构时出错: " + e.getMessage());
             }
+
+            // 创建游戏保存记录表
+            stmt.execute("CREATE TABLE IF NOT EXISTS game_saves (" +
+                         "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                         "username VARCHAR(255) NOT NULL, " +
+                         "map_state VARCHAR(1000) NOT NULL, " + // 存储地图状态的JSON字符串
+                         "steps INT NOT NULL, " +               // 已走步数
+                         "save_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " + // 保存时间
+                         "description VARCHAR(255), " +         // 可选描述
+                         "FOREIGN KEY (username) REFERENCES users(username))");
+
+            System.out.println("Database setup successfully");
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -215,6 +227,86 @@ public class DatabaseService {
         }
 
         return null;
+    }
+
+    /**
+     * 检查用户是否有已保存的游戏存档
+     * @param username 用户名
+     * @return 如果用户已有存档返回true，否则返回false
+     */
+    public boolean hasUserGameSave(String username) {
+        try (Connection conn = getConnection()) {
+            PreparedStatement stmt = conn.prepareStatement(
+                "SELECT COUNT(*) FROM game_saves WHERE username = ?");
+            stmt.setString(1, username);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                int count = rs.getInt(1);
+                return count > 0; // 如果count大于0，说明用户已有存档
+            }
+
+            return false;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * 更新用户现有游戏存档
+     * @param username 用户名
+     * @param mapState 地图状态字符串
+     * @param steps 当前步数
+     * @return 是否更新成功
+     */
+    public boolean updateGameSave(String username, String mapState, int steps) {
+        try (Connection conn = getConnection()) {
+            PreparedStatement stmt = conn.prepareStatement(
+                "UPDATE game_saves SET map_state = ?, steps = ?, save_time = CURRENT_TIMESTAMP " +
+                "WHERE username = ?");
+            stmt.setString(1, mapState);
+            stmt.setInt(2, steps);
+            stmt.setString(3, username);
+            int result = stmt.executeUpdate();
+            return result > 0; // 如果更新影响了行数，则返回true
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * 保存游戏状态
+     * @param username 用户名
+     * @param mapState 地图状态字符串
+     * @param steps 当前步数
+     * @param description 保存描述
+     * @return 是否保存成功
+     */
+    public boolean saveGameState(String username, String mapState, int steps, String description) {
+        // 检查用户是否已有存档
+        boolean hasExistingSave = hasUserGameSave(username);
+
+        if (hasExistingSave) {
+            // 更新现有存档
+            return updateGameSave(username, mapState, steps);
+        } else {
+            // 创建新存档
+            try (Connection conn = getConnection()) {
+                PreparedStatement stmt = conn.prepareStatement(
+                    "INSERT INTO game_saves (username, map_state, steps, description) VALUES (?, ?, ?, ?)");
+                stmt.setString(1, username);
+                stmt.setString(2, mapState);
+                stmt.setInt(3, steps);
+                stmt.setString(4, description);
+                int result = stmt.executeUpdate();
+                return result > 0; // 如果插入成功返回true
+            } catch (SQLException e) {
+                e.printStackTrace();
+                return false;
+            }
+        }
     }
 }
 

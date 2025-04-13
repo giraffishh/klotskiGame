@@ -376,9 +376,7 @@ public class LoginFrame extends JFrame implements LoginView {
         dialog.setVisible(true);
 
         // 恢复默认UI设置
-        UIManager.put("OptionPane.messageFont", null);
-        UIManager.put("OptionPane.buttonFont", null);
-        UIManager.put("OptionPane.titleFont", null);
+        FrameUtil.initUIDefaults();
     }
 
     /**

@@ -266,6 +266,14 @@ public class GamePanel extends ListenerPanel {
     }
 
     /**
+     * 获取当前步数
+     * @return 当前步数
+     */
+    public int getSteps() {
+        return steps;
+    }
+
+    /**
      * 设置游戏控制器
      * @param controller 游戏控制器
      */

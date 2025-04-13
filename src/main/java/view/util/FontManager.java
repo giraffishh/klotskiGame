@@ -140,6 +140,15 @@ public class FontManager {
     }
 
     /**
+     基于按钮字体创建自定义大小的字体
+     * @param size 字体大小
+     * @return 调整大小后的字体
+     */
+    public static Font getButtonFont(float size) {
+        return buttonFont.deriveFont(size);
+    }
+
+    /**
      * 基于输入字体创建自定义大小的字体
      * @param size 字体大小
      * @return 调整大小后的字体

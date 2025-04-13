@@ -38,7 +38,24 @@ public class FrameUtil {
 
     // 添加高光效果颜色
     public static final Color HIGHLIGHT_COLOR = new Color(255, 255, 255, 30);    // 高光效果-半透明白色
-    
+
+    /**
+     * 初始化全局UI设置，包括对话框按钮文本和字体
+     */
+    public static void initUIDefaults() {
+        // 设置对话框按钮为英文
+        UIManager.put("OptionPane.yesButtonText", "Yes");
+        UIManager.put("OptionPane.noButtonText", "No");
+        UIManager.put("OptionPane.cancelButtonText", "Cancel");
+        UIManager.put("OptionPane.okButtonText", "OK");
+
+
+        // 设置对话框使用自定义字体
+        UIManager.put("OptionPane.messageFont", FontManager.getRegularFont());
+        UIManager.put("OptionPane.buttonFont", FontManager.getButtonFont(14));
+        UIManager.put("OptionPane.font", FontManager.getRegularFont());
+    }
+
     /**
      * 创建标准文本标签
      * @param frame 父窗口，标签将被添加到此窗口中

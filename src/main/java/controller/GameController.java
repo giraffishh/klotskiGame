@@ -2,8 +2,17 @@ package controller;
 
 import model.Direction;
 import model.MapModel;
+import service.DatabaseService;
+import service.UserSession;
 import view.game.BoxComponent;
 import view.game.GamePanel;
+import view.util.FontManager;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import javax.swing.JOptionPane;
+import javax.swing.UIManager;
+import java.awt.Font;
 
 /**
  * 该类作为GamePanel(视图)和MapMatrix(模型)之间的桥梁，实现MVC设计模式中的控制器。
@@ -398,6 +407,97 @@ public class GameController {
         return false;  // 无法移动
     }
 
-    //todo: 添加其他方法如loadGame, saveGame等游戏功能
+    /**
+     * 保存当前游戏状态到数据库
+     * 检查用户是否有已存在的存档，提示新建或覆盖
+     * @return 保存是否成功
+     */
+    public boolean saveGameState() {
+        // 检查用户是否已登录
+        if (!UserSession.getInstance().isLoggedIn()) {
+            System.out.println("Unable to save game: Login status is abnormal");
+            return false;
+        }
+
+        // 获取当前登录用户名
+        String username = UserSession.getInstance().getCurrentUser().getUsername();
+
+        // 将地图状态转换为字符串
+        StringBuilder mapStateBuilder = new StringBuilder("[");
+        int[][] matrix = model.getMatrix();
+        for (int i = 0; i < matrix.length; i++) {
+            mapStateBuilder.append("[");
+            for (int j = 0; j < matrix[i].length; j++) {
+                mapStateBuilder.append(matrix[i][j]);
+                if (j < matrix[i].length - 1) {
+                    mapStateBuilder.append(",");
+                }
+            }
+            mapStateBuilder.append("]");
+            if (i < matrix.length - 1) {
+                mapStateBuilder.append(",");
+            }
+        }
+        mapStateBuilder.append("]");
+        String mapState = mapStateBuilder.toString();
+
+        // 获取当前步数
+        int steps = view.getSteps();
+
+        // 生成存档描述信息（使用当前日期时间）
+        String description = "Saved at " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
+
+        // 判断用户是否已有存档
+        boolean hasExistingSave = hasUserSave();
+        String message;
+        String title;
+
+        if (hasExistingSave) {
+            message = "You already have a saved game. Do you want to overwrite it?";
+            title = "Overwrite Save";
+        } else {
+            message = "Do you want to create a new save?";
+            title = "Create Save";
+        }
+
+        int result = JOptionPane.showConfirmDialog(view, message, title,
+                JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+
+        if (result == JOptionPane.YES_OPTION) {
+            // 调用数据库服务保存游戏状态
+            boolean saved = DatabaseService.getInstance().saveGameState(username, mapState, steps, description);
+
+            // 显示保存结果
+            if (saved) {
+                JOptionPane.showMessageDialog(view,
+                        hasExistingSave ? "Save successfully overwritten !" : "New save successfully created!",
+                        "Success",
+                        JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(view,
+                        "Save failed. Please make sure you are logged in.",
+                        "Failed",
+                        JOptionPane.ERROR_MESSAGE);
+            }
+            
+            return saved;
+        }
+        
+        return false;
+    }
+
+    /**
+     * 检查当前用户是否已有存档
+     *
+     * @return 用户是否已有存档
+     */
+    public boolean hasUserSave() {
+        if (!UserSession.getInstance().isLoggedIn()) {
+            return false;
+        }
+
+        String username = UserSession.getInstance().getCurrentUser().getUsername();
+        return DatabaseService.getInstance().hasUserGameSave(username);
+    }
 }
 
