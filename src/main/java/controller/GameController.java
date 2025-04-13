@@ -70,18 +70,17 @@ public class GameController {
         }
         
         // 根据不同类型的方块处理移动
-        switch (blockId) {
-            case 1: // 1x1方块
-                return moveSingleBlock(row, col, direction);
-            case 2: // 2x1水平方块
-                return moveHorizontalBlock(row, col, direction);
-            case 3: // 1x2垂直方块
-                return moveVerticalBlock(row, col, direction);
-            case 4: // 2x2大方块
-                return moveBigBlock(row, col, direction);
-            default:
-                return false;
-        }
+        return switch (blockId) {
+            case 1 -> // 1x1方块
+                    moveSingleBlock(row, col, direction);
+            case 2 -> // 2x1水平方块
+                    moveHorizontalBlock(row, col, direction);
+            case 3 -> // 1x2垂直方块
+                    moveVerticalBlock(row, col, direction);
+            case 4 -> // 2x2大方块
+                    moveBigBlock(row, col, direction);
+            default -> false;
+        };
     }
     
     /**
@@ -159,7 +158,6 @@ public class GameController {
                 if (model.checkInWidthSize(col + 2) && model.getId(row, col + 2) == 0) {
                     // 更新模型数据
                     model.getMatrix()[row][col] = 0;
-                    model.getMatrix()[row][col + 1] = 0;
                     model.getMatrix()[row][col + 1] = 2;
                     model.getMatrix()[row][col + 2] = 2;
                     
@@ -241,7 +239,6 @@ public class GameController {
                 if (model.checkInHeightSize(row + 2) && model.getId(row + 2, col) == 0) {
                     // 更新模型数据
                     model.getMatrix()[row][col] = 0;  // 清除原顶部位置
-                    model.getMatrix()[row + 1][col] = 0;  // 清除原底部位置
                     model.getMatrix()[row + 1][col] = 3;  // 设置新顶部位置
                     model.getMatrix()[row + 2][col] = 3;  // 设置新底部位置
                     
@@ -405,6 +402,109 @@ public class GameController {
             }
         }
         return false;  // 无法移动
+    }
+
+    /**
+     * 加载游戏存档
+     * 从数据库中读取存档并验证完整性
+     *
+     * @return 加载是否成功
+     */
+    public boolean loadGameState() {
+        // 检查用户是否已登录
+        if (!UserSession.getInstance().isLoggedIn()) {
+            System.out.println("Unable to load game: Login status is abnormal");
+            JOptionPane.showMessageDialog(view,
+                    "Unable to load game: You are not logged in",
+                    "Load Failed",
+                    JOptionPane.ERROR_MESSAGE);
+            return false;
+        }
+
+        // 获取当前登录用户名
+        String username = UserSession.getInstance().getCurrentUser().getUsername();
+
+        // 调用数据库服务加载游戏状态
+        DatabaseService.GameSaveData saveData = DatabaseService.getInstance().loadGameSave(username);
+
+        if (saveData == null) {
+            JOptionPane.showMessageDialog(view,
+                    "No valid save found or save data is corrupted",
+                    "Load Failed",
+                    JOptionPane.WARNING_MESSAGE);
+            return false;
+        }
+
+        try {
+            // 创建一个包含存档信息的确认对话框
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            String saveTimeStr = dateFormat.format(saveData.getSaveTime());
+
+            String message = String.format("Save Information:\n" +
+                                          " Steps: %d\n" +
+                                          " Save Time: %s\n\n" +
+                                          "Are you sure you want to load this save?\nCurrent progress will be lost.",
+                                          saveData.getSteps(), saveTimeStr);
+
+            int choice = JOptionPane.showConfirmDialog(
+                view,
+                message,
+                "Confirm Load",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE
+            );
+
+            // 如果用户取消了加载，则返回
+            if (choice != JOptionPane.YES_OPTION) {
+                return false;
+            }
+
+            // 用户确认加载，继续处理存档数据
+
+            // 解析地图状态字符串到二维数组
+            String mapState = saveData.getMapState();
+            int steps = saveData.getSteps();
+
+            // 移除方括号
+            mapState = mapState.substring(1, mapState.length() - 1);
+            String[] rows = mapState.split("],\\[");
+
+            // 修正第一行和最后一行的格式
+            rows[0] = rows[0].substring(1);
+            rows[rows.length - 1] = rows[rows.length - 1].substring(0, rows[rows.length - 1].length() - 1);
+
+            int[][] newMatrix = new int[rows.length][];
+            for (int i = 0; i < rows.length; i++) {
+                String[] cols = rows[i].split(",");
+                newMatrix[i] = new int[cols.length];
+                for (int j = 0; j < cols.length; j++) {
+                    newMatrix[i][j] = Integer.parseInt(cols[j].trim());
+                }
+            }
+
+            // 更新模型数据
+            model.setMatrix(newMatrix);
+
+            // 重置游戏面板显示新地图
+            view.resetGame();
+
+            // 设置已加载的步数
+            view.setSteps(steps);
+
+            JOptionPane.showMessageDialog(view,
+                    "Game loaded successfully!",
+                    "Load Success",
+                    JOptionPane.INFORMATION_MESSAGE);
+
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(view,
+                    "Error parsing saved game data: " + e.getMessage(),
+                    "Load Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return false;
+        }
     }
 
     /**

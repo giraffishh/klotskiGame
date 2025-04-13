@@ -1,6 +1,7 @@
 package service;
 
 import model.User;
+import model.MapModel;
 import java.sql.*;
 import java.io.File;
 import java.security.MessageDigest;
@@ -66,15 +67,38 @@ public class DatabaseService {
                 System.out.println("检查表结构时出错: " + e.getMessage());
             }
 
-            // 创建游戏保存记录表
-            stmt.execute("CREATE TABLE IF NOT EXISTS game_saves (" +
-                         "id INT AUTO_INCREMENT PRIMARY KEY, " +
-                         "username VARCHAR(255) NOT NULL, " +
-                         "map_state VARCHAR(1000) NOT NULL, " + // 存储地图状态的JSON字符串
-                         "steps INT NOT NULL, " +               // 已走步数
-                         "save_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " + // 保存时间
-                         "description VARCHAR(255), " +         // 可选描述
-                         "FOREIGN KEY (username) REFERENCES users(username))");
+            // 检查game_saves表是否存在
+            ResultSet tablesRS = conn.getMetaData().getTables(null, null, "GAME_SAVES", null);
+            boolean gameTableExists = tablesRS.next();
+
+            // 如果game_saves表存在，检查是否有data_hash列
+            boolean hasDataHashColumn = false;
+            if (gameTableExists) {
+                ResultSet columnsRS = conn.getMetaData().getColumns(null, null, "GAME_SAVES", "DATA_HASH");
+                hasDataHashColumn = columnsRS.next();
+
+                // 如果表存在但没有data_hash列，先删除旧表
+                if (!hasDataHashColumn) {
+                    stmt.execute("DROP TABLE game_saves");
+                    gameTableExists = false;
+                    System.out.println("删除旧版game_saves表结构");
+                }
+            }
+
+            // 如果表不存在或已删除，创建新表
+            if (!gameTableExists) {
+                // 创建游戏保存记录表，增加data_hash列用于数据完整性验证
+                stmt.execute("CREATE TABLE game_saves (" +
+                             "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                             "username VARCHAR(255) NOT NULL, " +
+                             "map_state VARCHAR(1000) NOT NULL, " + // 存储地图状态的字符串
+                             "steps INT NOT NULL, " +               // 已走步数
+                             "save_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " + // 保存时间
+                             "description VARCHAR(255), " +         // 可选描述
+                             "data_hash VARCHAR(255) NOT NULL, " +  // 数据哈希，用于验证完整性
+                             "FOREIGN KEY (username) REFERENCES users(username))");
+                System.out.println("创建新版game_saves表结构，包含数据哈希验证");
+            }
 
             System.out.println("Database setup successfully");
         } catch (SQLException e) {
@@ -258,16 +282,22 @@ public class DatabaseService {
      * @param username 用户名
      * @param mapState 地图状态字符串
      * @param steps 当前步数
+     * @param description 保存描述
      * @return 是否更新成功
      */
-    public boolean updateGameSave(String username, String mapState, int steps) {
+    public boolean updateGameSave(String username, String mapState, int steps, String description) {
         try (Connection conn = getConnection()) {
+            // 计算数据哈希值
+            String dataHash = generateDataHash(mapState, steps, username);
+
             PreparedStatement stmt = conn.prepareStatement(
-                "UPDATE game_saves SET map_state = ?, steps = ?, save_time = CURRENT_TIMESTAMP " +
-                "WHERE username = ?");
+                "UPDATE game_saves SET map_state = ?, steps = ?, save_time = CURRENT_TIMESTAMP, " +
+                "description = ?, data_hash = ? WHERE username = ?");
             stmt.setString(1, mapState);
             stmt.setInt(2, steps);
-            stmt.setString(3, username);
+            stmt.setString(3, description);
+            stmt.setString(4, dataHash);
+            stmt.setString(5, username);
             int result = stmt.executeUpdate();
             return result > 0; // 如果更新影响了行数，则返回true
         } catch (SQLException e) {
@@ -290,16 +320,20 @@ public class DatabaseService {
 
         if (hasExistingSave) {
             // 更新现有存档
-            return updateGameSave(username, mapState, steps);
+            return updateGameSave(username, mapState, steps, description);
         } else {
             // 创建新存档
             try (Connection conn = getConnection()) {
+                // 计算数据哈希值
+                String dataHash = generateDataHash(mapState, steps, username);
+
                 PreparedStatement stmt = conn.prepareStatement(
-                    "INSERT INTO game_saves (username, map_state, steps, description) VALUES (?, ?, ?, ?)");
+                    "INSERT INTO game_saves (username, map_state, steps, description, data_hash) VALUES (?, ?, ?, ?, ?)");
                 stmt.setString(1, username);
                 stmt.setString(2, mapState);
                 stmt.setInt(3, steps);
                 stmt.setString(4, description);
+                stmt.setString(5, dataHash);
                 int result = stmt.executeUpdate();
                 return result > 0; // 如果插入成功返回true
             } catch (SQLException e) {
@@ -308,5 +342,90 @@ public class DatabaseService {
             }
         }
     }
-}
 
+    /**
+     * 游戏存档数据类，封装游戏存档的各项信息
+     */
+    public static class GameSaveData {
+        private int id;
+        private String username;
+        private String mapState;
+        private int steps;
+        private Timestamp saveTime;
+        private String description;
+
+        public GameSaveData(int id, String username, String mapState, int steps,
+                           Timestamp saveTime, String description) {
+            this.id = id;
+            this.username = username;
+            this.mapState = mapState;
+            this.steps = steps;
+            this.saveTime = saveTime;
+            this.description = description;
+        }
+
+        public int getId() { return id; }
+        public String getUsername() { return username; }
+        public String getMapState() { return mapState; }
+        public int getSteps() { return steps; }
+        public Timestamp getSaveTime() { return saveTime; }
+        public String getDescription() { return description; }
+    }
+
+    /**
+     * 为数据生成哈希值，用于验证数据完整性
+     * @param mapState 地图状态
+     * @param steps 步数
+     * @param username 用户名
+     * @return 数据哈希值
+     */
+    private String generateDataHash(String mapState, int steps, String username) {
+        try {
+            String dataString = mapState + steps + username;
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] hashBytes = md.digest(dataString.getBytes());
+            return Base64.getEncoder().encodeToString(hashBytes);
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+            return "";
+        }
+    }
+
+    /**
+     * 加载用户的游戏存档
+     * @param username 用户名
+     * @return 游戏存档数据，如果不存在或数据不完整则返回null
+     */
+    public GameSaveData loadGameSave(String username) {
+        try (Connection conn = getConnection()) {
+            PreparedStatement stmt = conn.prepareStatement(
+                "SELECT id, username, map_state, steps, save_time, description, data_hash " +
+                "FROM game_saves WHERE username = ?");
+            stmt.setString(1, username);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                int id = rs.getInt("id");
+                String mapState = rs.getString("map_state");
+                int steps = rs.getInt("steps");
+                Timestamp saveTime = rs.getTimestamp("save_time");
+                String description = rs.getString("description");
+                String storedHash = rs.getString("data_hash");
+
+                // 验证数据完整性
+                String calculatedHash = generateDataHash(mapState, steps, username);
+                if (calculatedHash.equals(storedHash)) {
+                    return new GameSaveData(id, username, mapState, steps, saveTime, description);
+                } else {
+                    System.out.println("数据完整性验证失败：数据可能已被篡改");
+                    return null;
+                }
+            }
+
+            return null; // 未找到存档
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+}

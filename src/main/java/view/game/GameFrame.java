@@ -91,17 +91,8 @@ public class GameFrame extends JFrame {
         
         // 为加载游戏按钮添加点击事件监听器
         this.loadBtn.addActionListener(e -> {
-            
-            JTextField inputField = FrameUtil.createStyledTextField(20);
-            JPanel panel = FrameUtil.createInputPanel("Enter Path:", inputField);
-
-            int result = JOptionPane.showConfirmDialog(this, panel, "Load Game",
-                    JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-
-            if (result == JOptionPane.OK_OPTION) {
-                String path = inputField.getText();
-                System.out.println(path);
-            }
+            // 调用控制器的加载游戏方法
+            controller.loadGameState();
 
             // 将焦点设置回游戏面板以便接收键盘事件
             gamePanel.requestFocusInWindow();
@@ -124,3 +115,4 @@ public class GameFrame extends JFrame {
         this.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
     }
 }
+
