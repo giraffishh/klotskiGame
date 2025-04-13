@@ -21,6 +21,8 @@ public class GameFrame extends JFrame {
     private JButton restartBtn;
     // 加载游戏按钮
     private JButton loadBtn;
+    // 保存游戏按钮
+    private JButton saveBtn;
     // 步数显示标签
     private JLabel stepLabel;
     // 游戏主面板，显示游戏地图
@@ -56,20 +58,25 @@ public class GameFrame extends JFrame {
         // 创建游戏控制器，关联面板和模型
         this.controller = new GameController(gamePanel, mapModel);
 
-        // 步数显示标签 - 调整位置到游戏面板右侧
+        // 步数显示标签
         this.stepLabel = FrameUtil.createTitleLabel("Start", JLabel.CENTER);
         stepLabel.setBounds(panelX + gamePanel.getWidth() + 40, panelY + 20, 180, 50);
         this.add(stepLabel);
 
-        // 重新开始按钮 - 调整位置
+        // 重新开始按钮
         this.restartBtn = FrameUtil.createStyledButton("Restart", true);
         restartBtn.setBounds(panelX + gamePanel.getWidth() + 40, panelY + 90, 120, 50);
         this.add(restartBtn);
 
-        // 加载游戏按钮 - 调整位置
+        // 加载游戏按钮
         this.loadBtn = FrameUtil.createStyledButton("Load", false);
         loadBtn.setBounds(panelX + gamePanel.getWidth() + 40, panelY + 160, 120, 50);
         this.add(loadBtn);
+
+        // 保存游戏按钮
+        this.saveBtn = FrameUtil.createStyledButton("Save", true);
+        saveBtn.setBounds(panelX + gamePanel.getWidth() + 40, panelY + 230, 120, 50);
+        this.add(saveBtn);
 
         // 将步数标签设置到游戏面板中
         gamePanel.setStepLabel(stepLabel);
@@ -84,21 +91,22 @@ public class GameFrame extends JFrame {
         
         // 为加载游戏按钮添加点击事件监听器
         this.loadBtn.addActionListener(e -> {
-            JTextField inputField = FrameUtil.createStyledTextField(20);
-            JPanel panel = FrameUtil.createInputPanel("Enter Path:", inputField);
-
-            int result = JOptionPane.showConfirmDialog(this, panel, "Load Game",
-                    JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-
-            if (result == JOptionPane.OK_OPTION) {
-                String path = inputField.getText();
-                System.out.println(path);
-            }
+            // 调用控制器的加载游戏方法
+            controller.loadGameState();
 
             // 将焦点设置回游戏面板以便接收键盘事件
             gamePanel.requestFocusInWindow();
         });
         
+        // 为保存游戏按钮添加点击事件监听器
+        this.saveBtn.addActionListener(e -> {
+            // 调用控制器的保存游戏方法
+            controller.saveGameState();
+
+            // 将焦点设置回游戏面板以便接收键盘事件
+            gamePanel.requestFocusInWindow();
+        });
+
         //todo: add other button here
         
         // 窗口居中显示
@@ -107,3 +115,4 @@ public class GameFrame extends JFrame {
         this.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
     }
 }
+

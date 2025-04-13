@@ -266,6 +266,27 @@ public class GamePanel extends ListenerPanel {
     }
 
     /**
+     * 获取当前步数
+     * @return 当前步数
+     */
+    public int getSteps() {
+        return steps;
+    }
+
+    /**
+     * 设置当前步数
+     * 用于从存档加载步数
+     *
+     * @param steps 要设置的步数
+     */
+    public void setSteps(int steps) {
+        this.steps = steps;
+        if (this.stepLabel != null) {
+            this.stepLabel.setText(String.format("Steps: %d", this.steps));
+        }
+    }
+
+    /**
      * 设置游戏控制器
      * @param controller 游戏控制器
      */
