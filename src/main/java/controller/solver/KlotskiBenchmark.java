@@ -7,6 +7,8 @@ import controller.solver.BFS.KlotskiSolverBFS;
 import controller.solver.BiBFS.KlotskiSolverBiBFS;
 import controller.solver.BiBFSSymmetry.KlotskiSolverBiBFSSymmetry; // 添加BiBFSTrie求解器的导入
 import controller.solver.TireTree.KlotskiSolverTrieTree;
+import controller.solver.BiBFSOptLayoutGen.KlotskiSolverBiBFSOptLayoutGen; // 添加新的优化布局生成求解器导入
+import controller.solver.BFSTireOptLayoutGen.KlotskiSolverBFSTrieOptLayoutGen; // 添加BFS Trie优化布局生成求解器导入
 
 
 import java.util.ArrayList;
@@ -95,11 +97,11 @@ class BiBFSSolverWrapper implements KlotskiSolverInterface {
 }
 
 // 添加新的BiBFSTrie包装类
-class BiBFSTrieSolverWrapper implements KlotskiSolverInterface {
+class BiBFSSymmetrySolverWrapper implements KlotskiSolverInterface {
     private final BoardState targetState;
     private KlotskiSolverBiBFSSymmetry lastSolver; // 保存最后一个求解器实例
 
-    public BiBFSTrieSolverWrapper(BoardState t){
+    public BiBFSSymmetrySolverWrapper(BoardState t){
         this.targetState = t;
     }
 
@@ -111,7 +113,7 @@ class BiBFSTrieSolverWrapper implements KlotskiSolverInterface {
 
     @Override
     public String getName() {
-        return "BiBFS+Trie+Sym";
+        return "BiBFS+Sym";
     }
 
     @Override
@@ -131,7 +133,7 @@ class TrieBFSSolverWrapper implements KlotskiSolverInterface {
 
     @Override
     public String getName() {
-        return "Trie+Sym BFS";
+        return "BFS+Trie+Sym";
     }
 
     @Override
@@ -201,6 +203,54 @@ class PDBSolverWrapper implements KlotskiSolverInterface {
         return SOLVER.getNodesExplored();
     }
 }
+
+// 添加新的BiBFSOptLayoutGen包装类
+class BiBFSOptLayoutGenSolverWrapper implements KlotskiSolverInterface {
+    private final BoardState targetState;
+    private KlotskiSolverBiBFSOptLayoutGen lastSolver; // 保存最后一个求解器实例
+
+    public BiBFSOptLayoutGenSolverWrapper(BoardState t){
+        this.targetState = t;
+    }
+
+    @Override
+    public List<BoardState> solve(BoardState i) {
+        lastSolver = new KlotskiSolverBiBFSOptLayoutGen();
+        return lastSolver.solve(i, targetState);
+    }
+
+    @Override
+    public String getName() {
+        return "BiBFS+OptLG";
+    }
+
+    @Override
+    public int getNodesExplored() {
+        return lastSolver != null ? lastSolver.getNodesExplored() : -1;
+    }
+}
+
+// 添加新的BFSTrieOptLayoutGen包装类
+class BFSTrieOptLayoutGenSolverWrapper implements KlotskiSolverInterface {
+    private KlotskiSolverBFSTrieOptLayoutGen lastSolver; // 保存最后一个求解器实例
+
+    @Override
+    public List<BoardState> solve(BoardState i) {
+        lastSolver = new KlotskiSolverBFSTrieOptLayoutGen();
+        return lastSolver.solve(i);
+    }
+
+    @Override
+    public String getName() {
+        return "BFS+Trie+OptLG";
+    }
+
+    @Override
+    public int getNodesExplored() {
+        return lastSolver != null ? lastSolver.getNodesExplored() : -1;
+    }
+}
+
 // --- End Wrappers ---
 
 // 修改LayoutConfig类，移除手动设置的目标状态
@@ -221,8 +271,8 @@ class LayoutConfig {
  */
 public class KlotskiBenchmark {
 
-    private static final long SOLVE_TIMEOUT_MS = 60 * 1000; // 60 seconds timeout
-    private static final int RUNS_PER_SOLVER = 10; // <<< Number of runs for averaging
+    private static final long SOLVE_TIMEOUT_MS = 60 * 1000;
+    private static final int RUNS_PER_SOLVER = 100; // <<< Number of runs for averaging
 
     /**
      * 定义测试布局的初始状态
@@ -285,6 +335,15 @@ public class KlotskiBenchmark {
                 {BoardSerializer.EMPTY, BoardSerializer.EMPTY, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO}
             }
         ));
+        layouts.add(new LayoutConfig("Start6",
+                new int[][]{
+                        {BoardSerializer.VERTICAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.VERTICAL},
+                        {BoardSerializer.VERTICAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.VERTICAL},
+                        {BoardSerializer.SOLDIER, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.SOLDIER},
+                        {BoardSerializer.VERTICAL, BoardSerializer.SOLDIER, BoardSerializer.SOLDIER, BoardSerializer.VERTICAL},
+                        {BoardSerializer.VERTICAL, BoardSerializer.EMPTY, BoardSerializer.EMPTY, BoardSerializer.VERTICAL}
+                }
+        ));
         
         return layouts;
     }
@@ -296,12 +355,14 @@ public class KlotskiBenchmark {
      */
     private static List<KlotskiSolverInterface> defineSolvers(BoardState targetState) {
         List<KlotskiSolverInterface> solvers = new ArrayList<>();
-        solvers.add(new BFSSolverWrapper());
-        solvers.add(new BiBFSSolverWrapper(targetState)); // 使用传入的目标状态
-        solvers.add(new BiBFSTrieSolverWrapper(targetState)); // 使用传入的目标状态
         solvers.add(new AStarHashMapSolverWrapper());
-        solvers.add(new TrieBFSSolverWrapper());
         solvers.add(new AStarTrieSolverWrapper());
+        solvers.add(new BFSSolverWrapper());
+        solvers.add(new BiBFSSolverWrapper(targetState));
+        solvers.add(new TrieBFSSolverWrapper());
+        solvers.add(new BiBFSSymmetrySolverWrapper(targetState));
+        solvers.add(new BiBFSOptLayoutGenSolverWrapper(targetState));
+        solvers.add(new BFSTrieOptLayoutGenSolverWrapper());
         //solvers.add(new PDBSolverWrapper());
         return solvers;
     }
@@ -483,7 +544,7 @@ public class KlotskiBenchmark {
                 // 格式化输出字符串
                 String resultString;
                 if (averageTime >= 0) {
-                    resultString = String.format("%8.1f ms, %3d steps, %s, %,.0f nodes [%s]",
+                    resultString = String.format("%8.2f ms, %3d steps, %s, %,.0f nodes [%s]",
                             averageTime, steps, successRate, avgNodesExplored, overallStatus);
                 } else {
                     resultString = String.format("%8s ms, %3s steps, %s, %s nodes [%s]",

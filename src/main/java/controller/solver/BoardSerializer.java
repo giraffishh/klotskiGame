@@ -31,7 +31,7 @@ public class BoardSerializer {
 
     // Mappings between array values and 3-bit codes
     // 数组值与3位编码之间的映射
-    private static final Map<Integer, Long> arrayToCodeMap = new HashMap<>();
+    public static final Map<Integer, Long> arrayToCodeMap = new HashMap<>();
     private static final Map<Long, Integer> codeToArrayMap = new HashMap<>();
 
     static {

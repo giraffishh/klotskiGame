@@ -1,35 +1,22 @@
-package controller.solver.TireTree;
+package controller.solver.TireTree; // New package
 
 import controller.solver.BoardSerializer;
 import controller.solver.BoardState;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
-// No longer using Queue, Map, Set from java.util in the core solver logic
+import java.util.*;
 
-
-/**
- * Node for the Trie structure. Each path of depth 20 represents a board layout.
- * Uses piece types 0-4 from BoardSerializer as indices.
- */
+// --- TrieNode definition (remains same, links to ElementNode) ---
 class TrieNode {
-    // Children nodes corresponding to piece types 0 (EMPTY) to 4 (CAO_CAO)
     TrieNode[] children = new TrieNode[5];
-    // Link to the ElementNode if this path represents a visited state in the BFS
     ElementNode elementNodeLink = null;
 }
 
-/**
- * Node representing a state in the BFS search tree (Element Node from literature).
- */
+// --- ElementNode definition for BFS (remains same) ---
 class ElementNode {
     BoardState state;
-    ElementNode father; // Predecessor in the BFS path
-    ElementNode nextInLevel; // The 'lever' pointer for the BFS level linked list
-    int moveCount; // Depth in the BFS
+    ElementNode father;
+    ElementNode nextInLevel; // Still used for level-by-level BFS
+    int moveCount;
 
     ElementNode(BoardState state, ElementNode father, int moveCount) {
         this.state = state;
@@ -39,153 +26,154 @@ class ElementNode {
     }
 }
 
-
 /**
- * Solves the Klotski (Hua Rong Dao) puzzle using BFS with a Trie for visited set
- * and symmetry checking, based on literature description.
+ * Optimized BFS with Trie and Symmetry Checking.
+ * Uses direct layout calculation for symmetry.
  */
 public class KlotskiSolverTrieTree {
 
-    private static final int[] DR = {-1, 1, 0, 0}; // UP, DOWN, LEFT, RIGHT
+    private static final int[] DR = {-1, 1, 0, 0};
     private static final int[] DC = {0, 0, -1, 1};
-    private final TrieNode trieRoot = new TrieNode(); // Root of the visited state Trie
-    private int nodesExplored = 0; // 添加节点计数变量
+    private TrieNode trieRoot; // Reset for each solve call
+    private int nodesExplored = 0;
 
-    /**
-     * 返回探索的节点数量
-     * @return 算法执行过程中探索的节点数量
-     */
     public int getNodesExplored() {
         return nodesExplored;
     }
 
     /**
+     * Calculates symmetric layout using bit manipulation.
+     * (Identical to BiBFSSymmetryOptV2)
+     */
+    private long getSymmetricLayout(long layout) {
+        long symmetricLayout = 0L;
+        final int BITS_PER_CELL = 3;
+        final int COLS = BoardSerializer.COLS;
+        final int ROWS = BoardSerializer.ROWS;
+        final long CELL_MASK = (1L << BITS_PER_CELL) - 1L;
+
+        for (int r = 0; r < ROWS; r++) {
+            long cell0 = (layout >> (r * COLS * BITS_PER_CELL + 0 * BITS_PER_CELL)) & CELL_MASK;
+            long cell1 = (layout >> (r * COLS * BITS_PER_CELL + 1 * BITS_PER_CELL)) & CELL_MASK;
+            long cell2 = (layout >> (r * COLS * BITS_PER_CELL + 2 * BITS_PER_CELL)) & CELL_MASK;
+            long cell3 = (layout >> (r * COLS * BITS_PER_CELL + 3 * BITS_PER_CELL)) & CELL_MASK;
+
+            symmetricLayout |= (cell3 << (r * COLS * BITS_PER_CELL + 0 * BITS_PER_CELL));
+            symmetricLayout |= (cell2 << (r * COLS * BITS_PER_CELL + 1 * BITS_PER_CELL));
+            symmetricLayout |= (cell1 << (r * COLS * BITS_PER_CELL + 2 * BITS_PER_CELL));
+            symmetricLayout |= (cell0 << (r * COLS * BITS_PER_CELL + 3 * BITS_PER_CELL));
+        }
+        return symmetricLayout;
+    }
+
+    /**
      * Checks if the given board state represents the winning condition.
-     * (Identical to previous versions)
+     * (Identical)
      */
     private boolean isGoalState(BoardState state) {
-        int[][] board = state.getBoardArray();
+        // Optimization: Check layout directly if target layout is known and fixed
+        // if (state.getLayout() == TARGET_LAYOUT) return true;
+        // Otherwise, deserialize (or cache)
+        int[][] board = state.getBoardArray(); // Uses cache if available
         return board[3][1] == BoardSerializer.CAO_CAO &&
                 board[3][2] == BoardSerializer.CAO_CAO &&
                 board[4][1] == BoardSerializer.CAO_CAO &&
                 board[4][2] == BoardSerializer.CAO_CAO;
     }
 
-    /**
-     * Generates the horizontally symmetric board state.
-     * @param state Original board state.
-     * @return The symmetric board state.
-     */
-    private BoardState getSymmetricState(BoardState state) {
-        int[][] originalBoard = state.getBoardArray();
-        int[][] symmetricBoard = new int[BoardSerializer.ROWS][BoardSerializer.COLS];
-
-        for (int r = 0; r < BoardSerializer.ROWS; r++) {
-            for (int c = 0; c < BoardSerializer.COLS; c++) {
-                symmetricBoard[r][BoardSerializer.COLS - 1 - c] = originalBoard[r][c];
-                // Note: Piece types themselves don't change value upon reflection
-            }
-        }
-        // Need to create a new BoardStateTrieTree, which recalculates the layout 'long'
-        return new BoardState(symmetricBoard);
-    }
-
 
     /**
-     * Inserts a board state layout into the Trie and links the final node
-     * to the corresponding ElementNode.
+     * Inserts a board state into the Trie using its canonical layout.
+     * Links the final node to the corresponding ElementNode.
+     * Traverses Trie using bit manipulation on the layout.
+     *
      * @param root The root of the Trie.
-     * @param state The board state to insert.
+     * @param state The board state to insert (used to get layout).
      * @param elementToLink The ElementNode representing this state in the BFS.
      */
     private void trieInsert(TrieNode root, BoardState state, ElementNode elementToLink) {
-        TrieNode current = root;
-        int[][] board = state.getBoardArray(); // Use array for sequence
+        long layout = state.getLayout();
+        long symmetricLayout = getSymmetricLayout(layout);
+        long canonicalLayout = Math.min(layout, symmetricLayout);
 
-        for (int r = 0; r < BoardSerializer.ROWS; r++) {
-            for (int c = 0; c < BoardSerializer.COLS; c++) {
-                int pieceType = board[r][c];
-                if (pieceType < 0 || pieceType > 4) {
-                    // Should not happen with valid BoardSerializer constants
-                    throw new IllegalArgumentException("Invalid piece type " + pieceType + " during Trie insert.");
-                }
-                if (current.children[pieceType] == null) {
-                    current.children[pieceType] = new TrieNode();
-                }
-                current = current.children[pieceType];
+        TrieNode current = root;
+        final int BITS_PER_CELL = 3;
+        final int CELLS_COUNT = BoardSerializer.ROWS * BoardSerializer.COLS; // 20
+
+        for (int i = 0; i < CELLS_COUNT; i++) {
+            int pieceType = (int)((canonicalLayout >> (i * BITS_PER_CELL)) & ((1L << BITS_PER_CELL) - 1L));
+            if (pieceType < 0 || pieceType > 4) { // Should not happen
+                throw new IllegalArgumentException("Invalid piece type " + pieceType + " derived from layout during Trie insert.");
             }
+            if (current.children[pieceType] == null) {
+                current.children[pieceType] = new TrieNode();
+            }
+            current = current.children[pieceType];
         }
-        // Link the final node in the path to the ElementNode
-        current.elementNodeLink = elementToLink;
+        // Link only if not already linked (first encounter is shortest in BFS)
+        if (current.elementNodeLink == null) {
+            current.elementNodeLink = elementToLink;
+        }
     }
 
     /**
-     * Looks up a board state layout in the Trie.
+     * Looks up a board state in the Trie using its canonical layout.
+     * Traverses Trie using bit manipulation on the layout.
+     *
      * @param root The root of the Trie.
      * @param state The board state to look up.
-     * @return The linked ElementNode if the state exists in the Trie, otherwise null.
+     * @return The linked ElementNode if the canonical form exists, otherwise null.
      */
     private ElementNode trieLookup(TrieNode root, BoardState state) {
-        TrieNode current = root;
-        int[][] board = state.getBoardArray(); // Use array for sequence
+        long layout = state.getLayout();
+        long symmetricLayout = getSymmetricLayout(layout);
+        long canonicalLayout = Math.min(layout, symmetricLayout);
 
-        for (int r = 0; r < BoardSerializer.ROWS; r++) {
-            for (int c = 0; c < BoardSerializer.COLS; c++) {
-                int pieceType = board[r][c];
-                if (pieceType < 0 || pieceType > 4) {
-                    // Defensive check
-                    return null; // Invalid path
-                }
-                if (current.children[pieceType] == null) {
-                    return null; // Path does not exist
-                }
-                current = current.children[pieceType];
-            }
+        TrieNode current = root;
+        final int BITS_PER_CELL = 3;
+        final int CELLS_COUNT = BoardSerializer.ROWS * BoardSerializer.COLS;
+
+        for (int i = 0; i < CELLS_COUNT; i++) {
+            int pieceType = (int)((canonicalLayout >> (i * BITS_PER_CELL)) & ((1L << BITS_PER_CELL) - 1L));
+            if (pieceType < 0 || pieceType > 4) return null; // Invalid path derived
+            if (current.children[pieceType] == null) return null; // Path does not exist
+            current = current.children[pieceType];
         }
-        // Return the linked ElementNode at the end of the path
         return current.elementNodeLink;
     }
 
 
     /**
-     * Solves the Klotski puzzle using BFS with Trie and symmetry checking.
-     *
-     * @param initialState The starting board configuration.
-     * @return A list representing the shortest path, or empty list if no solution found.
+     * Solves the Klotski puzzle using Optimized BFS with Trie and symmetry checking.
      */
     public List<BoardState> solve(BoardState initialState) {
-        // 1. Initialization
+        // Reset Trie for this solve instance
+        this.trieRoot = new TrieNode();
+        this.nodesExplored = 0;
+
         if (isGoalState(initialState)) {
             return Collections.singletonList(initialState);
         }
 
         ElementNode initialElement = new ElementNode(initialState, null, 0);
-        trieInsert(trieRoot, initialState, initialElement); // Insert initial state
+        trieInsert(trieRoot, initialState, initialElement); // Insert initial state using canonical layout
 
         ElementNode currentLevelHead = initialElement;
         ElementNode nextLevelHead = null;
         ElementNode nextLevelTail = null;
         int currentDepth = 0;
-        nodesExplored = 0; // 重置节点计数
         long statesAdded = 1;
 
-
-        // 2. BFS Loop (Level by Level)
         while (currentLevelHead != null) {
-            // System.out.println("Trie-BFS: Processing Depth: " + currentDepth + ", States in level: " + (statesAdded - statesProcessed) + ", Total added: " + statesAdded);
             ElementNode currentNode = currentLevelHead;
 
             while (currentNode != null) {
-                nodesExplored++; // 增加节点计数
+                nodesExplored++;
 
-                // 3. Generate Successors
                 List<BoardState> successors = generateSuccessors(currentNode.state);
 
-                // 4. Process Successors
                 for (BoardState successor : successors) {
-                    // 4a. Goal Check
                     if (isGoalState(successor)) {
-                        // System.out.println("Trie-BFS: Solution found at depth " + (currentDepth + 1) + " after processing " + statesProcessed + " states.");
                         // Reconstruct path
                         LinkedList<BoardState> path = new LinkedList<>();
                         path.addFirst(successor);
@@ -197,24 +185,15 @@ public class KlotskiSolverTrieTree {
                         return path;
                     }
 
-                    // 4b. Visited Check (Original and Symmetric)
+                    // Optimized Visited Check using canonical layout lookup
                     ElementNode existingElement = trieLookup(trieRoot, successor);
-                    ElementNode symmetricExistingElement = null;
-                    if (existingElement == null) { // Only check symmetry if original not found
-                        BoardState symmetricSuccessor = getSymmetricState(successor);
-                        // Avoid looking up self-symmetric states twice (though unlikely for full board)
-                        if (!successor.equals(symmetricSuccessor)) {
-                            symmetricExistingElement = trieLookup(trieRoot, symmetricSuccessor);
-                        }
-                    }
 
-                    // 4c. If Not Visited (Neither original nor symmetric)
-                    if (existingElement == null && symmetricExistingElement == null) {
+                    // If Not Visited (canonical form not in Trie)
+                    if (existingElement == null) {
                         statesAdded++;
-                        // Create new ElementNode
                         ElementNode newElement = new ElementNode(successor, currentNode, currentDepth + 1);
-                        // Insert into Trie
-                        trieInsert(trieRoot, successor, newElement);
+                        trieInsert(trieRoot, successor, newElement); // Insert using canonical layout
+
                         // Add to next level's linked list
                         if (nextLevelHead == null) {
                             nextLevelHead = newElement;
@@ -226,33 +205,35 @@ public class KlotskiSolverTrieTree {
                     }
                 } // End processing successors
 
-                // Move to the next node in the current level
                 currentNode = currentNode.nextInLevel;
             } // End processing current level
 
-            // 5. Move to Next Level
             currentLevelHead = nextLevelHead;
             nextLevelHead = null;
             nextLevelTail = null;
             currentDepth++;
 
+            if (nodesExplored % 200000 == 0) { // Progress indicator
+                System.out.println("BFS-TrieOpt Nodes: " + nodesExplored + ", Depth: " + currentDepth + ", Added: " + statesAdded);
+            }
+
         } // End BFS Loop
 
-        System.out.println("Trie-BFS: No solution found after processing " + nodesExplored + " states.");
+        System.out.println("BFS-TrieOpt: No solution found after processing " + nodesExplored + " states.");
         return Collections.emptyList();
     }
 
 
     /**
-     * Generates all valid next board states from the current state.
-     * (Code is identical to the previous versions)
+     * Generates successors (Identical - still needs BoardState creation)
      */
     private List<BoardState> generateSuccessors(BoardState currentState) {
+        // --- Identical code as before ---
         List<BoardState> successors = new ArrayList<>();
         final int ROWS = BoardSerializer.ROWS;
         final int COLS = BoardSerializer.COLS;
         final int EMPTY = BoardSerializer.EMPTY;
-        int[][] board = currentState.getBoardArray();
+        int[][] board = currentState.getBoardArray(); // Still needs array for move logic
         boolean[][] processed = new boolean[ROWS][COLS];
 
         for (int r = 0; r < ROWS; r++) {
@@ -260,22 +241,17 @@ public class KlotskiSolverTrieTree {
                 int pieceType = board[r][c];
                 if (pieceType == EMPTY || processed[r][c]) continue;
 
-                // --- Piece identification logic (identical) ---
-                int pieceHeight = 1, pieceWidth = 1;
                 List<int[]> pieceCells = new ArrayList<>();
                 boolean validPiece = true;
                 switch (pieceType) {
                     case BoardSerializer.SOLDIER: pieceCells.add(new int[]{r, c}); processed[r][c] = true; break;
-                    case BoardSerializer.HORIZONTAL: if (c + 1 < COLS && board[r][c+1] == pieceType) { pieceWidth = 2; pieceCells.add(new int[]{r, c}); pieceCells.add(new int[]{r, c + 1}); processed[r][c] = true; processed[r][c + 1] = true; } else validPiece = false; break;
-                    case BoardSerializer.VERTICAL: if (r + 1 < ROWS && board[r+1][c] == pieceType) { pieceHeight = 2; pieceCells.add(new int[]{r, c}); pieceCells.add(new int[]{r + 1, c}); processed[r][c] = true; processed[r+1][c] = true; } else validPiece = false; break;
-                    case BoardSerializer.CAO_CAO: if (r + 1 < ROWS && c + 1 < COLS && board[r][c+1] == pieceType && board[r+1][c] == pieceType && board[r+1][c+1] == pieceType) { pieceHeight = 2; pieceWidth = 2; pieceCells.add(new int[]{r, c}); pieceCells.add(new int[]{r, c + 1}); pieceCells.add(new int[]{r + 1, c}); pieceCells.add(new int[]{r + 1, c + 1}); processed[r][c] = true; processed[r][c+1] = true; processed[r+1][c] = true; processed[r+1][c+1] = true; } else validPiece = false; break;
+                    case BoardSerializer.HORIZONTAL: if (c + 1 < COLS && board[r][c+1] == pieceType) { pieceCells.add(new int[]{r, c}); pieceCells.add(new int[]{r, c + 1}); processed[r][c] = true; processed[r][c + 1] = true; } else validPiece = false; break;
+                    case BoardSerializer.VERTICAL: if (r + 1 < ROWS && board[r+1][c] == pieceType) { pieceCells.add(new int[]{r, c}); pieceCells.add(new int[]{r + 1, c}); processed[r][c] = true; processed[r+1][c] = true; } else validPiece = false; break;
+                    case BoardSerializer.CAO_CAO: if (r + 1 < ROWS && c + 1 < COLS && board[r][c+1] == pieceType && board[r+1][c] == pieceType && board[r+1][c+1] == pieceType) { pieceCells.add(new int[]{r, c}); pieceCells.add(new int[]{r, c + 1}); pieceCells.add(new int[]{r + 1, c}); pieceCells.add(new int[]{r + 1, c + 1}); processed[r][c] = true; processed[r][c+1] = true; processed[r+1][c] = true; processed[r+1][c+1] = true; } else validPiece = false; break;
                     default: validPiece = false; break;
                 }
                 if (!validPiece) continue;
-                // --- End Piece identification ---
 
-
-                // --- Move generation logic (identical) ---
                 for (int dir = 0; dir < 4; dir++) {
                     int dr = DR[dir], dc = DC[dir];
                     boolean canMove = true;
@@ -288,19 +264,18 @@ public class KlotskiSolverTrieTree {
                         for (int i = 0; i < ROWS; i++) nextBoard[i] = Arrays.copyOf(board[i], COLS);
                         for (int[] cell : pieceCells) nextBoard[cell[0]][cell[1]] = EMPTY;
                         for (int[] cell : targetCells) nextBoard[cell[0]][cell[1]] = pieceType;
-                        successors.add(new BoardState(nextBoard)); // Creates new state (and layout long)
+                        successors.add(new BoardState(nextBoard)); // Creates new state
                     }
                 }
-                // --- End Move generation ---
             }
         }
         return successors;
+        // --- End identical code ---
     }
 
-    // --- Main method for testing ---
+    // --- Main method for testing (Similar setup) ---
     public static void main(String[] args) {
-        System.out.println("Klotski Solver with Trie-BFS and Symmetry Checking Test");
-
+        System.out.println("Klotski Solver with Optimized Trie-BFS and Symmetry Checking Test");
         try {
             int[][] initialArray = {
                     {BoardSerializer.VERTICAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.VERTICAL},
@@ -309,19 +284,18 @@ public class KlotskiSolverTrieTree {
                     {BoardSerializer.VERTICAL, BoardSerializer.SOLDIER, BoardSerializer.SOLDIER, BoardSerializer.VERTICAL},
                     {BoardSerializer.SOLDIER, BoardSerializer.EMPTY, BoardSerializer.EMPTY, BoardSerializer.SOLDIER}
             };
-
             BoardState initialState = new BoardState(initialArray);
-
             System.out.println("Initial State:");
             BoardSerializer.printBoard(initialState.getBoardArray());
 
-            KlotskiSolverTrieTree solver = new KlotskiSolverTrieTree(); // Creates a new solver with an empty Trie
+            KlotskiSolverTrieTree solver = new KlotskiSolverTrieTree();
 
-            System.out.println("\nStarting Trie-BFS solve...");
+            System.out.println("\nStarting Optimized Trie-BFS solve...");
             long startTime = System.currentTimeMillis();
             List<BoardState> path = solver.solve(initialState);
             long endTime = System.currentTimeMillis();
             System.out.println("\nSolve finished in " + (endTime - startTime) + " ms.");
+            System.out.println("Nodes explored: " + solver.getNodesExplored());
 
             if (path.isEmpty()) {
                 System.out.println("No solution found.");
@@ -330,19 +304,6 @@ public class KlotskiSolverTrieTree {
                 System.out.println("\nFinal State (Step " + (path.size() - 1) + "):");
                 BoardSerializer.printBoard(path.get(path.size() - 1).getBoardArray());
             }
-
-            /*
-            int step = 0;
-            for (BoardStateTrieTree state : path) {
-                System.out.println("\nStep " + step++);
-                BoardSerializer.printBoard(state.getBoardArray());
-                // System.out.println("  Layout: " + state.getLayout());
-            }
-            */
-
-        } catch (Exception e) {
-            System.err.println("An error occurred: " + e.getMessage());
-            e.printStackTrace();
-        }
+        } catch (Exception e) { e.printStackTrace(); }
     }
 }
