@@ -1,9 +1,11 @@
 package controller.solver;
 
-import controller.solver.ASearchHashMap.KlotskiSolverAStarHashMap; // 添加导入
-import controller.solver.ASearchTrie.KlotskiSolverAsearch;
+import controller.solver.ASearchHashMap.KlotskiSolverAStarHashMap;
+import controller.solver.ASearchPDB.KlotskiSolverPDB; // 添加PDB求解器的导入
+import controller.solver.ASearchTrie.KlotskiSolverASearchTrie;
 import controller.solver.BFS.KlotskiSolverBFS;
 import controller.solver.BiBFS.KlotskiSolverBiBFS;
+import controller.solver.BiBFSSymmetry.KlotskiSolverBiBFSSymmetry; // 添加BiBFSTrie求解器的导入
 import controller.solver.TireTree.KlotskiSolverTrieTree;
 
 
@@ -92,6 +94,32 @@ class BiBFSSolverWrapper implements KlotskiSolverInterface {
     }
 }
 
+// 添加新的BiBFSTrie包装类
+class BiBFSTrieSolverWrapper implements KlotskiSolverInterface {
+    private final BoardState targetState;
+    private KlotskiSolverBiBFSSymmetry lastSolver; // 保存最后一个求解器实例
+
+    public BiBFSTrieSolverWrapper(BoardState t){
+        this.targetState = t;
+    }
+
+    @Override
+    public List<BoardState> solve(BoardState i) {
+        lastSolver = new KlotskiSolverBiBFSSymmetry();
+        return lastSolver.solve(i, targetState);
+    }
+
+    @Override
+    public String getName() {
+        return "BiBFS+Trie+Sym";
+    }
+
+    @Override
+    public int getNodesExplored() {
+        return lastSolver != null ? lastSolver.getNodesExplored() : -1;
+    }
+}
+
 class TrieBFSSolverWrapper implements KlotskiSolverInterface {
     private KlotskiSolverTrieTree lastSolver; // 保存最后一个求解器实例
 
@@ -113,11 +141,11 @@ class TrieBFSSolverWrapper implements KlotskiSolverInterface {
 }
 
 class AStarTrieSolverWrapper implements KlotskiSolverInterface {
-    private KlotskiSolverAsearch lastSolver; // 保存最后一个求解器实例
+    private KlotskiSolverASearchTrie lastSolver; // 保存最后一个求解器实例
 
     @Override
     public List<BoardState> solve(BoardState i) {
-        lastSolver = new KlotskiSolverAsearch();
+        lastSolver = new KlotskiSolverASearchTrie();
         return lastSolver.solve(i);
     }
 
@@ -152,7 +180,41 @@ class AStarHashMapSolverWrapper implements KlotskiSolverInterface {
         return lastSolver != null ? lastSolver.getNodesExplored() : -1;
     }
 }
+
+// 修改PDB求解器的包装类
+class PDBSolverWrapper implements KlotskiSolverInterface {
+    // 使用一个共享实例，不再需要多次创建
+    private static final KlotskiSolverPDB SOLVER = new KlotskiSolverPDB();
+
+    @Override
+    public List<BoardState> solve(BoardState i) {
+        return SOLVER.solve(i);
+    }
+
+    @Override
+    public String getName() {
+        return "A*+PDB";
+    }
+
+    @Override
+    public int getNodesExplored() {
+        return SOLVER.getNodesExplored();
+    }
+}
 // --- End Wrappers ---
+
+// 修改LayoutConfig类，移除手动设置的目标状态
+class LayoutConfig {
+    final String name;
+    final BoardState initialState;
+    BoardState targetState; // 不再为final，将通过求解器计算获得
+
+    public LayoutConfig(String name, int[][] initialArray) {
+        this.name = name;
+        this.initialState = new BoardState(initialArray);
+        this.targetState = null; // 初始时为null，稍后计算
+    }
+}
 
 /**
  * Benchmarking program for Klotski solvers with multiple runs and averaging.
@@ -162,79 +224,85 @@ public class KlotskiBenchmark {
     private static final long SOLVE_TIMEOUT_MS = 60 * 1000; // 60 seconds timeout
     private static final int RUNS_PER_SOLVER = 10; // <<< Number of runs for averaging
 
-    // Define a standard target state for Bi-BFS (same as before)
-    private static final BoardState TARGET_STATE = new BoardState(new int[][]{
-            {BoardSerializer.VERTICAL, BoardSerializer.SOLDIER, BoardSerializer.SOLDIER, BoardSerializer.VERTICAL},
-            {BoardSerializer.VERTICAL, BoardSerializer.SOLDIER, BoardSerializer.SOLDIER, BoardSerializer.VERTICAL},
-            {BoardSerializer.HORIZONTAL, BoardSerializer.EMPTY, BoardSerializer.EMPTY, BoardSerializer.HORIZONTAL},
-            {BoardSerializer.VERTICAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.VERTICAL},
-            {BoardSerializer.VERTICAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.VERTICAL}
-    });
-
     /**
-     * Defines the initial board layouts to test. (same as before)
-     * @return A map of layout names to their 2D array representations.
+     * 定义测试布局的初始状态
+     * @return 布局配置列表
      */
-    private static Map<String, int[][]> defineLayouts() { /* ... same as before ... */
-        Map<String, int[][]> layouts = new LinkedHashMap<>();
-        // Layout 1
-        layouts.put("HengDaoLiMa", new int[][]{
+    private static List<LayoutConfig> defineLayouts() {
+        List<LayoutConfig> layouts = new ArrayList<>();
+        
+        // Layout 1 横刀立马
+        layouts.add(new LayoutConfig("HengDaoLiMa", 
+            new int[][]{
                 {BoardSerializer.VERTICAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.VERTICAL},
                 {BoardSerializer.VERTICAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.VERTICAL},
                 {BoardSerializer.VERTICAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.VERTICAL},
                 {BoardSerializer.VERTICAL, BoardSerializer.SOLDIER, BoardSerializer.SOLDIER, BoardSerializer.VERTICAL},
                 {BoardSerializer.SOLDIER, BoardSerializer.EMPTY, BoardSerializer.EMPTY, BoardSerializer.SOLDIER}
-        });
+            }
+        ));
 
-        // Layout 2
-        layouts.put("BingLinChengXia", new int[][]{
+        // Layout 2 兵临城下
+        layouts.add(new LayoutConfig("BingLinChengXia", 
+            new int[][]{
                 {BoardSerializer.SOLDIER, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.SOLDIER},
                 {BoardSerializer.SOLDIER, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.SOLDIER},
                 {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL},
                 {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL},
                 {BoardSerializer.EMPTY, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.EMPTY}
-        });
+            }
+        ));
 
-        // Layout 3
-        layouts.put("FengHuiLuZhuan", new int[][]{
-                {BoardSerializer.VERTICAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.HORIZONTAL},
-                {BoardSerializer.VERTICAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.SOLDIER},
+        // Layout 3 峰回路转
+        layouts.add(new LayoutConfig("FengHuiLuZhuan", 
+            new int[][]{
+                {BoardSerializer.VERTICAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.VERTICAL},
+                {BoardSerializer.VERTICAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.VERTICAL},
                 {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL},
                 {BoardSerializer.SOLDIER, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.SOLDIER},
                 {BoardSerializer.SOLDIER, BoardSerializer.EMPTY, BoardSerializer.EMPTY, BoardSerializer.SOLDIER}
-        });
+            }
+        ));
 
         // Layout 4
-        layouts.put("Start4", new int[][]{
+        layouts.add(new LayoutConfig("Start4", 
+            new int[][]{
                 {BoardSerializer.EMPTY, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.EMPTY},
                 {BoardSerializer.SOLDIER, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.SOLDIER},
                 {BoardSerializer.VERTICAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.VERTICAL},
                 {BoardSerializer.VERTICAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.VERTICAL},
                 {BoardSerializer.SOLDIER, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.SOLDIER}
-        });
+            }
+        ));
 
         // Layout 5
-        layouts.put("Start5", new int[][]{
+        layouts.add(new LayoutConfig("Start5", 
+            new int[][]{
                 {BoardSerializer.SOLDIER, BoardSerializer.VERTICAL, BoardSerializer.VERTICAL, BoardSerializer.VERTICAL},
                 {BoardSerializer.SOLDIER, BoardSerializer.VERTICAL, BoardSerializer.VERTICAL, BoardSerializer.VERTICAL},
                 {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.SOLDIER, BoardSerializer.SOLDIER},
                 {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO},
                 {BoardSerializer.EMPTY, BoardSerializer.EMPTY, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO}
-        });
+            }
+        ));
+        
         return layouts;
     }
 
     /**
-     * Defines the solver algorithms to test. (same as before)
-     * @return A list of solver wrappers.
+     * 定义求解器算法
+     * @param targetState 目标状态
+     * @return 求解器包装器列表
      */
-    private static List<KlotskiSolverInterface> defineSolvers() { /* ... same as before ... */
+    private static List<KlotskiSolverInterface> defineSolvers(BoardState targetState) {
         List<KlotskiSolverInterface> solvers = new ArrayList<>();
         solvers.add(new BFSSolverWrapper());
-        //solvers.add(new BiBFSSolverWrapper(TARGET_STATE));
+        solvers.add(new BiBFSSolverWrapper(targetState)); // 使用传入的目标状态
+        solvers.add(new BiBFSTrieSolverWrapper(targetState)); // 使用传入的目标状态
         solvers.add(new AStarHashMapSolverWrapper());
         solvers.add(new TrieBFSSolverWrapper());
         solvers.add(new AStarTrieSolverWrapper());
+        //solvers.add(new PDBSolverWrapper());
         return solvers;
     }
 
@@ -244,8 +312,10 @@ public class KlotskiBenchmark {
     private static BenchmarkResult runSingleBenchmark(KlotskiSolverInterface solver, BoardState initialState) {
         BenchmarkResult result = new BenchmarkResult();
         ExecutorService executor = Executors.newSingleThreadExecutor();
-        // IMPORTANT: The lambda ensures a new solver instance is created via the wrapper's solve method
+
+        // 不再需要每次创建新求解器，直接使用传入的实例
         Future<List<BoardState>> future = executor.submit(() -> solver.solve(initialState));
+
         long startTime = System.nanoTime();
         try {
             List<BoardState> path = future.get(SOLVE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
@@ -282,50 +352,83 @@ public class KlotskiBenchmark {
     public static void main(String[] args) {
         System.out.println("Starting Klotski Solver Benchmark...");
 
-        Map<String, int[][]> layouts = defineLayouts();
-        List<KlotskiSolverInterface> solvers = defineSolvers();
-        // Store results: Layout -> Algorithm -> List of individual run results
+        List<LayoutConfig> layoutConfigs = defineLayouts();
+        
+        // 结果存储: 布局名称 -> 算法名称 -> 运行结果列表
         Map<String, Map<String, List<BenchmarkResult>>> results = new LinkedHashMap<>();
 
-        System.out.println("Defined " + layouts.size() + " layouts and " + solvers.size() + " solvers.");
+        System.out.println("Defined " + layoutConfigs.size() + " layouts");
         System.out.println("Runs per solver/layout combination: " + RUNS_PER_SOLVER);
         System.out.println("Timeout per run: " + SOLVE_TIMEOUT_MS + " ms");
 
-        // Run benchmarks
-        for (Map.Entry<String, int[][]> layoutEntry : layouts.entrySet()) {
-            String layoutName = layoutEntry.getKey();
-            BoardState initialState = new BoardState(layoutEntry.getValue());
+        // 添加计算目标状态的代码
+        System.out.println("\nCalculating target states using BFS solver...");
+        for (LayoutConfig config : layoutConfigs) {
+            System.out.println("Calculating target state for layout: " + config.name);
+            
+            // 创建BFS求解器实例计算目标状态
+            KlotskiSolverBFS targetFinder = new KlotskiSolverBFS();
+            List<BoardState> solution = targetFinder.solve(config.initialState);
+            
+            if (solution.isEmpty()) {
+                System.out.println("WARNING: 无法为 " + config.name + " 找到目标状态。跳过此布局。");
+                continue;
+            }
+            
+            // 使用解决方案的最后一个状态作为目标状态
+            config.targetState = solution.get(solution.size() - 1);
+            System.out.println("目标状态已计算，共 " + (solution.size() - 1) + " 步，探索了 " 
+                              + targetFinder.getNodesExplored() + " 个节点");
+        }
+
+        // 运行基准测试
+        for (LayoutConfig config : layoutConfigs) {
+            // 跳过没有目标状态的布局
+            if (config.targetState == null) {
+                continue;
+            }
+            
+            String layoutName = config.name;
+            BoardState initialState = config.initialState;
+            BoardState targetState = config.targetState;
+            
+            // 为每个布局生成定制的求解器
+            List<KlotskiSolverInterface> solvers = defineSolvers(targetState);
+            
             results.put(layoutName, new LinkedHashMap<>());
 
-            //System.out.println("\n--- Benchmarking Layout: " + layoutName + " ---");
-            //BoardSerializer.printBoard(initialState.getBoardArray());
+            System.out.println("\n--- Benchmarking Layout: " + layoutName + " ---");
+            System.out.println("Initial state:");
+            BoardSerializer.printBoard(initialState.getBoardArray());
+            System.out.println("Target state:");
+            BoardSerializer.printBoard(targetState.getBoardArray());
 
             for (KlotskiSolverInterface solver : solvers) {
                 String solverName = solver.getName();
-                results.get(layoutName).put(solverName, new ArrayList<>()); // Initialize list for this solver
+                results.get(layoutName).put(solverName, new ArrayList<>()); // 初始化此求解器的列表
                 //System.out.println("  Running solver: " + solverName + " (" + RUNS_PER_SOLVER + " times)");
 
                 for (int run = 1; run <= RUNS_PER_SOLVER; run++) {
                     //System.out.print("    Run " + run + "/" + RUNS_PER_SOLVER + "... ");
-                    // Run the benchmark for this single run
+                    // 运行单次基准测试
                     BenchmarkResult singleRunResult = runSingleBenchmark(solver, initialState);
                     results.get(layoutName).get(solverName).add(singleRunResult);
                     //System.out.println(singleRunResult.status + " (" + singleRunResult.timeMillis + " ms)");
-
-                    // Optional: Add a small delay or GC call between runs if needed, though often not necessary
-                    // try { Thread.sleep(50); } catch (InterruptedException e) {}
-                    // System.gc();
                 }
             }
         }
 
-        // Print results table with averages
+        // 打印结果表格和平均值
         System.out.println("\n\n--- Benchmark Results (Averages over " + RUNS_PER_SOLVER + " runs) ---");
 
-        int maxAlgNameLen = solvers.stream().mapToInt(s -> s.getName().length()).max().orElse(15);
-        // Adjust format strings for average results
+        int maxAlgNameLen = results.values().stream()
+                .flatMap(m -> m.keySet().stream())
+                .mapToInt(String::length)
+                .max().orElse(15);
+        
+        // 调整平均结果的格式字符串
         String headerFormat = "%-" + maxAlgNameLen + "s";
-        String resultFormat = "%-" + maxAlgNameLen + "s | %s%n"; // Algorithm | Result String
+        String resultFormat = "%-" + maxAlgNameLen + "s | %s%n"; // 算法 | 结果字符串
 
         for (Map.Entry<String, Map<String, List<BenchmarkResult>>> layoutResultEntry : results.entrySet()) {
             String layoutName = layoutResultEntry.getKey();
@@ -334,14 +437,14 @@ public class KlotskiBenchmark {
             System.out.println("\nLayout: " + layoutName);
             System.out.printf(headerFormat, "Algorithm");
             System.out.println(" | Avg Time (ms), Steps, Success Rate, Nodes Explored [Status]");
-            System.out.println("-".repeat(maxAlgNameLen) + "-|-" + "-".repeat(50)); // Separator line
+            System.out.println("-".repeat(maxAlgNameLen) + "-|-" + "-".repeat(50)); // 分隔线
 
-            // Print results for each algorithm for this layout
-            for (KlotskiSolverInterface solver : solvers) {
-                String solverName = solver.getName();
-                List<BenchmarkResult> runResults = algoResultsMap.getOrDefault(solverName, Collections.emptyList());
+            // 打印此布局的每个算法的结果
+            for (Map.Entry<String, List<BenchmarkResult>> algoEntry : algoResultsMap.entrySet()) {
+                String solverName = algoEntry.getKey();
+                List<BenchmarkResult> runResults = algoEntry.getValue();
 
-                // Calculate statistics
+                // 计算统计数据
                 List<BenchmarkResult> solvedRuns = runResults.stream()
                         .filter(r -> r.status.equals("Solved"))
                         .collect(Collectors.toList());
@@ -349,7 +452,7 @@ public class KlotskiBenchmark {
                 long totalSuccessfulTime = solvedRuns.stream().mapToLong(r -> r.timeMillis).sum();
                 int successfulRuns = solvedRuns.size();
                 double averageTime = (successfulRuns > 0) ? (double) totalSuccessfulTime / successfulRuns : -1.0;
-                int steps = (successfulRuns > 0) ? solvedRuns.get(0).steps : -1; // Assume steps are consistent for optimal solvers
+                int steps = (successfulRuns > 0) ? solvedRuns.get(0).steps : -1; // 假设最优解的步数一致
                 String successRate = String.format("%d/%d", successfulRuns, runResults.size());
 
                 // 计算平均探索节点数
@@ -361,7 +464,7 @@ public class KlotskiBenchmark {
                             .orElse(-1);
                 }
 
-                // Determine overall status
+                // 确定整体状态
                 String overallStatus;
                 if (successfulRuns == runResults.size()) {
                     overallStatus = "OK";
@@ -377,7 +480,7 @@ public class KlotskiBenchmark {
                     overallStatus = "Unknown";
                 }
 
-                // Format output string
+                // 格式化输出字符串
                 String resultString;
                 if (averageTime >= 0) {
                     resultString = String.format("%8.1f ms, %3d steps, %s, %,.0f nodes [%s]",

@@ -1,22 +1,14 @@
-package controller.solver.ASearchTrie;
+package controller.solver.ASearchPDB;
 
 import controller.solver.BoardSerializer;
 import controller.solver.BoardState;
+import controller.solver.PatternDatabaseGenerator;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.PriorityQueue; // Import PriorityQueue
-
-// BoardState class remains identical
-
-
+import java.util.*;
+import java.io.File; // For checking file existence
 
 /**
  * Node for the Trie structure.
- * (TrieNode class remains identical)
  */
 class TrieNode {
     TrieNode[] children = new TrieNode[5];
@@ -30,7 +22,6 @@ class TrieNode {
 class ElementNode implements Comparable<ElementNode> {
     BoardState state;
     ElementNode father; // Predecessor in the search path
-    // No longer need nextInLevel
 
     int g; // Cost from start to this node (move count)
     int h; // Heuristic estimate from this node to goal
@@ -51,9 +42,7 @@ class ElementNode implements Comparable<ElementNode> {
             return Integer.compare(this.f, other.f);
         }
         // Tie-breaking: prefer lower h value (closer to goal heuristically)
-        // This can sometimes help explore more promising nodes first among equals
         return Integer.compare(this.h, other.h);
-        // Could also tie-break by g, or not at all.
     }
 
     @Override
@@ -72,22 +61,74 @@ class ElementNode implements Comparable<ElementNode> {
     }
 }
 
-
-/**
- * Solves the Klotski puzzle using A* search with a Trie for visited set
- * and symmetry checking.
- */
-public class KlotskiSolverASearchTrie {
+public class KlotskiSolverPDB {
 
     private static final int[] DR = {-1, 1, 0, 0}; // UP, DOWN, LEFT, RIGHT
     private static final int[] DC = {0, 0, -1, 1};
-    private final TrieNode trieRoot = new TrieNode(); // Root of the visited state Trie
-    private int nodesExplored = 0; // 添加节点计数变量
+    private TrieNode trieRoot; // 改为非静态，每次求解都重置
+    private int nodesExplored = 0; // 节点计数变量
 
+    // --- PDB Related Fields ---
+    private static Map<Long, Integer> pdb_cc_4s = null; // Example: CC + 4 Soldiers PDB
+    private static Map<Long, Integer> pdb_cc_2h_2v = null;  // Example: CC + Horizontal Block PDB
+    private static final String PDB_CC_2H_4V_4S_FILENAME = "klotski_pdb_cc_2h_4v_4s.ser";
+    private static final String PDB_CC_2H_2V_FILENAME = "klotski_pdb_cc_4s.ser"; // Adjust filename if needed
+    private static boolean pdbsLoaded = false; // 标记PDB是否已加载
+
+    // 静态初始化块，程序加载类时执行一次
+    static {
+        loadAllPDBs();
+    }
+
+    /**
+     * 静态方法：加载所有PDB数据
+     */
+    private static void loadAllPDBs() {
+        if (pdbsLoaded) return; // 如果已加载，直接返回
+
+        System.out.println("Initializing KlotskiSolver PDBs (loading only once)...");
+        PatternDatabaseGenerator pdbLoader = new PatternDatabaseGenerator(); // Helper for loading
+
+        // Load CC+4S PDB
+        if (new File(PDB_CC_2H_4V_4S_FILENAME).exists()) {
+            pdb_cc_4s = pdbLoader.loadPDB(PDB_CC_2H_4V_4S_FILENAME);
+            if (pdb_cc_4s == null) {
+                System.err.println("Warning: Failed to load PDB: " + PDB_CC_2H_4V_4S_FILENAME);
+            }
+        } else {
+            System.out.println("Info: PDB file not found, skipping: " + PDB_CC_2H_4V_4S_FILENAME);
+        }
+
+        // Load CC+H PDB
+        if (new File(PDB_CC_2H_2V_FILENAME).exists()) {
+            pdb_cc_2h_2v = pdbLoader.loadPDB(PDB_CC_2H_2V_FILENAME);
+            if (pdb_cc_2h_2v == null) {
+                System.err.println("Warning: Failed to load PDB: " + PDB_CC_2H_2V_FILENAME);
+            }
+        } else {
+            System.out.println("Info: PDB file not found, skipping: " + PDB_CC_2H_2V_FILENAME);
+        }
+
+        pdbsLoaded = true; // 标记PDB已加载
+        System.out.println("PDB loading complete!");
+    }
+
+    /**
+     * Constructor: PDBs are now loaded via static initialization.
+     */
+    public KlotskiSolverPDB() {
+        // PDB已通过静态初始化块加载，此处无需重复加载
+        if (!pdbsLoaded) {
+            System.out.println("Warning: PDBs were not loaded by static initializer, loading now...");
+            loadAllPDBs();
+        }
+        // 确保每个实例都有自己的Trie树
+        this.trieRoot = new TrieNode();
+        this.nodesExplored = 0;
+    }
 
     /**
      * Checks if the given board state represents the winning condition.
-     * (Identical to previous versions)
      */
     private boolean isGoalState(BoardState state) {
         int[][] board = state.getBoardArray();
@@ -98,31 +139,7 @@ public class KlotskiSolverASearchTrie {
     }
 
     /**
-     * Calculates the heuristic (h) value for a state: Manhattan distance
-     * of Cao Cao's top-left corner to the goal position (3, 1).
-     */
-    private int calculateHeuristic(BoardState state) {
-        int[][] board = state.getBoardArray();
-        for (int r = 0; r < BoardSerializer.ROWS - 1; r++) { // CaoCao is 2x2, check bounds
-            for (int c = 0; c < BoardSerializer.COLS - 1; c++) {
-                if (board[r][c] == BoardSerializer.CAO_CAO) {
-                    // Found top-left corner of Cao Cao
-                    int goalR = 3;
-                    int goalC = 1;
-                    return Math.abs(r - goalR) + Math.abs(c - goalC);
-                }
-            }
-        }
-        // Should not happen for valid states containing Cao Cao
-        // Return a high value or consider throwing an exception
-        System.err.println("Warning: Cao Cao not found in heuristic calculation for state: " + state.layout);
-        return Integer.MAX_VALUE / 2; // Avoid overflow if added to g
-    }
-
-
-    /**
      * Generates the horizontally symmetric board state.
-     * (Identical to previous version)
      */
     private BoardState getSymmetricState(BoardState state) {
         int[][] originalBoard = state.getBoardArray();
@@ -135,10 +152,8 @@ public class KlotskiSolverASearchTrie {
         return new BoardState(symmetricBoard);
     }
 
-
     /**
      * Inserts/Updates a board state layout in the Trie, linking to the ElementNode.
-     * (Identical logic, but links ElementNode with cost info)
      */
     private void trieInsert(TrieNode root, BoardState state, ElementNode elementToLink) {
         TrieNode current = root;
@@ -156,7 +171,6 @@ public class KlotskiSolverASearchTrie {
 
     /**
      * Looks up a board state layout in the Trie.
-     * (Identical logic, returns ElementNode with cost info)
      */
     private ElementNode trieLookup(TrieNode root, BoardState state) {
         TrieNode current = root;
@@ -171,7 +185,7 @@ public class KlotskiSolverASearchTrie {
         }
         return current.elementNodeLink;
     }
-
+    
     /**
      * 返回探索的节点数量
      * @return 算法执行过程中探索的节点数量
@@ -181,12 +195,80 @@ public class KlotskiSolverASearchTrie {
     }
 
     /**
-     * Solves the Klotski puzzle using A* search with Trie and symmetry checking.
-     *
-     * @param initialState The starting board configuration.
-     * @return A list representing the shortest path, or empty list if no solution found.
+     * Calculates the heuristic (h) value for a state using loaded PDBs and Manhattan distance.
+     * Returns the maximum value found among all applicable heuristics.
+     */
+    private int calculateHeuristic(BoardState state) {
+        int h_manhattan = 0;
+        // Calculate basic Manhattan distance (Cao Cao top-left to goal (3,1))
+        int[][] board = state.getBoardArray(); // Getting array only once
+        boolean caoCaoFound = false;
+        for (int r = 0; r < BoardSerializer.ROWS - 1 && !caoCaoFound; r++) {
+            for (int c = 0; c < BoardSerializer.COLS - 1; c++) {
+                if (board[r][c] == BoardSerializer.CAO_CAO) {
+                    h_manhattan = Math.abs(r - 3) + Math.abs(c - 1);
+                    caoCaoFound = true;
+                    break;
+                }
+            }
+        }
+        if (!caoCaoFound) h_manhattan = Integer.MAX_VALUE / 2; // Should not happen for valid states
+
+        int max_h = h_manhattan; // Start with Manhattan distance
+
+        // --- PDB Lookup: CC + 4S ---
+        if (this.pdb_cc_4s != null) {
+            // Use the correct pattern extraction method from PatternDatabaseGenerator
+            long patternLayout_4s = PatternDatabaseGenerator.getPatternLayout(board); // Assuming this extracts CC+4S
+            if (patternLayout_4s != -1L) { // Check if extraction was valid
+                int h_pdb_4s = this.pdb_cc_4s.getOrDefault(patternLayout_4s, 0);
+                max_h = Math.max(max_h, h_pdb_4s);
+                //System.out.printf("  State %d: h_man=%d, h_4s=%d -> max_h=%d\n", state.getLayout(), h_manhattan, h_pdb_4s, max_h);
+            }
+        }
+
+        // --- PDB Lookup: CC + H ---
+        if (this.pdb_cc_2h_2v != null) {
+            long patternLayout_h = getPatternLayout_CC_H(board); 
+            if (patternLayout_h != -1L) {
+                int h_pdb_h = this.pdb_cc_2h_2v.getOrDefault(patternLayout_h, 0);
+                max_h = Math.max(max_h, h_pdb_h);
+                //System.out.printf("  State %d: h_man=%d, h_h=%d -> max_h=%d\n", state.getLayout(), h_manhattan, h_pdb_h, max_h);
+            }
+        }
+
+        // --- Add lookups for other PDBs similarly ---
+
+        return max_h; // Return the overall maximum heuristic value
+    }
+
+    // --- Method to extract CC + H pattern ---
+    private static long getPatternLayout_CC_H(int[][] fullBoardArray) {
+        Set<Integer> patternPieces = new HashSet<>(Arrays.asList(BoardSerializer.CAO_CAO, BoardSerializer.HORIZONTAL));
+        int[][] patternBoard = new int[BoardSerializer.ROWS][BoardSerializer.COLS];
+        for (int r = 0; r < BoardSerializer.ROWS; r++) {
+            for (int c = 0; c < BoardSerializer.COLS; c++) {
+                if (fullBoardArray[r] != null && fullBoardArray[r].length == BoardSerializer.COLS) { // Basic check
+                    int pieceType = fullBoardArray[r][c];
+                    if (patternPieces.contains(pieceType)) {
+                        patternBoard[r][c] = pieceType;
+                    }
+                } else return -1L; // Invalid input array
+            }
+        }
+        try {
+            return BoardSerializer.serialize(patternBoard);
+        } catch (IllegalArgumentException e) { return -1L; }
+    }
+
+    /**
+     * Solves the Klotski puzzle using A* search with Trie, Symmetry, and PDB heuristics.
      */
     public List<BoardState> solve(BoardState initialState) {
+        // 重置求解器状态
+        this.trieRoot = new TrieNode();
+        this.nodesExplored = 0;
+
         // 1. Initialization
         if (isGoalState(initialState)) {
             return Collections.singletonList(initialState);
@@ -203,7 +285,6 @@ public class KlotskiSolverASearchTrie {
         nodesExplored = 0; // 重置节点计数
         long statesAdded = 1;
 
-
         // 2. A* Search Loop
         while (!openSet.isEmpty()) {
             // Get node with lowest f value
@@ -212,7 +293,6 @@ public class KlotskiSolverASearchTrie {
 
             // 2a. Goal Check (Check when polling)
             if (isGoalState(currentNode.state)) {
-                // System.out.println("A* Trie: Solution found with cost " + currentNode.g + " after processing " + statesProcessed + " states.");
                 // Reconstruct path
                 LinkedList<BoardState> path = new LinkedList<>();
                 ElementNode trace = currentNode;
@@ -224,9 +304,8 @@ public class KlotskiSolverASearchTrie {
             }
 
             if (nodesExplored % 100000 == 0) { // Progress indicator
-                System.out.println("A* Trie: Processed: " + nodesExplored + ", OpenSet size: " + openSet.size() + ", Current f=" + currentNode.f + " (g=" + currentNode.g + ", h=" + currentNode.h + ")");
+                System.out.println("A* PDB: Processed: " + nodesExplored + ", OpenSet size: " + openSet.size() + ", Current f=" + currentNode.f + " (g=" + currentNode.g + ", h=" + currentNode.h + ")");
             }
-
 
             // 3. Generate Successors
             List<BoardState> successors = generateSuccessors(currentNode.state);
@@ -276,7 +355,6 @@ public class KlotskiSolverASearchTrie {
                     trieInsert(trieRoot, successor, newElement); // Insert the *original* state into Trie
                 }
 
-
                 // 4c. Shorter Path Found: Update node and queue
                 if (foundShorterPath && elementToUpdate != null) {
                     // Update father and g cost
@@ -289,13 +367,6 @@ public class KlotskiSolverASearchTrie {
                     boolean removed = openSet.remove(elementToUpdate); // remove uses equals() based on BoardState
                     if (removed) {
                         openSet.add(elementToUpdate); // Re-add with updated f value
-                        // System.out.println("Updated path cost for state " + elementToUpdate.state.layout + " to g=" + g_new);
-                    } else {
-                        // This might happen if the node was already polled but we found a shorter path via another route
-                        // before this successor was processed. In some A* setups, you might add it back,
-                        // but standard A* often assumes you only update nodes still in the open set.
-                        // For simplicity here, we only update if it's still in the openSet.
-                        // System.out.println("Shorter path found, but node " + elementToUpdate.state.layout + " not in openSet.");
                     }
                 }
 
@@ -303,17 +374,14 @@ public class KlotskiSolverASearchTrie {
 
         } // End A* Search Loop
 
-        System.out.println("A* Trie: No solution found after processing " + nodesExplored + " states.");
+        System.out.println("A* PDB: No solution found after processing " + nodesExplored + " states.");
         return Collections.emptyList();
     }
 
-
     /**
      * Generates all valid next board states from the current state.
-     * (Code is identical to the previous versions)
      */
     private List<BoardState> generateSuccessors(BoardState currentState) {
-        // --- Identical code as before ---
         List<BoardState> successors = new ArrayList<>();
         final int ROWS = BoardSerializer.ROWS;
         final int COLS = BoardSerializer.COLS;
@@ -356,31 +424,29 @@ public class KlotskiSolverASearchTrie {
             }
         }
         return successors;
-        // --- End identical code ---
     }
 
     // --- Main method for testing ---
     public static void main(String[] args) {
-        System.out.println("Klotski Solver with A* Search, Trie, and Symmetry Checking Test");
+        System.out.println("Klotski Solver with A* Search, Trie, PDB, and Symmetry Checking Test");
 
         try {
             int[][] initialArray = {
-                    {BoardSerializer.SOLDIER, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.SOLDIER},
-                    {BoardSerializer.SOLDIER, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.SOLDIER},
-                    {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL},
-                    {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL},
-                    {BoardSerializer.EMPTY, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.EMPTY}
+                    {BoardSerializer.VERTICAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.VERTICAL},
+                    {BoardSerializer.VERTICAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.VERTICAL},
+                    {BoardSerializer.VERTICAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.VERTICAL},
+                    {BoardSerializer.VERTICAL, BoardSerializer.SOLDIER, BoardSerializer.SOLDIER, BoardSerializer.VERTICAL},
+                    {BoardSerializer.SOLDIER, BoardSerializer.EMPTY, BoardSerializer.EMPTY, BoardSerializer.SOLDIER}
             };
-
 
             BoardState initialState = new BoardState(initialArray);
 
             System.out.println("Initial State:");
             BoardSerializer.printBoard(initialState.getBoardArray());
 
-            KlotskiSolverASearchTrie solver = new KlotskiSolverASearchTrie();
+            KlotskiSolverPDB solver = new KlotskiSolverPDB();
 
-            System.out.println("\nStarting A* Trie solve...");
+            System.out.println("\nStarting A* PDB solve...");
             long startTime = System.currentTimeMillis();
             List<BoardState> path = solver.solve(initialState);
             long endTime = System.currentTimeMillis();
@@ -390,6 +456,7 @@ public class KlotskiSolverASearchTrie {
                 System.out.println("No solution found.");
             } else {
                 System.out.println("Solution found with " + (path.size() - 1) + " steps.");
+                System.out.println("Nodes explored: " + solver.getNodesExplored());
                 System.out.println("\nFinal State (Step " + (path.size() - 1) + "):");
                 BoardSerializer.printBoard(path.get(path.size() - 1).getBoardArray());
             }
@@ -400,4 +467,3 @@ public class KlotskiSolverASearchTrie {
         }
     }
 }
-

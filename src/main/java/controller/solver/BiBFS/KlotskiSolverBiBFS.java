@@ -79,7 +79,7 @@ public class KlotskiSolverBiBFS {
                 // Check for intersection before generating successors
                 if (backwardVisited.containsKey(currentForward)) {
                     meetingNode = currentForward;
-                    System.out.println("Intersection found from forward search!");
+                    //System.out.println("Intersection found from forward search!");
                     break; // Exit inner loop
                 }
 
@@ -112,7 +112,7 @@ public class KlotskiSolverBiBFS {
                 // Check for intersection before generating successors
                 if (forwardVisited.containsKey(currentBackward)) {
                     meetingNode = currentBackward;
-                    System.out.println("Intersection found from backward search!");
+                    //System.out.println("Intersection found from backward search!");
                     break; // Exit inner loop
                 }
 
@@ -135,18 +135,18 @@ public class KlotskiSolverBiBFS {
             if (meetingNode != null) break; // Exit while loop
 
             if (nodesExplored % 50000 == 0) { // Print progress occasionally
-                System.out.println("Levels processed (approx): " + nodesExplored +
-                        ", FwdQ: " + forwardQueue.size() + ", BwdQ: " + backwardQueue.size() +
-                        ", FwdV: " + forwardVisited.size() + ", BwdV: " + backwardVisited.size());
+                //System.out.println("Levels processed (approx): " + nodesExplored +
+                       // ", FwdQ: " + forwardQueue.size() + ", BwdQ: " + backwardQueue.size() +
+                        //", FwdV: " + forwardVisited.size() + ", BwdV: " + backwardVisited.size());
             }
         }
 
 
         if (meetingNode != null) {
-            System.out.println("Solution found! Reconstructing path via meeting node: " + meetingNode);
+            //System.out.println("Solution found! Reconstructing path via meeting node: " + meetingNode);
             return reconstructBiBFSPath(forwardVisited, backwardVisited, meetingNode);
         } else {
-            System.out.println("No solution found after processing levels (approx): " + nodesExplored);
+            //System.out.println("No solution found after processing levels (approx): " + nodesExplored);
             return Collections.emptyList();
         }
     }
