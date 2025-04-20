@@ -1,15 +1,18 @@
-package controller.solver;
+package controller.solverArchived;
 
-import controller.solver.ASearchHashMap.KlotskiSolverAStarHashMap;
-import controller.solver.ASearchPDB.KlotskiSolverPDB; // 添加PDB求解器的导入
-import controller.solver.ASearchTrie.KlotskiSolverASearchTrie;
-import controller.solver.BFS.KlotskiSolverBFS;
-import controller.solver.BiBFS.KlotskiSolverBiBFS;
-import controller.solver.BiBFSSymmetry.KlotskiSolverBiBFSSymmetry; // 添加BiBFSTrie求解器的导入
-import controller.solver.TireTree.KlotskiSolverTrieTree;
-import controller.solver.BiBFSOptLayoutGen.KlotskiSolverBiBFSOptLayoutGen; // 添加新的优化布局生成求解器导入
-import controller.solver.BFSTireOptLayoutGen.KlotskiSolverBFSTrieOptLayoutGen; // 添加BFS Trie优化布局生成求解器导入
-
+import controller.solver.BoardSerializer;
+import controller.solver.BoardState;
+import controller.solver.KlotskiSolver; // 添加导入新的KlotskiSolver类
+import controller.solverArchived.ASearchHashMap.KlotskiSolverASearchHashMap;
+import controller.solverArchived.ASearchPDB.KlotskiSolverPDB; // 添加PDB求解器的导入
+import controller.solverArchived.ASearchTrie.KlotskiSolverASearchTrie;
+import controller.solverArchived.BFS.KlotskiSolverBFS;
+import controller.solverArchived.BiBFS.KlotskiSolverBiBFS;
+import controller.solverArchived.BiBFSSymmetry.KlotskiSolverBiBFSSymmetry; // 添加BiBFSTrie求解器的导入
+import controller.solverArchived.TireTree.KlotskiSolverTrieTree;
+import controller.solverArchived.BiBFSOptLayoutGen.KlotskiSolverBiBFSOptLayoutGen; // 添加新的优化布局生成求解器导入
+import controller.solverArchived.BFSTireOptLayoutGen.KlotskiSolverBFSTrieOptLayoutGen; // 添加BFS Trie优化布局生成求解器导入
+import controller.solverArchived.ASearchTrieOptLayoutGen.KlotskiSolverASearchTrieOptLayoutGen; // 添加 A* Trie 优化布局生成求解器导入
 
 import java.util.ArrayList;
 import java.util.Collections; // Added for Collections.emptyList() in placeholders
@@ -164,11 +167,11 @@ class AStarTrieSolverWrapper implements KlotskiSolverInterface {
 
 // 添加A* HashMap求解器的包装类
 class AStarHashMapSolverWrapper implements KlotskiSolverInterface {
-    private KlotskiSolverAStarHashMap lastSolver; // 保存最后一个求解器实例
+    private KlotskiSolverASearchHashMap lastSolver; // 保存最后一个求解器实例
 
     @Override
     public List<BoardState> solve(BoardState i) {
-        lastSolver = new KlotskiSolverAStarHashMap();
+        lastSolver = new KlotskiSolverASearchHashMap();
         return lastSolver.solve(i);
     }
 
@@ -251,7 +254,54 @@ class BFSTrieOptLayoutGenSolverWrapper implements KlotskiSolverInterface {
     }
 }
 
-// --- End Wrappers ---
+// 添加 A*+Trie+OptLayoutGen 包装类
+class ASearchTrieOptLayoutGenSolverWrapper implements KlotskiSolverInterface {
+    private KlotskiSolverASearchTrieOptLayoutGen lastSolver; // 保存最后一个求解器实例
+
+    @Override
+    public List<BoardState> solve(BoardState i) {
+        lastSolver = new KlotskiSolverASearchTrieOptLayoutGen();
+        return lastSolver.solve(i);
+    }
+
+    @Override
+    public String getName() {
+        return "A*+Trie+OptLG";
+    }
+
+    @Override
+    public int getNodesExplored() {
+        return lastSolver != null ? lastSolver.getNodesExplored() : -1;
+    }
+}
+
+// 修改 NewKlotskiSolverWrapper 类，修正方法调用
+class NewKlotskiSolverWrapper implements KlotskiSolverInterface {
+    private controller.solver.KlotskiSolver solver; // 保存求解器实例
+    private int nodesExplored = -1;
+
+    public NewKlotskiSolverWrapper(controller.solver.KlotskiSolver solver) {
+        this.solver = solver;
+    }
+
+    @Override
+    public List<BoardState> solve(BoardState initialState) {
+        // 直接使用实例进行求解
+        List<BoardState> path = solver.solve(initialState);
+        nodesExplored = solver.getNodesExplored();
+        return path;
+    }
+
+    @Override
+    public String getName() {
+        return "BFS+Trie V3.2";
+    }
+
+    @Override
+    public int getNodesExplored() {
+        return nodesExplored;
+    }
+}
 
 // 修改LayoutConfig类，移除手动设置的目标状态
 class LayoutConfig {
@@ -272,7 +322,7 @@ class LayoutConfig {
 public class KlotskiBenchmark {
 
     private static final long SOLVE_TIMEOUT_MS = 60 * 1000;
-    private static final int RUNS_PER_SOLVER = 100; // <<< Number of runs for averaging
+    private static final int RUNS_PER_SOLVER = 50; // <<< Number of runs for averaging
 
     /**
      * 定义测试布局的初始状态
@@ -351,18 +401,21 @@ public class KlotskiBenchmark {
     /**
      * 定义求解器算法
      * @param targetState 目标状态
+     * @param solver 求解器实例
      * @return 求解器包装器列表
      */
-    private static List<KlotskiSolverInterface> defineSolvers(BoardState targetState) {
+    private static List<KlotskiSolverInterface> defineSolvers(BoardState targetState, controller.solver.KlotskiSolver solver) {
         List<KlotskiSolverInterface> solvers = new ArrayList<>();
         solvers.add(new AStarHashMapSolverWrapper());
-        solvers.add(new AStarTrieSolverWrapper());
-        solvers.add(new BFSSolverWrapper());
-        solvers.add(new BiBFSSolverWrapper(targetState));
-        solvers.add(new TrieBFSSolverWrapper());
-        solvers.add(new BiBFSSymmetrySolverWrapper(targetState));
+        //solvers.add(new AStarTrieSolverWrapper());
+        //solvers.add(new BFSSolverWrapper());
+        //solvers.add(new BiBFSSolverWrapper(targetState));
+        //solvers.add(new TrieBFSSolverWrapper());
+        //solvers.add(new BiBFSSymmetrySolverWrapper(targetState));
         solvers.add(new BiBFSOptLayoutGenSolverWrapper(targetState));
         solvers.add(new BFSTrieOptLayoutGenSolverWrapper());
+        //solvers.add(new ASearchTrieOptLayoutGenSolverWrapper()); // 添加新的 A*+Trie+OptLG 求解器
+        solvers.add(new NewKlotskiSolverWrapper(solver));
         //solvers.add(new PDBSolverWrapper());
         return solvers;
     }
@@ -426,13 +479,12 @@ public class KlotskiBenchmark {
         System.out.println("\nCalculating target states using BFS solver...");
         for (LayoutConfig config : layoutConfigs) {
             System.out.println("Calculating target state for layout: " + config.name);
-            
+
             // 创建BFS求解器实例计算目标状态
             KlotskiSolverBFS targetFinder = new KlotskiSolverBFS();
             List<BoardState> solution = targetFinder.solve(config.initialState);
             
             if (solution.isEmpty()) {
-                System.out.println("WARNING: 无法为 " + config.name + " 找到目标状态。跳过此布局。");
                 continue;
             }
             
@@ -453,8 +505,12 @@ public class KlotskiBenchmark {
             BoardState initialState = config.initialState;
             BoardState targetState = config.targetState;
             
-            // 为每个布局生成定制的求解器
-            List<KlotskiSolverInterface> solvers = defineSolvers(targetState);
+            // 创建新的求解器实例（不需要预计算全局Trie）
+            System.out.println("\n--- 为布局 " + layoutName + " 创建新求解器 ---");
+            controller.solver.KlotskiSolver newSolver = new controller.solver.KlotskiSolver();
+            
+            // 将求解器实例传入
+            List<KlotskiSolverInterface> solvers = defineSolvers(targetState, newSolver);
             
             results.put(layoutName, new LinkedHashMap<>());
 
@@ -557,12 +613,5 @@ public class KlotskiBenchmark {
 
         System.out.println("\nBenchmark finished.");
     }
-
-    // --- Placeholder/Dummy Solver Classes (Ensure these match your actual classes) ---
-    static class KlotskiSolver_BFS_Original { List<BoardState> solve(BoardState i) { System.err.println("BFS Not Implemented"); return Collections.emptyList(); } }
-    static class KlotskiSolver_BiBFS { List<BoardState> solve(BoardState i, BoardState t) { System.err.println("BiBFS Not Implemented"); return Collections.emptyList(); } }
-    static class KlotskiSolver_IDDFS { List<BoardState> solve(BoardState i) { System.err.println("IDDFS Not Implemented"); return Collections.emptyList(); } }
-    static class KlotskiSolver_TrieBFS { List<BoardState> solve(BoardState i) { System.err.println("TrieBFS Not Implemented"); return Collections.emptyList(); } }
-    // KlotskiSolver (for A*) is assumed to exist
 }
 

@@ -1,4 +1,7 @@
-package controller.solver;
+package controller.solverArchived;
+
+import controller.solver.BoardSerializer;
+import controller.solver.BoardState;
 
 import java.util.*;
 import java.io.*; // For persistence

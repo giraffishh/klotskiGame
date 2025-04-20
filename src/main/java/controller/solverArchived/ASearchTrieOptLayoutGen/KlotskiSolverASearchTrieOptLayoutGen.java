@@ -1,4 +1,4 @@
-package controller.solver.ASearchTrieOptLayoutGen; // Can reuse package or add V2
+package controller.solverArchived.ASearchTrieOptLayoutGen; // Can reuse package or add V2
 
 import controller.solver.BoardSerializer;
 import controller.solver.BoardState;

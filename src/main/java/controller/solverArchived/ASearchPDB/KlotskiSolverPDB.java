@@ -1,8 +1,8 @@
-package controller.solver.ASearchPDB;
+package controller.solverArchived.ASearchPDB;
 
 import controller.solver.BoardSerializer;
 import controller.solver.BoardState;
-import controller.solver.PatternDatabaseGenerator;
+import controller.solverArchived.PatternDatabaseGenerator;
 
 import java.util.*;
 import java.io.File; // For checking file existence

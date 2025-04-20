@@ -1,4 +1,4 @@
-package controller.solver.BFS;
+package controller.solverArchived.BiBFS;
 
 import controller.solver.BoardSerializer;
 import controller.solver.BoardState;
@@ -15,10 +15,10 @@ import java.util.Queue;
 
 
 /**
- * Solves the Klotski (Hua Rong Dao) puzzle using Breadth-First Search (BFS).
- * 使用广度优先搜索（BFS）解决华容道问题。
+ * Solves the Klotski (Hua Rong Dao) puzzle using Bidirectional Breadth-First Search (Bi-BFS).
+ * 使用双向广度优先搜索（Bi-BFS）解决华容道问题。
  */
-public class KlotskiSolverBFS {
+public class KlotskiSolverBiBFS {
 
     // Constants for directions (optional, but can make code clearer)
     // 方向常量（可选，但能让代码更清晰）
@@ -29,98 +29,133 @@ public class KlotskiSolverBFS {
     private static final int[] DR = {-1, 1, 0, 0}; // Change in row for UP, DOWN, LEFT, RIGHT 行变化
     private static final int[] DC = {0, 0, -1, 1}; // Change in col for UP, DOWN, LEFT, RIGHT 列变化
 
-    // 添加节点计数器
-    private int nodesExplored = 0;
+    private int nodesExplored = 0; // 添加节点计数变量
 
-    // 添加获取节点数的getter方法
+    /**
+     * 返回探索的节点数量
+     * @return 算法执行过程中探索的节点数量
+     */
     public int getNodesExplored() {
         return nodesExplored;
     }
 
     /**
-     * Checks if the given board state represents the winning condition.
-     * The winning condition is defined as the 2x2 Cao Cao block
-     * occupying the bottom center position (cells [3][1], [3][2], [4][1], [4][2]).
-     *
-     * 检查给定的棋盘状态是否满足获胜条件。
-     * 获胜条件定义为 2x2 的曹操方块占据底部中央位置
-     * （单元格 [3][1], [3][2], [4][1], [4][2]）。
-     *
-     * @param state The board state to check. 要检查的棋盘状态。
-     * @return true if the state is a winning state, false otherwise. 如果是获胜状态则返回 true，否则返回 false。
-     */
-    private boolean isGoalState(BoardState state) {
-        int[][] board = state.getBoardArray(); // Get the board representation
-        // Check the four cells for Cao Cao (value 4)
-        return board[3][1] == BoardSerializer.CAO_CAO &&
-                board[3][2] == BoardSerializer.CAO_CAO &&
-                board[4][1] == BoardSerializer.CAO_CAO &&
-                board[4][2] == BoardSerializer.CAO_CAO;
-    }
-
-    /**
-     * Solves the Klotski puzzle starting from the initial state using BFS.
-     * 使用 BFS 从初始状态开始解决华容道难题。
+     * Solves the Klotski puzzle using Bidirectional BFS.
+     * 使用双向 BFS 解决华容道难题。
      *
      * @param initialState The starting board configuration. 初始棋盘配置。
-     * @return A list of BoardState objects representing the shortest path from
-     *         the initial state to a goal state, or an empty list if no solution is found.
-     *         代表从初始状态到目标状态最短路径的 BoardState 对象列表，如果找不到解则返回空列表。
+     * @param targetState The target board configuration (must be specific for Bi-BFS). 目标棋盘配置（对于 Bi-BFS 必须是具体的）。
+     * @return A list of BoardStateTrieTree objects representing the shortest path from
+     *         the initial state to the target state, or an empty list if no solution is found.
+     *         代表从初始状态到目标状态最短路径的 BoardStateTrieTree 对象列表，如果找不到解则返回空列表。
      */
-    public List<BoardState> solve(BoardState initialState) { // Removed targetState parameter
-        // 重置节点计数器
-        nodesExplored = 0;
+    public List<BoardState> solve(BoardState initialState, BoardState targetState) {
+        if (initialState.equals(targetState)) {
+            return Collections.singletonList(initialState);
+        }
 
-        Queue<BoardState> queue = new ArrayDeque<>();
-        // Using a HashMap with potentially millions of entries benefits greatly
-        // from a good hashCode distribution.
-        // 对于可能有数百万条目的 HashMap，良好的 hashCode 分布会带来很大好处。
-        Map<BoardState, BoardState> visitedMap = new HashMap<>(); // Stores state -> predecessor
+        Queue<BoardState> forwardQueue = new ArrayDeque<>();
+        Map<BoardState, BoardState> forwardVisited = new HashMap<>(); // state -> predecessor
 
-        queue.offer(initialState);
-        visitedMap.put(initialState, null); // Initial state has no predecessor
-        nodesExplored++; // 计数初始状态
+        Queue<BoardState> backwardQueue = new ArrayDeque<>();
+        Map<BoardState, BoardState> backwardVisited = new HashMap<>(); // state -> predecessor (from target's perspective)
 
-        int statesProcessed = 0; // Counter for debugging/performance check 状态处理计数器
+        forwardQueue.offer(initialState);
+        forwardVisited.put(initialState, null); // Mark initial state visited from forward
 
-        while (!queue.isEmpty()) {
-            BoardState currentState = queue.poll();
-            statesProcessed++;
-            if (statesProcessed % 100000 == 0) { // Print progress less frequently
-                System.out.println("States processed: " + statesProcessed + ", Queue size: " + queue.size() + ", Visited size: " + visitedMap.size());
-            }
+        backwardQueue.offer(targetState);
+        backwardVisited.put(targetState, null); // Mark target state visited from backward
 
-            // Check if the current state is a goal state using the new method
-            // 使用新方法检查当前状态是否为目标状态
-            if (isGoalState(currentState)) {
-                // System.out.println("Solution found after processing " + statesProcessed + " states! Reconstructing path...");
-                // Reconstruct path ending at the winning currentState
-                // 重建以获胜的 currentState 结尾的路径
-                return reconstructPath(visitedMap, currentState);
-            }
+        BoardState meetingNode = null;
+        nodesExplored = 0; // 重置节点计数
 
-            // Generate successors using the newly implemented method
-            // 使用新实现的方法生成后继状态
-            List<BoardState> successors = generateSuccessors(currentState);
+        while (!forwardQueue.isEmpty() && !backwardQueue.isEmpty()) {
+            // Expand forward search by one level
+            int forwardLevelSize = forwardQueue.size();
+            for (int i = 0; i < forwardLevelSize; i++) {
+                BoardState currentForward = forwardQueue.poll();
+                nodesExplored++; // 增加节点计数（正向搜索）
 
-            for (BoardState successor : successors) {
-                // The containsKey check now uses the folding hashCode.
-                // containsKey 检查现在使用折叠哈希码。
-                if (!visitedMap.containsKey(successor)) {
-                    visitedMap.put(successor, currentState); // Store successor and its predecessor
-                    queue.offer(successor);
-                    nodesExplored++; // 计数每个加入队列的新节点
+                // Check for intersection before generating successors
+                if (backwardVisited.containsKey(currentForward)) {
+                    meetingNode = currentForward;
+                    //System.out.println("Intersection found from forward search!");
+                    break; // Exit inner loop
                 }
+
+                List<BoardState> successors = generateSuccessors(currentForward);
+                for (BoardState successor : successors) {
+                    if (!forwardVisited.containsKey(successor)) {
+                        forwardVisited.put(successor, currentForward);
+                        forwardQueue.offer(successor);
+
+                        // Check for intersection immediately after adding
+                        // (Alternative: check at the beginning of the loop)
+                        // if (backwardVisited.containsKey(successor)) {
+                        //    meetingNode = successor;
+                        //    System.out.println("Intersection found after forward step!");
+                        //    break; // Exit inner loop (successors)
+                        // }
+                    }
+                }
+                // if (meetingNode != null) break; // Exit outer loop (level)
+            }
+            if (meetingNode != null) break; // Exit while loop
+
+
+            // Expand backward search by one level
+            int backwardLevelSize = backwardQueue.size();
+            for (int i = 0; i < backwardLevelSize; i++) {
+                BoardState currentBackward = backwardQueue.poll();
+                nodesExplored++; // 增加节点计数（反向搜索）
+
+                // Check for intersection before generating successors
+                if (forwardVisited.containsKey(currentBackward)) {
+                    meetingNode = currentBackward;
+                    //System.out.println("Intersection found from backward search!");
+                    break; // Exit inner loop
+                }
+
+                List<BoardState> predecessors = generateSuccessors(currentBackward); // Successors are predecessors in backward search
+                for (BoardState predecessor : predecessors) {
+                    if (!backwardVisited.containsKey(predecessor)) {
+                        backwardVisited.put(predecessor, currentBackward);
+                        backwardQueue.offer(predecessor);
+
+                        // Check for intersection immediately after adding
+                        // if (forwardVisited.containsKey(predecessor)) {
+                        //    meetingNode = predecessor;
+                        //    System.out.println("Intersection found after backward step!");
+                        //    break; // Exit inner loop (predecessors)
+                        // }
+                    }
+                }
+                // if (meetingNode != null) break; // Exit outer loop (level)
+            }
+            if (meetingNode != null) break; // Exit while loop
+
+            if (nodesExplored % 50000 == 0) { // Print progress occasionally
+                //System.out.println("Levels processed (approx): " + nodesExplored +
+                       // ", FwdQ: " + forwardQueue.size() + ", BwdQ: " + backwardQueue.size() +
+                        //", FwdV: " + forwardVisited.size() + ", BwdV: " + backwardVisited.size());
             }
         }
 
-        System.out.println("No solution found after processing " + statesProcessed + " states.");
-        return Collections.emptyList(); // Return empty list if no solution
+
+        if (meetingNode != null) {
+            //System.out.println("Solution found! Reconstructing path via meeting node: " + meetingNode);
+            return reconstructBiBFSPath(forwardVisited, backwardVisited, meetingNode);
+        } else {
+            //System.out.println("No solution found after processing levels (approx): " + nodesExplored);
+            return Collections.emptyList();
+        }
     }
 
     /**
      * Generates all valid next board states from the current state by moving each piece.
      * 通过移动每个棋子，从当前状态生成所有有效的下一步棋盘状态。
+     * (Code is identical to the previous version)
+     * (代码与上一版本相同)
      *
      * @param currentState The current board state. 当前棋盘状态。
      * @return A list of valid successor board states. 有效后继棋盘状态的列表。
@@ -148,8 +183,6 @@ public class KlotskiSolverBFS {
 
                 // Identify the piece and its dimensions based on its top-left corner (r, c)
                 // 根据左上角 (r, c) 识别棋子及其尺寸
-                int pieceHeight = 1;
-                int pieceWidth = 1;
                 List<int[]> pieceCells = new ArrayList<>(); // Store cells occupied by this piece 存储此棋子占用的单元格
 
                 // Use constants from BoardSerializer
@@ -163,7 +196,6 @@ public class KlotskiSolverBFS {
                         // Basic boundary check before accessing c+1
                         // 访问 c+1 前的基本边界检查
                         if (c + 1 < COLS && board[r][c+1] == pieceType) {
-                            pieceWidth = 2;
                             pieceCells.add(new int[]{r, c});
                             pieceCells.add(new int[]{r, c + 1});
                             processed[r][c] = true;
@@ -174,7 +206,6 @@ public class KlotskiSolverBFS {
                         // Basic boundary check before accessing r+1
                         // 访问 r+1 前的基本边界检查
                         if (r + 1 < ROWS && board[r+1][c] == pieceType) {
-                            pieceHeight = 2;
                             pieceCells.add(new int[]{r, c});
                             pieceCells.add(new int[]{r + 1, c});
                             processed[r][c] = true;
@@ -188,8 +219,6 @@ public class KlotskiSolverBFS {
                                 board[r][c+1] == pieceType &&
                                 board[r+1][c] == pieceType &&
                                 board[r+1][c+1] == pieceType) {
-                            pieceHeight = 2;
-                            pieceWidth = 2;
                             pieceCells.add(new int[]{r, c});
                             pieceCells.add(new int[]{r, c + 1});
                             pieceCells.add(new int[]{r + 1, c});
@@ -275,8 +304,8 @@ public class KlotskiSolverBFS {
                             nextBoard[cell[0]][cell[1]] = pieceType;
                         }
 
-                        // Create new BoardState and add to successors
-                        // 创建新的 BoardState 并添加到后继列表中
+                        // Create new BoardStateTrieTree and add to successors
+                        // 创建新的 BoardStateTrieTree 并添加到后继列表中
                         successors.add(new BoardState(nextBoard)); // Constructor serializes the array 构造函数序列化数组
                     }
                 }
@@ -287,81 +316,113 @@ public class KlotskiSolverBFS {
 
 
     /**
-     * Reconstructs the path from the initial state to the target state using the visited map.
-     * 使用 visitedMap 从初始状态重建到目标状态的路径。
+     * Reconstructs the path found by Bi-BFS.
+     * 重建 Bi-BFS 找到的路径。
      *
-     * @param visitedMap A map where keys are states and values are their predecessors. 键是状态，值是其前驱的映射。
-     * @param targetState The final state reached. 到达的最终状态。
-     * @return A list of BoardState objects representing the path, from initial to target. 代表路径的 BoardState 对象列表，从初始到目标。
+     * @param forwardVisited Map tracking predecessors from the initial state. 从初始状态跟踪前驱的 Map。
+     * @param backwardVisited Map tracking predecessors from the target state. 从目标状态跟踪前驱的 Map。
+     * @param meetingNode The state where the two searches met. 两个搜索相遇的状态。
+     * @return The complete path from initial to target state. 从初始到目标状态的完整路径。
      */
-    private List<BoardState> reconstructPath(Map<BoardState, BoardState> visitedMap, BoardState targetState) {
+    private List<BoardState> reconstructBiBFSPath(Map<BoardState, BoardState> forwardVisited,
+                                                  Map<BoardState, BoardState> backwardVisited,
+                                                  BoardState meetingNode) {
         LinkedList<BoardState> path = new LinkedList<>();
-        BoardState current = targetState;
+
+        // Reconstruct path from meetingNode back to initialState
+        BoardState current = meetingNode;
         while (current != null) {
-            path.addFirst(current); // Add to the beginning to reverse the path
-            current = visitedMap.get(current); // Move to the predecessor
+            path.addFirst(current);
+            current = forwardVisited.get(current);
         }
+
+        // Reconstruct path from meetingNode (predecessor in backward search) back to targetState
+        current = backwardVisited.get(meetingNode); // Start from the node *before* the meeting node in the backward path
+        while (current != null) {
+            path.addLast(current); // Append to the end
+            current = backwardVisited.get(current);
+        }
+
         return path;
     }
 
     // --- Main method for testing ---
     public static void main(String[] args) {
-        System.out.println("Klotski Solver with Folding Hash and Dynamic Goal Test");
+        System.out.println("Klotski Solver with Bidirectional BFS Test");
         System.out.println("NOTE: Requires BoardSerializer class to be fully implemented and accessible.");
-        System.out.println("      Goal is Cao Cao at bottom center.");
+        System.out.println("      Requires a SPECIFIC target state for backward search.");
 
         // --- Example Setup ---
         try {
             // "横刀立马" initial state
-            // “横刀立马” 初始状态
             int[][] initialArray = {
-                    {BoardSerializer.VERTICAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.VERTICAL},
-                    {BoardSerializer.VERTICAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.VERTICAL},
+                    {BoardSerializer.EMPTY, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.EMPTY},
+                    {BoardSerializer.SOLDIER, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.SOLDIER},
                     {BoardSerializer.VERTICAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.VERTICAL},
-                    {BoardSerializer.VERTICAL, BoardSerializer.SOLDIER, BoardSerializer.SOLDIER, BoardSerializer.VERTICAL},
-                    {BoardSerializer.SOLDIER, BoardSerializer.EMPTY, BoardSerializer.EMPTY, BoardSerializer.SOLDIER}
+                    {BoardSerializer.VERTICAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.VERTICAL},
+                    {BoardSerializer.SOLDIER, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.SOLDIER}
             };
 
 
-            // Create BoardState objects (constructor now handles serialization)
-            // 创建 BoardState 对象（构造函数现在处理序列化）
+            // Define a SPECIFIC target state for Bi-BFS
+            // 为 Bi-BFS 定义一个具体的目标状态
+            // Example: Cao Cao at bottom center, a common known solvable end state.
+            // 示例：曹操在底部中央，一个常见的已知可解最终状态。
+            int[][] targetArray = {
+                    {BoardSerializer.VERTICAL, BoardSerializer.VERTICAL, BoardSerializer.SOLDIER, BoardSerializer.SOLDIER},
+                    {BoardSerializer.VERTICAL, BoardSerializer.VERTICAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL},
+                    {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL},
+                    {BoardSerializer.SOLDIER, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.EMPTY},
+                    {BoardSerializer.SOLDIER, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.EMPTY}
+            };
+            // Alternative simpler target (might be unreachable from some starts)
+            /* int[][] targetArray = {
+                    {1, 2, 2, 1},
+                    {1, 2, 2, 1},
+                    {3, 0, 0, 3},
+                    {3, 4, 4, 3},
+                    {0, 4, 4, 0} // Example target, might need adjustment
+            };*/
+
+
+            // Create BoardStateTrieTree objects
             BoardState initialState = new BoardState(initialArray);
-            // Target state is no longer predefined, the isGoalState method handles the check.
-            // 目标状态不再预定义，isGoalState 方法处理检查。
+            BoardState targetState = new BoardState(targetArray);
 
             System.out.println("Initial State (Layout: " + initialState.getLayout() + ", Hash: " + initialState.hashCode() + "):");
-            BoardSerializer.printBoard(initialState.getBoardArray()); // Assumes printBoard exists 假设 printBoard 存在
+            BoardSerializer.printBoard(initialState.getBoardArray());
 
-            // Removed target state printing as it's now dynamic
+            System.out.println("\nTarget State (Layout: " + targetState.getLayout() + ", Hash: " + targetState.hashCode() + "):");
+            BoardSerializer.printBoard(targetState.getBoardArray());
 
-            KlotskiSolverBFS solver = new KlotskiSolverBFS();
 
-            System.out.println("\nStarting solve...");
+            KlotskiSolverBiBFS solver = new KlotskiSolverBiBFS();
+
+            System.out.println("\nStarting Bi-BFS solve...");
             long startTime = System.currentTimeMillis();
-            // Call solve without the targetState argument
-            List<BoardState> path = solver.solve(initialState);
+            // Call solve with both initial and target states
+            List<BoardState> path = solver.solve(initialState, targetState);
             long endTime = System.currentTimeMillis();
             System.out.println("\nSolve finished in " + (endTime - startTime) + " ms.");
 
 
             if (path.isEmpty()) {
-                System.out.println("No solution found.");
+                System.out.println("No solution found (or path reconstruction failed).");
             } else {
                 System.out.println("Solution found with " + (path.size() - 1) + " steps.");
                 // Optionally print the path (can be very long)
-                // 可选：打印路径（可能非常长）
                 /* // Uncomment to print the full path
                 int step = 0;
-                for (BoardState state : path) {
+                for (BoardStateTrieTree state : path) {
                     System.out.println("\nStep " + step++);
                     BoardSerializer.printBoard(state.getBoardArray());
-                    System.out.println("  Layout: " + state.getLayout());
+                    // System.out.println("  Layout: " + state.getLayout());
                 }
                 */
                 // Print only the final state
                 System.out.println("\nFinal State (Step " + (path.size() - 1) + "):");
                 BoardSerializer.printBoard(path.get(path.size() - 1).getBoardArray());
-                System.out.println("  Layout: " + path.get(path.size() - 1).getLayout());
+                // System.out.println("  Layout: " + path.get(path.size() - 1).getLayout());
 
             }
 

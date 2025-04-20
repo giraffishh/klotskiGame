@@ -1,4 +1,4 @@
-package controller.solver.BiBFSOptLayoutGen; // New package
+package controller.solverArchived.BiBFSOptLayoutGen; // New package
 
 import controller.solver.BoardSerializer;
 import controller.solver.BoardState;
