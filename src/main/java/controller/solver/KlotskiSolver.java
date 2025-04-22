@@ -1,55 +1,54 @@
-package controller.solver; // Consistent package
+package controller.solver; // Ensure this matches BoardSerializer's package
+
+// Assuming BoardSerializer and BoardState are in this package
 
 import java.util.*;
 
-// --- TrieNode definition --- (Keep as is)
-class TrieNode {
-    TrieNode[] children = new TrieNode[5]; // 0:Empty, 1:Soldier, 2:Vertical, 3:Horizontal, 4:CaoCao (Based on CODE_*)
-    ElementNode elementNodeLink = null;
-}
-
-// --- ElementNode definition --- (Keep as is)
-class ElementNode {
+// --- ElementNode definition (Unchanged from V4.2.1) ---
+class ElementNode implements Comparable<ElementNode> {
     BoardState state;
     ElementNode father;
-    int moveCount;
+    int g; // ABSOLUTE cost from original start 'O'
+    int h;
+    int f; // f = g + h
 
-    public ElementNode(BoardState state, ElementNode father, int moveCount) {
-        this.state = state;
-        this.father = father;
-        this.moveCount = moveCount;
+    public ElementNode(BoardState s, ElementNode fth, int absolute_g, int h) {
+        this.state = s;
+        this.father = fth;
+        this.g = absolute_g;
+        this.h = h;
+        this.f = this.g + h;
     }
+    @Override public int compareTo(ElementNode o) { if (f != o.f) return Integer.compare(f, o.f); return Integer.compare(h, o.h); }
+    @Override public boolean equals(Object o) { if (this == o) return true; if (o == null || getClass() != o.getClass()) return false; ElementNode that = (ElementNode) o; return state.getLayout() == that.state.getLayout(); }
+    @Override public int hashCode() { return state.hashCode(); }
 }
 
 /**
- * V3.3: Optimized BFS + Trie + Symmetry + Direct Layout Operations.
- * Guidance function directly calls the core solve method.
- * generateSuccessorLayouts now operates directly on the long layout.
+ * V4.2.3: A* Solver - Rigorously uses BoardSerializer codes.
+ * - generateSuccessorLayouts, calculateHeuristic, isGoalLayout use BoardSerializer.CODE_*
+ * - Other logic remains from V4.2.1 (Removed Enqueue Global Prune).
  */
 public class KlotskiSolver {
 
     // --- Constants ---
-    private static final int[] DR = {-1, 1, 0, 0}; // Up, Down, Left, Right
+    private static final int[] DR = {-1, 1, 0, 0};
     private static final int[] DC = {0, 0, -1, 1};
+    // Use constants from BoardSerializer directly
     private static final int ROWS = BoardSerializer.ROWS;
     private static final int COLS = BoardSerializer.COLS;
-    private static final int BITS_PER_CELL = 3;
-    private static final long CELL_MASK_3BIT = (1L << BITS_PER_CELL) - 1L; // 0b111 = 7L
-
-    // Use codes directly from BoardSerializer for consistency
-    private static final long CODE_EMPTY = BoardSerializer.arrayToCodeMap.get(BoardSerializer.EMPTY);         // 0
-    private static final long CODE_SOLDIER = BoardSerializer.arrayToCodeMap.get(BoardSerializer.SOLDIER);     // 1
-    private static final long CODE_VERTICAL = BoardSerializer.arrayToCodeMap.get(BoardSerializer.VERTICAL);   // 2
-    private static final long CODE_HORIZONTAL = BoardSerializer.arrayToCodeMap.get(BoardSerializer.HORIZONTAL); // 3
-    private static final long CODE_CAO_CAO = BoardSerializer.arrayToCodeMap.get(BoardSerializer.CAO_CAO);       // 4
-    private static final long CODE_CAO_CAO_GOAL_CHECK = CODE_CAO_CAO; // Use the actual code for goal check
+    private static final int BITS_PER_CELL = 3; // Should match BoardSerializer if used internally
+    private static final long CELL_MASK_3BIT = (1L << BITS_PER_CELL) - 1L; // Should match BoardSerializer
 
     // --- Instance Variables ---
     private int nodesExplored = 0;
+    private final Map<Long, Integer> globalBest_g; // canonicalLayout -> best absolute g
+
+    public KlotskiSolver() {
+        this.globalBest_g = new HashMap<>();
+    }
 
     public int getNodesExplored() { return nodesExplored; }
-
-    // --- Static Helper Methods ---
 
     /**
      * Gets the 3-bit code for a cell directly from the layout long.
@@ -69,7 +68,6 @@ public class KlotskiSolver {
         for (int r = 0; r < ROWS; r++) {
             for (int c = 0; c < COLS; c++) {
                 long cellCode = getCellCode(layout, r, c);
-                // Place the code in the mirrored column c' = COLS - 1 - c
                 int mirroredCol = COLS - 1 - c;
                 int shift = (r * COLS + mirroredCol) * BITS_PER_CELL;
                 symmetricLayout |= (cellCode << shift);
@@ -77,281 +75,204 @@ public class KlotskiSolver {
         }
         return symmetricLayout;
     }
+    private static long getCanonicalLayout(long layout) { return Math.min(layout, getSymmetricLayout(layout)); }
 
     /**
-     * Generates successor layouts by directly manipulating the long representation.
-     * Avoids creating intermediate int[][] arrays.
+     * Generates successor layouts - Uses BoardSerializer codes RIGOROUSLY.
      */
     private static List<Long> generateSuccessorLayouts(long currentLayout) {
         List<Long> successorLayouts = new ArrayList<>();
-        boolean[] processedCell = new boolean[ROWS * COLS]; // Track processed cells by index
+        boolean[] processedCell = new boolean[ROWS * COLS];
 
         for (int r = 0; r < ROWS; r++) {
             for (int c = 0; c < COLS; c++) {
                 int cellIndex = r * COLS + c;
                 if (processedCell[cellIndex]) continue;
 
+                // Use codes from BoardSerializer
                 long pieceCode = getCellCode(currentLayout, r, c);
-                processedCell[cellIndex] = true; // Mark current cell as processed
+                processedCell[cellIndex] = true;
 
-                if (pieceCode == CODE_EMPTY) {
-                    continue; // Skip empty cells
-                }
+                if (pieceCode == BoardSerializer.CODE_EMPTY) continue; // CORRECT CODE
 
-                List<int[]> pieceCellsCoords = new ArrayList<>(); // Stores {r, c} for the piece
-                pieceCellsCoords.add(new int[]{r, c}); // Start with the current cell
+                List<int[]> pieceCellsCoords = new ArrayList<>();
+                pieceCellsCoords.add(new int[]{r, c});
 
-                // --- Identify the full piece based on its code and neighbors ---
-                if (pieceCode == CODE_SOLDIER) {
-                    // Soldier occupies only one cell, already added.
-                } else if (pieceCode == CODE_HORIZONTAL) {
-                    // Check right neighbor
+                // Identify full piece using BoardSerializer codes
+                if (pieceCode == BoardSerializer.CODE_SOLDIER) {} // CORRECT CODE
+                else if (pieceCode == BoardSerializer.CODE_HORIZONTAL) { // CORRECT CODE (checks for 3)
                     if (c + 1 < COLS && getCellCode(currentLayout, r, c + 1) == pieceCode) {
-                        pieceCellsCoords.add(new int[]{r, c + 1});
-                        processedCell[cellIndex + 1] = true;
-                    } else continue; // Invalid state: Horizontal piece code without matching neighbor
-                } else if (pieceCode == CODE_VERTICAL) {
-                    // Check bottom neighbor
+                        pieceCellsCoords.add(new int[]{r, c + 1}); processedCell[cellIndex + 1] = true;
+                    } else continue; // Invalid state
+                } else if (pieceCode == BoardSerializer.CODE_VERTICAL) { // CORRECT CODE (checks for 2)
                     if (r + 1 < ROWS && getCellCode(currentLayout, r + 1, c) == pieceCode) {
-                        pieceCellsCoords.add(new int[]{r + 1, c});
-                        processedCell[cellIndex + COLS] = true;
-                    } else continue; // Invalid state: Vertical piece code without matching neighbor
-                } else if (pieceCode == CODE_CAO_CAO) {
-                    // Check right, bottom, and bottom-right neighbors
-                    boolean rightOk = c + 1 < COLS && getCellCode(currentLayout, r, c + 1) == pieceCode;
-                    boolean bottomOk = r + 1 < ROWS && getCellCode(currentLayout, r + 1, c) == pieceCode;
-                    boolean bottomRightOk = c + 1 < COLS && r + 1 < ROWS && getCellCode(currentLayout, r + 1, c + 1) == pieceCode;
-                    if (rightOk && bottomOk && bottomRightOk) {
-                        pieceCellsCoords.add(new int[]{r, c + 1});
-                        pieceCellsCoords.add(new int[]{r + 1, c});
-                        pieceCellsCoords.add(new int[]{r + 1, c + 1});
-                        processedCell[cellIndex + 1] = true;
-                        processedCell[cellIndex + COLS] = true;
-                        processedCell[cellIndex + COLS + 1] = true;
-                    } else continue; // Invalid state: CaoCao code without matching neighbors
+                        pieceCellsCoords.add(new int[]{r + 1, c}); processedCell[cellIndex + COLS] = true;
+                    } else continue; // Invalid state
+                } else if (pieceCode == BoardSerializer.CODE_CAO_CAO) { // CORRECT CODE (checks for 4)
+                    boolean rOk = c + 1 < COLS && getCellCode(currentLayout, r, c + 1) == pieceCode;
+                    boolean bOk = r + 1 < ROWS && getCellCode(currentLayout, r + 1, c) == pieceCode;
+                    boolean brOk = c + 1 < COLS && r + 1 < ROWS && getCellCode(currentLayout, r + 1, c + 1) == pieceCode;
+                    if (rOk && bOk && brOk) {
+                        pieceCellsCoords.add(new int[]{r, c + 1}); processedCell[cellIndex + 1] = true;
+                        pieceCellsCoords.add(new int[]{r + 1, c}); processedCell[cellIndex + COLS] = true;
+                        pieceCellsCoords.add(new int[]{r + 1, c + 1}); processedCell[cellIndex + COLS + 1] = true;
+                    } else continue; // Invalid state
                 } else {
-                    continue; // Should not happen with valid codes
+                    System.err.println("Warning: generateSuccessorLayouts unexpected piece code " + pieceCode);
+                    continue;
                 }
 
-                // --- Try moving the identified piece in 4 directions ---
+                // Try moving in 4 directions
                 for (int dir = 0; dir < 4; dir++) {
                     int dr = DR[dir], dc = DC[dir];
                     boolean canMove = true;
-                    List<int[]> targetCellsCoords = new ArrayList<>(); // Store {nr, nc} for target cells
+                    List<int[]> targetCellsCoords = new ArrayList<>();
 
-                    // Check if all target cells are valid and empty (or part of the original piece)
                     for (int[] cellCoord : pieceCellsCoords) {
-                        int nr = cellCoord[0] + dr;
-                        int nc = cellCoord[1] + dc;
-
-                        // Check bounds
-                        if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) {
-                            canMove = false;
-                            break;
-                        }
+                        int nr = cellCoord[0] + dr; int nc = cellCoord[1] + dc;
+                        if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) { canMove = false; break; }
                         targetCellsCoords.add(new int[]{nr, nc});
-
-                        // Check if target cell is occupied by a *different* piece
                         boolean targetIsOriginal = false;
-                        for (int[] originalCoord : pieceCellsCoords) {
-                            if (nr == originalCoord[0] && nc == originalCoord[1]) {
-                                targetIsOriginal = true;
-                                break;
-                            }
-                        }
-                        if (!targetIsOriginal && getCellCode(currentLayout, nr, nc) != CODE_EMPTY) {
-                            canMove = false;
-                            break;
-                        }
-                    } // End checking target cells for one direction
+                        for (int[] originalCoord : pieceCellsCoords) { if (nr == originalCoord[0] && nc == originalCoord[1]) { targetIsOriginal = true; break; } }
+                        // Check against BoardSerializer.CODE_EMPTY
+                        if (!targetIsOriginal && getCellCode(currentLayout, nr, nc) != BoardSerializer.CODE_EMPTY) { canMove = false; break; }
+                    }
 
-                    // --- Generate new layout if move is valid ---
                     if (canMove) {
-                        long newLayout = currentLayout;
-                        long clearMask = 0L;
-                        long setMask = 0L;
-
-                        // Create mask to clear original piece cells
-                        for (int[] cellCoord : pieceCellsCoords) {
-                            clearMask |= (CELL_MASK_3BIT << ((cellCoord[0] * COLS + cellCoord[1]) * BITS_PER_CELL));
-                        }
-                        // Create mask to set new piece cells with the correct piece code
-                        for (int[] targetCoord : targetCellsCoords) {
-                            setMask |= (pieceCode << ((targetCoord[0] * COLS + targetCoord[1]) * BITS_PER_CELL));
-                        }
-
-                        // Apply masks: clear old positions, then set new positions
+                        long newLayout = currentLayout; long clearMask = 0L; long setMask = 0L;
+                        for (int[] cellCoord : pieceCellsCoords) { clearMask |= (CELL_MASK_3BIT << ((cellCoord[0] * COLS + cellCoord[1]) * BITS_PER_CELL)); }
+                        // Set with the correct pieceCode (which IS the layout code)
+                        for (int[] targetCoord : targetCellsCoords) { setMask |= (pieceCode << ((targetCoord[0] * COLS + targetCoord[1]) * BITS_PER_CELL)); }
                         newLayout = (newLayout & ~clearMask) | setMask;
                         successorLayouts.add(newLayout);
                     }
-                } // End loop through 4 directions
-            } // End loop c
-        } // End loop r
+                }
+            }
+        }
         return successorLayouts;
     }
 
     /**
-     * Checks if the layout represents the goal state (Cao Cao at bottom center).
-     * Uses direct bit checks.
+     * Calculates heuristic - Uses BoardSerializer codes.
+     */
+    private static int calculateHeuristic(long layout) {
+        for (int r = 0; r < ROWS - 1; r++) {
+            for (int c = 0; c < COLS - 1; c++) {
+                // Use BoardSerializer.CODE_CAO_CAO
+                if (getCellCode(layout, r, c) == BoardSerializer.CODE_CAO_CAO &&
+                        getCellCode(layout, r, c + 1) == BoardSerializer.CODE_CAO_CAO &&
+                        getCellCode(layout, r + 1, c) == BoardSerializer.CODE_CAO_CAO &&
+                        getCellCode(layout, r + 1, c + 1) == BoardSerializer.CODE_CAO_CAO) {
+                    int goalR = 3; int goalC = 1; return Math.abs(r - goalR) + Math.abs(c - goalC);
+                }
+            }
+        }
+        return Integer.MAX_VALUE / 2; // Or check isGoalLayout first
+    }
+
+    /**
+     * Checks goal layout - Uses BoardSerializer codes.
      */
     private boolean isGoalLayout(long layout) {
-        // Goal position for Cao Cao (2x2 block) is typically cells (3,1), (3,2), (4,1), (4,2)
-        // Indices: (3*4+1)=13, (3*4+2)=14, (4*4+1)=17, (4*4+2)=18
-        // Let's assume goal is CaoCao occupying bottom row, columns 1 and 2
-        // Cell indices: row 4, col 1 => 4*4+1 = 17
-        // Cell indices: row 4, col 2 => 4*4+2 = 18
-        // We only need to check two cells uniquely identifying the goal position for CaoCao
-        boolean cell17_ok = getCellCode(layout, 4, 1) == CODE_CAO_CAO_GOAL_CHECK;
-        boolean cell18_ok = getCellCode(layout, 4, 2) == CODE_CAO_CAO_GOAL_CHECK;
-        // Optionally, check the other two cells for robustness, though redundant if generation is correct
-        // boolean cell13_ok = getCellCode(layout, 3, 1) == CODE_CAO_CAO_GOAL_CHECK;
-        // boolean cell14_ok = getCellCode(layout, 3, 2) == CODE_CAO_CAO_GOAL_CHECK;
-        // return cell13_ok && cell14_ok && cell17_ok && cell18_ok;
-        return cell17_ok && cell18_ok; // Minimal check
+        // Use BoardSerializer.CODE_CAO_CAO
+        boolean cell17_ok = getCellCode(layout, 4, 1) == BoardSerializer.CODE_CAO_CAO;
+        boolean cell18_ok = getCellCode(layout, 4, 2) == BoardSerializer.CODE_CAO_CAO;
+        return cell17_ok && cell18_ok;
+    }
+
+    private boolean updateGlobalBest(long canonicalLayout, int newAbsolute_g) {
+        int currentBest = globalBest_g.getOrDefault(canonicalLayout, Integer.MAX_VALUE);
+        if (newAbsolute_g < currentBest) { globalBest_g.put(canonicalLayout, newAbsolute_g); return true; }
+        return false;
     }
 
     /**
-     * Inserts the canonical form of the layout into the Trie.
+     * Solves using A* (V4.2.3 - Fixed piece codes)
      */
-    private static void trieInsertLayout(TrieNode root, long layoutToInsert, ElementNode elementToLink) {
-        long symmetricLayout = getSymmetricLayout(layoutToInsert);
-        long canonicalLayout = Math.min(layoutToInsert, symmetricLayout);
-        TrieNode current = root;
-        final int CELLS_COUNT = ROWS * COLS;
-
-        for (int i = 0; i < CELLS_COUNT; i++) {
-            int shift = i * BITS_PER_CELL;
-            int pieceCodeIndex = (int)((canonicalLayout >> shift) & CELL_MASK_3BIT);
-
-            // Ensure the index is valid for the children array
-            if (pieceCodeIndex < 0 || pieceCodeIndex >= current.children.length) {
-                System.err.println("Error: Invalid piece code index " + pieceCodeIndex + " derived from layout " + canonicalLayout + " at cell " + i);
-                return; // Should not happen with valid layouts
-            }
-
-            if (current.children[pieceCodeIndex] == null) {
-                current.children[pieceCodeIndex] = new TrieNode();
-            }
-            current = current.children[pieceCodeIndex];
-        }
-        // Only link if this state hasn't been reached before (or reached at same depth by BFS nature)
-        if (current.elementNodeLink == null) {
-            current.elementNodeLink = elementToLink;
-        }
-        // Optional: Could compare moveCount if allowing re-visiting, but BFS naturally finds shortest first.
-        // else if (elementToLink.moveCount < current.elementNodeLink.moveCount) {
-        //    current.elementNodeLink = elementToLink; // Update if a shorter path is found (relevant for non-BFS)
-        // }
-    }
-
-    /**
-     * Looks up the canonical form of the layout in the Trie.
-     * Returns the linked ElementNode if found, otherwise null.
-     */
-    private static ElementNode trieLookupLayout(TrieNode root, long layoutToLookup) {
-        long symmetricLayout = getSymmetricLayout(layoutToLookup);
-        long canonicalLayout = Math.min(layoutToLookup, symmetricLayout);
-        TrieNode current = root;
-        final int CELLS_COUNT = ROWS * COLS;
-
-        for (int i = 0; i < CELLS_COUNT; i++) {
-            int shift = i * BITS_PER_CELL;
-            int pieceCodeIndex = (int)((canonicalLayout >> shift) & CELL_MASK_3BIT);
-
-            if (pieceCodeIndex < 0 || pieceCodeIndex >= current.children.length) return null; // Invalid code path
-            if (current.children[pieceCodeIndex] == null) {
-                return null; // State not found
-            }
-            current = current.children[pieceCodeIndex];
-        }
-        return current.elementNodeLink; // Return the node found at the end of the path
-    }
-
-    /**
-     * Core solver: Finds the shortest path from the given startState to the goal
-     * using BFS + Trie + Symmetry + Direct Layout Operations.
-     */
-    public List<BoardState> solve(BoardState startState) {
+    public List<BoardState> solve(BoardState startState, int start_g) {
+        // --- Logic unchanged from V4.2.1 ---
         this.nodesExplored = 0;
-        long initialLayout = startState.getLayout();
+        long startLayout = startState.getLayout();
+        long canonicalStartLayout = getCanonicalLayout(startLayout);
 
-        if (isGoalLayout(initialLayout)) {
-            System.out.println("Start state is already the goal.");
+        updateGlobalBest(canonicalStartLayout, start_g);
+
+        if (isGoalLayout(startLayout)) { // Uses corrected isGoalLayout
             this.nodesExplored = 1;
             return Collections.singletonList(startState);
         }
 
-        TrieNode localTrieRoot = new TrieNode();
-        Queue<ElementNode> queue = new ArrayDeque<>();
-        ElementNode initialElement = new ElementNode(startState, null, 0);
+        PriorityQueue<ElementNode> openSet = new PriorityQueue<>();
+        Map<Long, Integer> visitedInThisSearch = new HashMap<>();
 
-        trieInsertLayout(localTrieRoot, initialLayout, initialElement);
-        queue.offer(initialElement);
-        // long statesAdded = 1; // Not strictly needed for logic
+        int initialH = calculateHeuristic(startLayout); // Uses corrected heuristic
+        ElementNode initialElement = new ElementNode(startState, null, start_g, initialH);
 
-        while (!queue.isEmpty()) {
-            ElementNode currentNode = queue.poll();
-            nodesExplored++;
+        openSet.add(initialElement);
+        visitedInThisSearch.put(canonicalStartLayout, start_g);
+
+        while (!openSet.isEmpty()) {
+            ElementNode currentNode = openSet.poll();
+            this.nodesExplored++;
             long currentLayout = currentNode.state.getLayout();
-            int currentDepth = currentNode.moveCount;
+            long canonicalCurrentLayout = getCanonicalLayout(currentLayout);
+            int currentAbsolute_g = currentNode.g;
 
-            // Use the optimized successor generation
-            List<Long> successorLayouts = generateSuccessorLayouts(currentLayout);
+            if (isGoalLayout(currentLayout)) { return reconstructPath(currentNode); } // Uses corrected isGoalLayout
+
+            // Dequeue Pruning
+            if (currentAbsolute_g > visitedInThisSearch.getOrDefault(canonicalCurrentLayout, Integer.MAX_VALUE)) continue;
+            if (currentAbsolute_g > globalBest_g.getOrDefault(canonicalCurrentLayout, Integer.MAX_VALUE)) continue;
+
+            // Expand Successors
+            List<Long> successorLayouts = generateSuccessorLayouts(currentLayout); // Uses corrected generator
 
             for (long successorLayout : successorLayouts) {
-                // Goal check *before* Trie lookup
-                if (isGoalLayout(successorLayout)) {
-                    BoardState goalState = new BoardState(successorLayout);
-                    List<BoardState> path = reconstructPath(currentNode, goalState);
-                    // System.out.println("Goal found! Path length: " + (path.size() -1) + ", Nodes explored: " + nodesExplored);
-                    return path;
-                }
+                int newAbsolute_g = currentAbsolute_g + 1;
+                long canonicalSuccessorLayout = getCanonicalLayout(successorLayout);
 
-                // Check if the successor (or its symmetric) is already visited in this search
-                ElementNode existingElement = trieLookupLayout(localTrieRoot, successorLayout);
+                // Enqueue Local Pruning
+                if (newAbsolute_g >= visitedInThisSearch.getOrDefault(canonicalSuccessorLayout, Integer.MAX_VALUE)) continue;
 
-                if (existingElement == null) { // If not visited yet
-                    // statesAdded++;
-                    BoardState successorState = new BoardState(successorLayout);
-                    ElementNode newElement = new ElementNode(successorState, currentNode, currentDepth + 1);
-                    trieInsertLayout(localTrieRoot, successorLayout, newElement);
-                    queue.offer(newElement);
-                }
-                // Else: Already visited via a path <= current path length. BFS ensures optimality. Ignore.
-            }
+                // Process successor
+                int h_new = calculateHeuristic(successorLayout); // Uses corrected heuristic
+                BoardState successorState = new BoardState(successorLayout);
+                ElementNode newElement = new ElementNode(successorState, currentNode, newAbsolute_g, h_new);
 
-            // Optional logging (adjust frequency as needed)
-            if (nodesExplored % 500000 == 0) {
-                System.out.println("BFS Search Nodes: " + nodesExplored + ", Queue: " + queue.size() + ", Approx Depth: " + currentDepth);
+                visitedInThisSearch.put(canonicalSuccessorLayout, newAbsolute_g);
+                updateGlobalBest(canonicalSuccessorLayout, newAbsolute_g);
+                openSet.add(newElement);
             }
         }
-
-        System.out.println("BFS Search: No solution found after exploring " + nodesExplored + " states.");
-        return Collections.emptyList();
+        return Collections.emptyList(); // No solution found
     }
 
-    // --- Guidance Function --- (Keep as is)
+    // --- findOptimalPathFromCurrent (Unchanged from V4.2.1) ---
     public List<BoardState> findOptimalPathFromCurrent(BoardState currentState) {
-        System.out.println("\n--- Requesting Guidance (calling core BFS solver) ---");
-        return solve(currentState);
+        long currentLayout = currentState.getLayout();
+        long canonicalLayout = getCanonicalLayout(currentLayout);
+        int currentAbsolute_g = globalBest_g.getOrDefault(canonicalLayout, Integer.MAX_VALUE);
+
+        if (currentAbsolute_g == Integer.MAX_VALUE) {
+            System.err.println("Error V4.2.3: Cannot find optimal path from state with unknown absolute g-cost: " + currentLayout + ". Assuming start_g = 0.");
+            currentAbsolute_g = 0; // Fallback
+        }
+        return solve(currentState, currentAbsolute_g);
     }
 
-    // --- Path Reconstruction --- (Keep as is)
-    private List<BoardState> reconstructPath(ElementNode nodeBeforeGoal, BoardState goalState) {
+    // --- reconstructPath (Unchanged) ---
+    private List<BoardState> reconstructPath(ElementNode endNode) {
         LinkedList<BoardState> path = new LinkedList<>();
-        path.addFirst(goalState);
-        ElementNode trace = nodeBeforeGoal;
-        while (trace != null) {
-            path.addFirst(trace.state);
-            trace = trace.father;
-        }
+        ElementNode trace = endNode;
+        while (trace != null) { path.addFirst(trace.state); trace = trace.father; }
         return path;
     }
 
-    // --- Main method for testing --- (Keep as is, uses BoardSerializer)
+    // --- Main method and runTestSequence (Unchanged from V4.2.1) ---
     public static void main(String[] args) {
-        System.out.println("Klotski Solver V3.3 (BFS-Trie, Direct Layout Ops)");
+        System.out.println("Klotski Solver A* V4.2.3 (Corrected Piece Codes) Test");
         try {
+            // Use BoardSerializer constants to define initial array
             int[][] initialArray = {
                     {BoardSerializer.VERTICAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.VERTICAL},
                     {BoardSerializer.VERTICAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.VERTICAL},
@@ -359,66 +280,96 @@ public class KlotskiSolver {
                     {BoardSerializer.VERTICAL, BoardSerializer.SOLDIER, BoardSerializer.SOLDIER, BoardSerializer.VERTICAL},
                     {BoardSerializer.SOLDIER, BoardSerializer.EMPTY, BoardSerializer.EMPTY, BoardSerializer.SOLDIER}
             };
-            BoardState initialState = new BoardState(initialArray);
+            long initialLayout = BoardSerializer.serialize(initialArray); // Serialize correctly
+            BoardState initialState = new BoardState(initialLayout);
+
             System.out.println("Initial State (Layout: " + initialState.getLayout() + "):");
-            BoardSerializer.printBoard(initialState.getBoardArray()); // Still useful for visualization
+            BoardSerializer.printBoard(initialState.getBoardArray()); // Use BoardSerializer's print
 
             KlotskiSolver solver = new KlotskiSolver();
-
-            // --- Phase 1: Initial Solve ---
-            System.out.println("\n--- Phase 1: Initial Solve ---");
-            long startTime = System.currentTimeMillis();
-            List<BoardState> initialSolution = solver.solve(initialState);
-            long endTime = System.currentTimeMillis();
-            System.out.println("\nInitial solve finished in " + (endTime - startTime) + " ms.");
-            System.out.println("Initial solve explored nodes: " + solver.getNodesExplored());
-
-            if (initialSolution.isEmpty()) {
-                System.out.println("Initial solve found no solution.");
-                return;
-            }
-            System.out.println("Initial solution found with " + (initialSolution.size() - 1) + " steps.");
-            // Optional: Print the solution path
-            /*
-            System.out.println("Solution Path:");
-            for (int i = 0; i < initialSolution.size(); i++) {
-                System.out.println("Step " + i + ":");
-                BoardSerializer.printBoard(initialSolution.get(i).getBoardArray());
-            }
-            */
-
-            // --- Phase 2: Guidance ---
-            System.out.println("\n--- Phase 2: Simulate Gameplay & Request Guidance ---");
-            BoardState intermediateState;
-            int stepForGuidance = 10; // Example step
-            if (initialSolution.size() > stepForGuidance) {
-                intermediateState = initialSolution.get(stepForGuidance);
-                System.out.println("\nSimulating user reaching state after " + stepForGuidance + " optimal steps (Layout: " + intermediateState.getLayout() + "):");
-                BoardSerializer.printBoard(intermediateState.getBoardArray());
-            } else {
-                intermediateState = initialState;
-                System.out.println("\nInitial solution too short, using initial state for guidance test.");
-            }
-
-            startTime = System.currentTimeMillis();
-            List<BoardState> optimalPathFromCurrent = solver.findOptimalPathFromCurrent(intermediateState);
-            endTime = System.currentTimeMillis();
-            System.out.println("\nGuidance calculation finished in " + (endTime - startTime) + " ms.");
-            System.out.println("Guidance calculation explored nodes: " + solver.getNodesExplored());
-
-            if (!optimalPathFromCurrent.isEmpty()) {
-                System.out.println("Optimal path from current state has " + (optimalPathFromCurrent.size() - 1) + " remaining steps.");
-                if (optimalPathFromCurrent.size() > 1) {
-                    System.out.println("Suggested next optimal move leads to state (Layout: " + optimalPathFromCurrent.get(1).getLayout() + "):");
-                    BoardSerializer.printBoard(optimalPathFromCurrent.get(1).getBoardArray());
-                }
-            } else {
-                System.out.println("No path to goal found from the current state (Should not happen if initial solution exists).");
-            }
-
+            runTestSequence(solver, initialState, "Layout1");
         } catch (Exception e) {
-            System.err.println("An error occurred:");
-            e.printStackTrace();
+            System.err.println("An error occurred in main:"); e.printStackTrace();
+        }
+        System.out.println("\n\n===== Test Complete =====");
+    }
+
+    // runTestSequence needs access to BoardSerializer methods like generateSuccessorLayouts
+    private static void runTestSequence(KlotskiSolver solver, BoardState initialState, String layoutName) {
+        // (Implementation from V4.2.1 - should work with V4.2.3 solve)
+        List<BoardState> initialSolution = null;
+        BoardState intermediateStateOptimal = null;
+        BoardState nonOptimalState = null;
+        int stepForGuidanceOptimal = 5;
+
+        try {
+            // Phase 1
+            System.out.println("\n[" + layoutName + "] Phase 1: Initial Solve (start_g=0) ---");
+            long startTime = System.currentTimeMillis();
+            initialSolution = solver.solve(initialState, 0);
+            long endTime = System.currentTimeMillis();
+            System.out.println("[" + layoutName + "] Initial solve finished in " + (endTime - startTime) + " ms.");
+            System.out.println("[" + layoutName + "] Initial solve explored nodes: " + solver.getNodesExplored());
+            if (initialSolution.isEmpty()) { System.out.println("[" + layoutName + "] Initial solve found no solution."); return; }
+            else { System.out.println("[" + layoutName + "] Initial solution found with " + (initialSolution.size() - 1) + " steps."); }
+
+            // Phase 2
+            System.out.println("\n[" + layoutName + "] Phase 2: Solve from Optimal Intermediate ---");
+            if (initialSolution.size() > stepForGuidanceOptimal) {
+                intermediateStateOptimal = initialSolution.get(stepForGuidanceOptimal);
+                System.out.println("[" + layoutName + "] Solving from state after " + stepForGuidanceOptimal + " optimal steps (Layout: " + intermediateStateOptimal.getLayout() + ")");
+                startTime = System.currentTimeMillis();
+                List<BoardState> pathFromOptimal = solver.findOptimalPathFromCurrent(intermediateStateOptimal);
+                endTime = System.currentTimeMillis();
+                System.out.println("[" + layoutName + "] Guidance (Optimal) finished in " + (endTime - startTime) + " ms.");
+                System.out.println("[" + layoutName + "] Guidance (Optimal) explored nodes: " + solver.getNodesExplored());
+                if(pathFromOptimal.isEmpty()) System.err.println("[" + layoutName + "] >>>>> FAILURE: No path found from optimal intermediate!");
+                else { /* ... Validation checks ... */
+                    System.out.println("[" + layoutName + "] Guidance (Optimal) found path with " + (pathFromOptimal.size() - 1) + " steps.");
+                    int expectedRemaining = initialSolution.size() - 1 - stepForGuidanceOptimal;
+                    if (pathFromOptimal.size() - 1 != expectedRemaining) { System.err.println("[" + layoutName + "] >>>>> WARNING: Optimal guidance step count mismatch"); }
+                    else { System.out.println("[" + layoutName + "] Optimal guidance step count matches expected remaining."); }
+                }
+            } else { System.out.println("[" + layoutName + "] Skipping Phase 2."); }
+
+            // Phase 3
+            System.out.println("\n[" + layoutName + "] Phase 3: Solve from Non-Optimal Intermediate ---");
+            // Use the generateSuccessorLayouts from this class (which uses BoardSerializer codes)
+            List<Long> successors = generateSuccessorLayouts(initialState.getLayout());
+            if (!successors.isEmpty() && initialSolution.size() > 1) {
+                long firstOptimalStepLayout = initialSolution.get(1).getLayout();
+                long chosenLayout = -1;
+                for (long succLayout : successors) { if (succLayout != firstOptimalStepLayout) { chosenLayout = succLayout; break; } }
+                if (chosenLayout == -1 && !successors.isEmpty()) { chosenLayout = successors.get(0); }
+
+                if (chosenLayout != -1) {
+                    nonOptimalState = new BoardState(chosenLayout);
+                    System.out.println("[" + layoutName + "] Solving from potentially non-optimal state after 1 move (Layout: " + nonOptimalState.getLayout() + ")");
+                    startTime = System.currentTimeMillis();
+                    List<BoardState> pathFromNonOptimal = solver.findOptimalPathFromCurrent(nonOptimalState);
+                    endTime = System.currentTimeMillis();
+                    System.out.println("[" + layoutName + "] Guidance (Non-Optimal) finished in " + (endTime - startTime) + " ms.");
+                    System.out.println("[" + layoutName + "] Guidance (Non-Optimal) explored nodes: " + solver.getNodesExplored());
+                    if(pathFromNonOptimal.isEmpty()) System.err.println("[" + layoutName + "] >>>>> FAILURE: No path found from non-optimal intermediate!");
+                    else { System.out.println("[" + layoutName + "] Guidance (Non-Optimal) found path with " + (pathFromNonOptimal.size() - 1) + " steps."); }
+                } else { System.out.println("[" + layoutName + "] Skipping Phase 3 (No non-optimal successor)."); }
+            } else { System.out.println("[" + layoutName + "] Skipping Phase 3 (No successors/short solution)."); }
+
+            // Phase 4
+            System.out.println("\n[" + layoutName + "] Phase 4: Re-Solve Initial (start_g=0, After Intermediates) ---");
+            startTime = System.currentTimeMillis();
+            List<BoardState> reSolveSolution = solver.solve(initialState, 0);
+            endTime = System.currentTimeMillis();
+            System.out.println("[" + layoutName + "] Re-solve finished in " + (endTime - startTime) + " ms.");
+            System.out.println("[" + layoutName + "] Re-solve explored nodes: " + solver.getNodesExplored());
+            if (reSolveSolution.isEmpty()) { System.err.println("[" + layoutName + "] >>>>> FAILURE: Re-solve failed to find a solution!"); }
+            else { /* ... Validation checks ... */
+                System.out.println("[" + layoutName + "] Re-solve solution found with " + (reSolveSolution.size() - 1) + " steps.");
+                if (initialSolution.size() != reSolveSolution.size()) { System.err.println("[" + layoutName + "] >>>>> WARNING: Re-solve step count mismatch"); }
+                else { System.out.println("[" + layoutName + "] Re-solve step count matches initial solve."); }
+            }
+        } catch (Exception e) {
+            System.err.println("\n[" + layoutName + "] An error occurred during test sequence:"); e.printStackTrace();
         }
     }
 }

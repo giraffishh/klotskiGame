@@ -18,12 +18,12 @@ public class BoardSerializer {
     public static final int CAO_CAO = 4;     // 2x2
 
     // --- 3-bit Code Constants (for long layout) ---
-    // These values MUST match the TrieNode children array indices and logic in KlotskiSolver
-    private static final long CODE_EMPTY = 0b000;      // 0
-    private static final long CODE_SOLDIER = 0b001;    // 1
-    private static final long CODE_VERTICAL = 0b010;   // 2 (Note: Different from array value)
-    private static final long CODE_HORIZONTAL = 0b011; // 3 (Note: Different from array value)
-    private static final long CODE_CAO_CAO = 0b100;    // 4
+    // 将这些常量改为公有，以便KlotskiSolver可以访问
+    public static final long CODE_EMPTY = 0b000;      // 0
+    public static final long CODE_SOLDIER = 0b001;    // 1
+    public static final long CODE_VERTICAL = 0b010;   // 2 (Note: Different from array value)
+    public static final long CODE_HORIZONTAL = 0b011; // 3 (Note: Different from array value)
+    public static final long CODE_CAO_CAO = 0b100;    // 4
 
     // --- Mappings ---
     // Public map used by KlotskiSolver to get codes

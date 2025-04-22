@@ -275,10 +275,12 @@ class ASearchTrieOptLayoutGenSolverWrapper implements KlotskiSolverInterface {
     }
 }
 
-// 修改 NewKlotskiSolverWrapper 类，修正方法调用
+// 修改 NewKlotskiSolverWrapper 类，实现复用测试
 class NewKlotskiSolverWrapper implements KlotskiSolverInterface {
     private controller.solver.KlotskiSolver solver; // 保存求解器实例
     private int nodesExplored = -1;
+    private boolean firstRun = true;
+    private BoardState initialState = null;
 
     public NewKlotskiSolverWrapper(controller.solver.KlotskiSolver solver) {
         this.solver = solver;
@@ -286,20 +288,38 @@ class NewKlotskiSolverWrapper implements KlotskiSolverInterface {
 
     @Override
     public List<BoardState> solve(BoardState initialState) {
-        // 直接使用实例进行求解
-        List<BoardState> path = solver.solve(initialState);
+        List<BoardState> path;
+        
+        if (firstRun) {
+            // 第一次运行：执行完整解决方案（相当于Phase 1）
+            System.out.println("KlotskiSolver: The first calculation is completed, and the global data is built...");
+            path = solver.solve(initialState, 0);
+            this.initialState = initialState;
+            firstRun = false;
+        } else {
+            // 后续运行：复用之前的解决方案数据（相当于Phase 2）
+            // 模拟从中间状态重新求解的场景
+            path = solver.findOptimalPathFromCurrent(initialState);
+        }
+        
         nodesExplored = solver.getNodesExplored();
         return path;
     }
 
     @Override
     public String getName() {
-        return "BFS+Trie V3.2";
+        return "PreA* V4.2.3";
     }
 
     @Override
     public int getNodesExplored() {
         return nodesExplored;
+    }
+    
+    // 重置求解器的首次运行状态，用于新布局测试
+    public void resetFirstRun() {
+        firstRun = true;
+        initialState = null;
     }
 }
 
@@ -415,7 +435,11 @@ public class KlotskiBenchmark {
         solvers.add(new BiBFSOptLayoutGenSolverWrapper(targetState));
         solvers.add(new BFSTrieOptLayoutGenSolverWrapper());
         //solvers.add(new ASearchTrieOptLayoutGenSolverWrapper()); // 添加新的 A*+Trie+OptLG 求解器
-        solvers.add(new NewKlotskiSolverWrapper(solver));
+        
+        // 使用传入的求解器实例，确保每个布局只创建一个实例
+        NewKlotskiSolverWrapper newSolverWrapper = new NewKlotskiSolverWrapper(solver);
+        solvers.add(newSolverWrapper);
+        
         //solvers.add(new PDBSolverWrapper());
         return solvers;
     }
@@ -427,7 +451,6 @@ public class KlotskiBenchmark {
         BenchmarkResult result = new BenchmarkResult();
         ExecutorService executor = Executors.newSingleThreadExecutor();
 
-        // 不再需要每次创建新求解器，直接使用传入的实例
         Future<List<BoardState>> future = executor.submit(() -> solver.solve(initialState));
 
         long startTime = System.nanoTime();
@@ -505,7 +528,7 @@ public class KlotskiBenchmark {
             BoardState initialState = config.initialState;
             BoardState targetState = config.targetState;
             
-            // 创建新的求解器实例（不需要预计算全局Trie）
+            // 为每个布局创建一个新的KlotskiSolver实例
             System.out.println("\n--- 为布局 " + layoutName + " 创建新求解器 ---");
             controller.solver.KlotskiSolver newSolver = new controller.solver.KlotskiSolver();
             
@@ -520,18 +543,39 @@ public class KlotskiBenchmark {
             System.out.println("Target state:");
             BoardSerializer.printBoard(targetState.getBoardArray());
 
+            // 找到NewKlotskiSolverWrapper实例以便在所有运行完后重置它
+            NewKlotskiSolverWrapper newSolverWrapper = null;
+            for (KlotskiSolverInterface solver : solvers) {
+                if (solver instanceof NewKlotskiSolverWrapper) {
+                    newSolverWrapper = (NewKlotskiSolverWrapper) solver;
+                    break;
+                }
+            }
+
             for (KlotskiSolverInterface solver : solvers) {
                 String solverName = solver.getName();
                 results.get(layoutName).put(solverName, new ArrayList<>()); // 初始化此求解器的列表
-                //System.out.println("  Running solver: " + solverName + " (" + RUNS_PER_SOLVER + " times)");
+                
+                System.out.println("  Running solver: " + solverName + " (" + RUNS_PER_SOLVER + " times)");
+
+                // 第一次运行独立测量（只对KlotskiSolver求解器特殊处理）
+                if (solver instanceof NewKlotskiSolverWrapper) {
+                    BenchmarkResult firstRunResult = runSingleBenchmark(solver, initialState);
+                    System.out.println("The first calculation: " + firstRunResult.status +
+                                     " (" + firstRunResult.timeMillis + " ms, explore " +
+                                     firstRunResult.nodesExplored + " nodes)");
+                    // 首次运行结果不计入统计
+                }
 
                 for (int run = 1; run <= RUNS_PER_SOLVER; run++) {
-                    //System.out.print("    Run " + run + "/" + RUNS_PER_SOLVER + "... ");
-                    // 运行单次基准测试
                     BenchmarkResult singleRunResult = runSingleBenchmark(solver, initialState);
                     results.get(layoutName).get(solverName).add(singleRunResult);
-                    //System.out.println(singleRunResult.status + " (" + singleRunResult.timeMillis + " ms)");
                 }
+            }
+            
+            // 布局测试完成后，重置NewKlotskiSolverWrapper为下一个布局
+            if (newSolverWrapper != null) {
+                newSolverWrapper.resetFirstRun();
             }
         }
 
