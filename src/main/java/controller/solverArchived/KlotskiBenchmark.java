@@ -275,40 +275,37 @@ class ASearchTrieOptLayoutGenSolverWrapper implements KlotskiSolverInterface {
     }
 }
 
-// 修改 NewKlotskiSolverWrapper 类，实现复用测试
+// 修改 NewKlotskiSolverWrapper 类，正确实现新算法的复用测试
 class NewKlotskiSolverWrapper implements KlotskiSolverInterface {
     private controller.solver.KlotskiSolver solver; // 保存求解器实例
+    private boolean initialSolveCompleted = false;
     private int nodesExplored = -1;
-    private boolean firstRun = true;
-    private BoardState initialState = null;
 
     public NewKlotskiSolverWrapper(controller.solver.KlotskiSolver solver) {
         this.solver = solver;
     }
 
     @Override
-    public List<BoardState> solve(BoardState initialState) {
+    public List<BoardState> solve(BoardState state) {
         List<BoardState> path;
         
-        if (firstRun) {
-            // 第一次运行：执行完整解决方案（相当于Phase 1）
-            System.out.println("KlotskiSolver: The first calculation is completed, and the global data is built...");
-            path = solver.solve(initialState, 0);
-            this.initialState = initialState;
-            firstRun = false;
+        if (!initialSolveCompleted) {
+            // 第一次运行：执行完整初始化求解（Phase 1）
+            path = solver.initialSolve(state);
+            initialSolveCompleted = true;
+            System.out.println("KlotskiSolver: Phase 1完成，全局数据已构建");
         } else {
-            // 后续运行：复用之前的解决方案数据（相当于Phase 2）
-            // 模拟从中间状态重新求解的场景
-            path = solver.findOptimalPathFromCurrent(initialState);
+            // 后续运行：从非最优路径状态测试复用能力（模拟Phase 3）
+            path = solver.findPathFrom(state);
         }
         
-        nodesExplored = solver.getNodesExplored();
+        nodesExplored = solver.getNodesExploredTotal();
         return path;
     }
 
     @Override
     public String getName() {
-        return "PreA* V4.2.3";
+        return "Hybrid BFS+A*";
     }
 
     @Override
@@ -317,9 +314,8 @@ class NewKlotskiSolverWrapper implements KlotskiSolverInterface {
     }
     
     // 重置求解器的首次运行状态，用于新布局测试
-    public void resetFirstRun() {
-        firstRun = true;
-        initialState = null;
+    public void resetSolver() {
+        initialSolveCompleted = false;
     }
 }
 
@@ -342,7 +338,7 @@ class LayoutConfig {
 public class KlotskiBenchmark {
 
     private static final long SOLVE_TIMEOUT_MS = 60 * 1000;
-    private static final int RUNS_PER_SOLVER = 50; // <<< Number of runs for averaging
+    private static final int RUNS_PER_SOLVER = 10; // <<< Number of runs for averaging
 
     /**
      * 定义测试布局的初始状态
@@ -421,10 +417,9 @@ public class KlotskiBenchmark {
     /**
      * 定义求解器算法
      * @param targetState 目标状态
-     * @param solver 求解器实例
      * @return 求解器包装器列表
      */
-    private static List<KlotskiSolverInterface> defineSolvers(BoardState targetState, controller.solver.KlotskiSolver solver) {
+    private static List<KlotskiSolverInterface> defineSolvers(BoardState targetState) {
         List<KlotskiSolverInterface> solvers = new ArrayList<>();
         solvers.add(new AStarHashMapSolverWrapper());
         //solvers.add(new AStarTrieSolverWrapper());
@@ -436,9 +431,8 @@ public class KlotskiBenchmark {
         solvers.add(new BFSTrieOptLayoutGenSolverWrapper());
         //solvers.add(new ASearchTrieOptLayoutGenSolverWrapper()); // 添加新的 A*+Trie+OptLG 求解器
         
-        // 使用传入的求解器实例，确保每个布局只创建一个实例
-        NewKlotskiSolverWrapper newSolverWrapper = new NewKlotskiSolverWrapper(solver);
-        solvers.add(newSolverWrapper);
+        // 将新的求解器添加到最后，使其单独处理
+        solvers.add(new NewKlotskiSolverWrapper(new controller.solver.KlotskiSolver()));
         
         //solvers.add(new PDBSolverWrapper());
         return solvers;
@@ -528,12 +522,8 @@ public class KlotskiBenchmark {
             BoardState initialState = config.initialState;
             BoardState targetState = config.targetState;
             
-            // 为每个布局创建一个新的KlotskiSolver实例
-            System.out.println("\n--- 为布局 " + layoutName + " 创建新求解器 ---");
-            controller.solver.KlotskiSolver newSolver = new controller.solver.KlotskiSolver();
-            
-            // 将求解器实例传入
-            List<KlotskiSolverInterface> solvers = defineSolvers(targetState, newSolver);
+            // 获取求解器列表，每个布局只定义一次
+            List<KlotskiSolverInterface> solvers = defineSolvers(targetState);
             
             results.put(layoutName, new LinkedHashMap<>());
 
@@ -543,7 +533,7 @@ public class KlotskiBenchmark {
             System.out.println("Target state:");
             BoardSerializer.printBoard(targetState.getBoardArray());
 
-            // 找到NewKlotskiSolverWrapper实例以便在所有运行完后重置它
+            // 找到NewKlotskiSolverWrapper实例以便特殊处理
             NewKlotskiSolverWrapper newSolverWrapper = null;
             for (KlotskiSolverInterface solver : solvers) {
                 if (solver instanceof NewKlotskiSolverWrapper) {
@@ -552,20 +542,17 @@ public class KlotskiBenchmark {
                 }
             }
 
+            // 对于常规求解器的测试，保持不变
             for (KlotskiSolverInterface solver : solvers) {
+                // 跳过KlotskiSolver，稍后单独测试
+                if (solver instanceof NewKlotskiSolverWrapper) {
+                    continue;
+                }
+
                 String solverName = solver.getName();
                 results.get(layoutName).put(solverName, new ArrayList<>()); // 初始化此求解器的列表
                 
                 System.out.println("  Running solver: " + solverName + " (" + RUNS_PER_SOLVER + " times)");
-
-                // 第一次运行独立测量（只对KlotskiSolver求解器特殊处理）
-                if (solver instanceof NewKlotskiSolverWrapper) {
-                    BenchmarkResult firstRunResult = runSingleBenchmark(solver, initialState);
-                    System.out.println("The first calculation: " + firstRunResult.status +
-                                     " (" + firstRunResult.timeMillis + " ms, explore " +
-                                     firstRunResult.nodesExplored + " nodes)");
-                    // 首次运行结果不计入统计
-                }
 
                 for (int run = 1; run <= RUNS_PER_SOLVER; run++) {
                     BenchmarkResult singleRunResult = runSingleBenchmark(solver, initialState);
@@ -573,9 +560,41 @@ public class KlotskiBenchmark {
                 }
             }
             
-            // 布局测试完成后，重置NewKlotskiSolverWrapper为下一个布局
+            // 单独测试KlotskiSolver（Phase 1 + Phase 3）
             if (newSolverWrapper != null) {
-                newSolverWrapper.resetFirstRun();
+                String solverName = newSolverWrapper.getName();
+                results.get(layoutName).put(solverName, new ArrayList<>()); // 初始化此求解器的列表
+
+                System.out.println("  Running KlotskiSolver Phase 1 + Phase 3 tests:");
+
+                // 第一次运行（Phase 1）- 初始化全局数据，结果不计入统计
+                System.out.println("    Phase 1: 初始化全局数据...");
+                BenchmarkResult initialResult = runSingleBenchmark(newSolverWrapper, initialState);
+                System.out.println("    Phase 1 完成: " + initialResult.status +
+                    " (" + initialResult.timeMillis + " ms, 探索 " +
+                    initialResult.nodesExplored + " 节点)");
+
+                // 创建非最优路径状态 - 根据初始状态修改
+                System.out.println("    生成非最优路径状态用于Phase 3测试...");
+                BoardState nonOptimalState = createNonOptimalState(initialState);
+
+                if (nonOptimalState != null) {
+                    System.out.println("    Phase 3: 从非最优路径状态测试 (" + RUNS_PER_SOLVER + " times)");
+                    for (int run = 1; run <= RUNS_PER_SOLVER; run++) {
+                        // 使用非最优路径状态测试findPathFrom方法
+                        BenchmarkResult runResult = runSingleBenchmark(newSolverWrapper, nonOptimalState);
+                        results.get(layoutName).get(solverName).add(runResult);
+                    }
+                } else {
+                    System.out.println("    无法创建非最优路径状态，使用原始状态测试...");
+                    for (int run = 1; run <= RUNS_PER_SOLVER; run++) {
+                        BenchmarkResult runResult = runSingleBenchmark(newSolverWrapper, initialState);
+                        results.get(layoutName).get(solverName).add(runResult);
+                    }
+                }
+
+                // 布局测试完成后，重置KlotskiSolver的初始化状态
+                newSolverWrapper.resetSolver();
             }
         }
 
@@ -657,5 +676,203 @@ public class KlotskiBenchmark {
 
         System.out.println("\nBenchmark finished.");
     }
-}
 
+    /**
+     * 创建一个非最优路径状态，用于测试KlotskiSolver的Phase 3
+     * 直接使用KlotskiSolver中Phase 3的测试方法实现
+     */
+    private static BoardState createNonOptimalState(BoardState initialState) {
+        try {
+            System.out.println("    使用KlotskiSolver中的Phase 3测试逻辑创建非最优路径状态...");
+
+            // 初始化一个临时求解器生成初始解
+            KlotskiSolver tempSolver = new KlotskiSolver();
+            List<BoardState> initialSolution = tempSolver.initialSolve(initialState);
+
+            if (initialSolution == null || initialSolution.size() <= 1) {
+                System.out.println("    无法获取初始解，无法创建非最优路径状态");
+                return null;
+            }
+
+            // 获取最优路径中的第一步
+            BoardState firstOptimalStep = initialSolution.get(1);
+
+            // 获取初始状态的所有后继状态
+            List<Long> successors = generateSuccessorLayouts(initialState.getLayout());
+            if (successors.isEmpty()) {
+                System.out.println("    初始状态没有后继状态，无法创建非最优路径状态");
+                return null;
+            }
+
+            // 找到一个与最优第一步不同的后继状态
+            for (long succLayout : successors) {
+                if (getCanonicalLayout(succLayout) != getCanonicalLayout(firstOptimalStep.getLayout())) {
+                    System.out.println("    成功创建非最优路径状态");
+                    return new BoardState(succLayout);
+                }
+            }
+
+            // 如果所有后继状态都是最优的（不太可能），则使用第一个后继状态
+            System.out.println("    所有后继状态都与最优路径一致，使用第一个后继状态");
+            return new BoardState(successors.get(0));
+        } catch (Exception e) {
+            System.err.println("    创建非最优路径状态时出错: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    /**
+     * 生成后继布局 - 使用KlotskiSolver中的方法
+     */
+    private static List<Long> generateSuccessorLayouts(long currentLayout) {
+        // 重用KlotskiSolver中的同名方法，但将其复制过来以避免依赖问题
+
+        final int ROWS = BoardSerializer.ROWS;
+        final int COLS = BoardSerializer.COLS;
+        final int BITS_PER_CELL = 3;
+        final int TOTAL_CELLS = ROWS * COLS;
+        final int[] DR = {-1, 1, 0, 0};
+        final int[] DC = {0, 0, -1, 1};
+        final long CELL_MASK_3BIT = (1L << BITS_PER_CELL) - 1L;
+
+        List<Long> successorLayouts = new ArrayList<>();
+        boolean[] processedCell = new boolean[TOTAL_CELLS];
+
+        for (int r = 0; r < ROWS; r++) {
+            for (int c = 0; c < COLS; c++) {
+                int cellIndex = r * COLS + c;
+                if (processedCell[cellIndex]) continue;
+
+                long pieceCode = getCellCode(currentLayout, r, c);
+                processedCell[cellIndex] = true;
+
+                if (pieceCode == BoardSerializer.CODE_EMPTY) continue;
+
+                List<int[]> pieceCellsCoords = new ArrayList<>();
+                pieceCellsCoords.add(new int[]{r, c});
+
+                if (pieceCode == BoardSerializer.CODE_SOLDIER) {
+                    // 单兵，已经添加到pieceCellsCoords
+                } else if (pieceCode == BoardSerializer.CODE_HORIZONTAL) {
+                    if (c + 1 < COLS && getCellCode(currentLayout, r, c + 1) == pieceCode) {
+                        pieceCellsCoords.add(new int[]{r, c + 1});
+                        processedCell[cellIndex + 1] = true;
+                    } else continue;
+                } else if (pieceCode == BoardSerializer.CODE_VERTICAL) {
+                    if (r + 1 < ROWS && getCellCode(currentLayout, r + 1, c) == pieceCode) {
+                        pieceCellsCoords.add(new int[]{r + 1, c});
+                        processedCell[cellIndex + COLS] = true;
+                    } else continue;
+                } else if (pieceCode == BoardSerializer.CODE_CAO_CAO) {
+                    boolean rOk = c + 1 < COLS && getCellCode(currentLayout, r, c + 1) == pieceCode;
+                    boolean bOk = r + 1 < ROWS && getCellCode(currentLayout, r + 1, c) == pieceCode;
+                    boolean brOk = c + 1 < COLS && r + 1 < ROWS && getCellCode(currentLayout, r + 1, c + 1) == pieceCode;
+
+                    if (rOk && bOk && brOk) {
+                        pieceCellsCoords.add(new int[]{r, c + 1});
+                        processedCell[cellIndex + 1] = true;
+                        pieceCellsCoords.add(new int[]{r + 1, c});
+                        processedCell[cellIndex + COLS] = true;
+                        pieceCellsCoords.add(new int[]{r + 1, c + 1});
+                        processedCell[cellIndex + COLS + 1] = true;
+                    } else continue;
+                } else {
+                    continue;
+                }
+
+                // 尝试四个方向移动
+                for (int dir = 0; dir < 4; dir++) {
+                    int dr = DR[dir], dc = DC[dir];
+                    boolean canMove = true;
+                    List<int[]> targetCellsCoords = new ArrayList<>();
+
+                    for (int[] cellCoord : pieceCellsCoords) {
+                        int nr = cellCoord[0] + dr;
+                        int nc = cellCoord[1] + dc;
+
+                        if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) {
+                            canMove = false;
+                            break;
+                        }
+
+                        targetCellsCoords.add(new int[]{nr, nc});
+
+                        boolean targetIsOriginal = false;
+                        for (int[] originalCoord : pieceCellsCoords) {
+                            if (nr == originalCoord[0] && nc == originalCoord[1]) {
+                                targetIsOriginal = true;
+                                break;
+                            }
+                        }
+
+                        if (!targetIsOriginal && getCellCode(currentLayout, nr, nc) != BoardSerializer.CODE_EMPTY) {
+                            canMove = false;
+                            break;
+                        }
+                    }
+
+                    if (canMove) {
+                        long newLayout = currentLayout;
+                        long clearMask = 0L;
+                        long setMask = 0L;
+
+                        for (int[] cellCoord : pieceCellsCoords) {
+                            clearMask |= (CELL_MASK_3BIT << ((cellCoord[0] * COLS + cellCoord[1]) * BITS_PER_CELL));
+                        }
+
+                        for (int[] targetCoord : targetCellsCoords) {
+                            setMask |= (pieceCode << ((targetCoord[0] * COLS + targetCoord[1]) * BITS_PER_CELL));
+                        }
+
+                        newLayout = (newLayout & ~clearMask) | setMask;
+                        successorLayouts.add(newLayout);
+                    }
+                }
+            }
+        }
+
+        return successorLayouts;
+    }
+
+    /**
+     * 获取单元格代码
+     */
+    private static long getCellCode(long layout, int r, int c) {
+        final int ROWS = BoardSerializer.ROWS;
+        final int COLS = BoardSerializer.COLS;
+        final int BITS_PER_CELL = 3;
+        final long CELL_MASK_3BIT = (1L << BITS_PER_CELL) - 1L;
+
+        if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return -1; // 无效坐标
+        int shift = (r * COLS + c) * BITS_PER_CELL;
+        return (layout >> shift) & CELL_MASK_3BIT;
+    }
+
+    /**
+     * 获取对称布局
+     */
+    private static long getSymmetricLayout(long layout) {
+        final int ROWS = BoardSerializer.ROWS;
+        final int COLS = BoardSerializer.COLS;
+        final int BITS_PER_CELL = 3;
+
+        long symmetricLayout = 0L;
+        for (int r = 0; r < ROWS; r++) {
+            for (int c = 0; c < COLS; c++) {
+                long cellCode = getCellCode(layout, r, c);
+                int mirroredCol = COLS - 1 - c;
+                int shift = (r * COLS + mirroredCol) * BITS_PER_CELL;
+                symmetricLayout |= (cellCode << shift);
+            }
+        }
+        return symmetricLayout;
+    }
+
+    /**
+     * 获取规范化布局（取原始布局与对称布局中的较小值）
+     */
+    private static long getCanonicalLayout(long layout) {
+        return Math.min(layout, getSymmetricLayout(layout));
+    }
+}
