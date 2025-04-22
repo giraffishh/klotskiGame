@@ -305,7 +305,7 @@ class NewKlotskiSolverWrapper implements KlotskiSolverInterface {
 
     @Override
     public String getName() {
-        return "Hybrid BFS+A*";
+        return "Hybrid PrBFS+A*";
     }
 
     @Override

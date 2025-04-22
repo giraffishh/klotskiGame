@@ -10,7 +10,6 @@ class TrieNodeV5 {
 }
 
 // --- ElementNode for BFS ---
-// Used only during initialSolve
 class ElementNodeBFSV5 {
     BoardState state;
     ElementNodeBFSV5 father; // Parent in BFS tree
@@ -24,20 +23,39 @@ class ElementNodeBFSV5 {
 }
 
 // --- ElementNode for A* ---
-// Used only during runAStarSearch
 class ElementNodeAStarV5 implements Comparable<ElementNodeAStarV5> {
     BoardState state;
-    ElementNodeAStarV5 father; // Parent in A* search tree
-    int g; // ABSOLUTE cost from original start 'O'
-    int h; // Heuristic estimate
-    int f; // f = g + h
+    ElementNodeAStarV5 father;
+    int g_local; // Cost from Phase 3 start state 'S'
+    int h;       // Enhanced heuristic value
+    int f;       // f = g_local + h
 
-    public ElementNodeAStarV5(BoardState s, ElementNodeAStarV5 fth, int absolute_g, int h) {
-        this.state = s; this.father = fth; this.g = absolute_g; this.h = h; this.f = this.g + h;
+    public ElementNodeAStarV5(BoardState s, ElementNodeAStarV5 fth, int g_local, int h) {
+        this.state = s; this.father = fth; this.g_local = g_local; this.h = h; this.f = this.g_local + h;
     }
-    @Override public int compareTo(ElementNodeAStarV5 o) { if (f != o.f) return Integer.compare(f, o.f); return Integer.compare(h, o.h); }
-    @Override public boolean equals(Object o) { if (this == o) return true; if (o == null || getClass() != o.getClass()) return false; ElementNodeAStarV5 that = (ElementNodeAStarV5) o; return state.getLayout() == that.state.getLayout(); }
-    @Override public int hashCode() { return state.hashCode(); }
+
+    @Override
+    public int compareTo(ElementNodeAStarV5 o) {
+        if (f != o.f) return Integer.compare(f, o.f);
+        return Integer.compare(h, o.h); // Tie-breaking using heuristic
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ElementNodeAStarV5 that = (ElementNodeAStarV5) o;
+        // Equality based on the board state's layout's canonical form
+        // Assumes BoardState.getLayout() exists and getCanonicalLayout is static/accessible
+        return KlotskiSolver.getCanonicalLayout(state.getLayout()) == KlotskiSolver.getCanonicalLayout(that.state.getLayout());
+    }
+
+    @Override
+    public int hashCode() {
+        // Hash code based on the board state's layout's canonical form
+        // Assumes BoardState.getLayout() exists and getCanonicalLayout is static/accessible
+        return Long.hashCode(KlotskiSolver.getCanonicalLayout(state.getLayout()));
+    }
 }
 
 
@@ -63,9 +81,11 @@ public class KlotskiSolver { // Renamed class for clarity
 
     public int getNodesExploredBFS() { return nodesExploredBFS; }
     public int getNodesExploredAStar() { return nodesExploredAStar; }
-    public int getNodesExploredTotal() { return nodesExploredBFS + nodesExploredAStar; } // Combined metric
+    private int globalOptimalCost = Integer.MAX_VALUE; // Store the global optimal cost
 
+    public int getNodesExploredTotal() { return nodesExploredBFS + nodesExploredAStar; } // Combined metric
     // --- Static Helper Methods (Ensure correctness and static nature) ---
+
     /**
      * Gets the 3-bit code for a cell directly from the layout long.
      * Returns -1 if coordinates are out of bounds.
@@ -91,11 +111,10 @@ public class KlotskiSolver { // Renamed class for clarity
         }
         return symmetricLayout;
     }
-
     /**
      * Generates successor layouts - Uses BoardSerializer codes RIGOROUSLY.
      */
-    private static long getCanonicalLayout(long layout) { return Math.min(layout, getSymmetricLayout(layout)); }
+    static long getCanonicalLayout(long layout) { return Math.min(layout, getSymmetricLayout(layout)); }
     private static List<Long> generateSuccessorLayouts(long currentLayout) { /* ... Same robust implementation ... */
         List<Long> successorLayouts = new ArrayList<>(); boolean[] processedCell = new boolean[TOTAL_CELLS];
         for (int r = 0; r < ROWS; r++) { for (int c = 0; c < COLS; c++) { int cellIndex = r * COLS + c; if (processedCell[cellIndex]) continue; long pieceCode = getCellCode(currentLayout, r, c); processedCell[cellIndex] = true; if (pieceCode == BoardSerializer.CODE_EMPTY) continue;
@@ -109,14 +128,70 @@ public class KlotskiSolver { // Renamed class for clarity
                 if (canMove) { long newLayout = currentLayout; long clearMask = 0L; long setMask = 0L; for (int[] cellCoord : pieceCellsCoords) { clearMask |= (CELL_MASK_3BIT << ((cellCoord[0] * COLS + cellCoord[1]) * BITS_PER_CELL)); } for (int[] targetCoord : targetCellsCoords) { setMask |= (pieceCode << ((targetCoord[0] * COLS + targetCoord[1]) * BITS_PER_CELL)); } newLayout = (newLayout & ~clearMask) | setMask; successorLayouts.add(newLayout); }
             } } } return successorLayouts;
     }
-    private static int calculateHeuristic(long layout) { /* ... Same A* heuristic ... */
-        for (int r = 0; r < ROWS - 1; r++) { for (int c = 0; c < COLS - 1; c++) { if (getCellCode(layout, r, c) == BoardSerializer.CODE_CAO_CAO && getCellCode(layout, r, c + 1) == BoardSerializer.CODE_CAO_CAO && getCellCode(layout, r + 1, c) == BoardSerializer.CODE_CAO_CAO && getCellCode(layout, r + 1, c + 1) == BoardSerializer.CODE_CAO_CAO) { int goalR = 3; int goalC = 1; return Math.abs(r - goalR) + Math.abs(c - goalC); } } } return Integer.MAX_VALUE / 2;
+
+    /**
+     * Calculates an enhanced heuristic value for A*.
+     * h(I) = max(Manhattan(I), globalOptimalCost - trieGetMin_g(I))
+     * Handles cases where global info is unavailable.
+     * 1. 利用全局最优路径信息:
+     * 我们知道从起点 O 到状态 I 的全局最短成本是 g_global(I) = trieGetMin_g(I)
+     * 我们知道从起点 O 到目标 G 的全局最短成本是 g_global(G) = globalOptimalCost
+     * 如果状态 I 位于某条从 O 到 G 的全局最优路径上，那么理论上 g_global(I) + h*(I) = g_global(G)，其中 h*(I) 是从 I 到 G 的真实最短成本
+     * 因此，h*(I) = g_global(G) - g_global(I)。  因此， h*(I) = g_global(G) - g_global(I)
+     * 虽然状态 I 不一定在全局最优路径上，但 g_global(I) + h*(I) 总是大于等于 g_global(G)（因为 g_global(I) + h*(I) 是某条 O->G 路径的成本，而 g_global(G) 是最短成本）
+     * 所以，h*(I) >= g_global(G) - g_global(I)，这意味着 diff = g_global(G) - g_global(I) 是真实剩余成本 h*(I) 的一个下界（当 diff >= 0 时）
+     * 2. 定义增强启发式 h_enhanced(I):
+     * 我们可以结合现有的启发式和这个新的下界： h_enhanced(I) = max(h_manhattan(I), globalOptimalCost - trieGetMin_g(I))
+     * 重要: 这个计算只在 globalOptimalCost 有效（不是 MAX_VALUE）且 trieGetMin_g(I) 有效（不是 MAX_VALUE）并且 globalOptimalCost >= trieGetMin_g(I) 时才有意义
+     * 在其他情况下，我们应该只使用 h_manhattan(I)
+     * 3. 保持 A* 结构正确:
+     * A* 搜索本身仍然使用局部 g 值 (g_local)，从 Phase 3 的起始状态 S 开始计数（g_local(S) = 0）
+     * 优先级队列使用 f = g_local + h_enhanced(I)
+     * 只使用标准的本地剪枝：基于 visitedInThisSearch 中的 g_local (new_g_local >= visited_g_local)
+     * 不使用任何基于绝对 g 值或全局成本的额外剪枝规则
+     */
+    private int calculateHeuristic(long layout) {
+        int h_manhattan = calculateManhattanHeuristic(layout); // Assuming this exists or implement it
+
+        int h_diff = 0; // Default value for the difference part
+        if (this.globalOptimalCost != Integer.MAX_VALUE) {
+            long canonicalLayout = getCanonicalLayout(layout);
+            int g_global_I = trieGetMin_g(canonicalLayout);
+
+            if (g_global_I != Integer.MAX_VALUE && this.globalOptimalCost >= g_global_I) {
+                h_diff = this.globalOptimalCost - g_global_I;
+            }
+            // If g_global_I is MAX_VALUE or globalOptimalCost < g_global_I, h_diff remains 0
+            // or could be set to a negative value, max will handle it.
+        }
+
+        return Math.max(h_manhattan, h_diff);
     }
+
+    // --- Helper for basic Manhattan distance (or your existing heuristic) ---
+    private int calculateManhattanHeuristic(long layout) {
+        // Find top-left of CaoCao
+        for (int r = 0; r < ROWS - 1; r++) {
+            for (int c = 0; c < COLS - 1; c++) {
+                if (getCellCode(layout, r, c) == BoardSerializer.CODE_CAO_CAO &&
+                        getCellCode(layout, r, c + 1) == BoardSerializer.CODE_CAO_CAO &&
+                        getCellCode(layout, r + 1, c) == BoardSerializer.CODE_CAO_CAO &&
+                        getCellCode(layout, r + 1, c + 1) == BoardSerializer.CODE_CAO_CAO)
+                {
+                    int goalR = 3; int goalC = 1; // Target for top-left corner
+                    return Math.abs(r - goalR) + Math.abs(c - goalC);
+                }
+            }
+        }
+        // Should not happen in valid states reachable from start if goal is reachable
+        return Integer.MAX_VALUE / 2; // High cost if CaoCao not found
+    }
+
     private static boolean isGoalLayout(long layout) { /* ... Same goal check ... */
         boolean cell17_ok = getCellCode(layout, 4, 1) == BoardSerializer.CODE_CAO_CAO; boolean cell18_ok = getCellCode(layout, 4, 2) == BoardSerializer.CODE_CAO_CAO; return cell17_ok && cell18_ok;
     }
-
     // --- Trie Helper Methods (V5 - Operate on TrieNodeV5) ---
+
     private TrieNodeV5 getOrCreateTrieNode(long canonicalLayout) {
         TrieNodeV5 current = persistentTrieRoot;
         for (int i = 0; i < TOTAL_CELLS; i++) {
@@ -153,8 +228,8 @@ public class KlotskiSolver { // Renamed class for clarity
         return current.minAbsolute_g;
     }
 
-
     // --- Path Reconstruction ---
+
     private List<BoardState> reconstructBFSPath(ElementNodeBFSV5 endNode) {
         LinkedList<BoardState> path = new LinkedList<>();
         ElementNodeBFSV5 trace = endNode;
@@ -182,11 +257,11 @@ public class KlotskiSolver { // Renamed class for clarity
      */
     public List<BoardState> initialSolve(BoardState initialState) {
         if (initialSolveCompleted) {
-            System.out.println("[initialSolve] Already completed. Returning cached optimal path.");
+            //System.out.println("[initialSolve] Already completed. Returning cached optimal path.");
             // Ensure optimalPath is not null before returning
             return (this.optimalPath != null) ? this.optimalPath : Collections.emptyList();
         }
-        System.out.println("[initialSolve] Starting FULL BFS (explores all reachable)...");
+        //System.out.println("[initialSolve] Starting FULL BFS (explores all reachable)...");
         this.nodesExploredBFS = 0;
         this.firstGoalNodeFound = null; // Reset goal node tracker
         long initialLayout = initialState.getLayout();
@@ -200,11 +275,11 @@ public class KlotskiSolver { // Renamed class for clarity
             queue.offer(initialElement);
         } else {
             // This case should ideally not happen if called fresh, but handles re-entry possibility
-            System.out.println("[initialSolve] Warning: Initial state already had a g-value in Trie.");
+            //System.out.println("[initialSolve] Warning: Initial state already had a g-value in Trie.");
             if (trieGetMin_g(canonicalInitialLayout) == 0) {
                 queue.offer(initialElement); // Still start the BFS
             } else {
-                System.err.println("[initialSolve] Error: Initial state has non-zero g-value. Aborting.");
+                //System.err.println("[initialSolve] Error: Initial state has non-zero g-value. Aborting.");
                 this.initialSolveCompleted = true; // Mark as completed (failed)
                 return Collections.emptyList();
             }
@@ -212,7 +287,7 @@ public class KlotskiSolver { // Renamed class for clarity
 
 
         if (isGoalLayout(initialLayout)) {
-            System.out.println("[initialSolve] Initial state is the goal.");
+            //System.out.println("[initialSolve] Initial state is the goal.");
             this.nodesExploredBFS = 1;
             this.optimalPath = Collections.singletonList(initialState);
             this.foundGoalCanonicalLayout = canonicalInitialLayout;
@@ -246,7 +321,7 @@ public class KlotskiSolver { // Renamed class for clarity
                     if (isGoalLayout(successorLayout)) {
                         // If this is the *first* time we found a goal, store this node
                         if (this.firstGoalNodeFound == null || new_g < this.firstGoalNodeFound.moveCount) {
-                            System.out.println("[initialSolve] Goal found or improved at step " + new_g + "!");
+                            //System.out.println("[initialSolve] Goal found or improved at step " + new_g + "!");
                             this.firstGoalNodeFound = newElement;
                             this.foundGoalCanonicalLayout = canonicalSuccessorLayout; // Store canonical layout of goal
                         }
@@ -261,26 +336,27 @@ public class KlotskiSolver { // Renamed class for clarity
         }
 
         // --- BFS Loop Finished ---
-        System.out.println("[initialSolve] Full BFS completed exploration.");
-        this.initialSolveCompleted = true; // Mark BFS as done
+        //System.out.println("[initialSolve] Full BFS completed exploration.");
+        this.initialSolveCompleted = true;
 
         if (this.firstGoalNodeFound != null) {
-            System.out.println("[initialSolve] Reconstructing path from first goal found at step " + this.firstGoalNodeFound.moveCount);
+            //System.out.println("[initialSolve] Reconstructing path from first goal found at step " + this.firstGoalNodeFound.moveCount);
             this.optimalPath = reconstructBFSPath(this.firstGoalNodeFound);
+            this.globalOptimalCost = this.firstGoalNodeFound.moveCount; // *** STORE GLOBAL OPTIMAL COST ***
             return this.optimalPath;
         } else {
-            System.err.println("[initialSolve] Full BFS completed without finding any goal!");
+            //System.err.println("[initialSolve] Full BFS completed without finding any goal!");
             this.optimalPath = Collections.emptyList();
+            this.globalOptimalCost = Integer.MAX_VALUE; // Indicate no solution found
             return this.optimalPath;
         }
     }
 
-    // --- findPathFrom (No changes needed) ---
     public List<BoardState> findPathFrom(BoardState currentState) {
         // ... (Existing V5.0 logic remains the same)
         // It relies on initialSolve having been completed and the Trie being populated.
         if (!initialSolveCompleted) {
-            System.out.println("[findPathFrom] Initial solve not completed. Running initialSolve first...");
+            //System.out.println("[findPathFrom] Initial solve not completed. Running initialSolve first...");
             // IMPORTANT: Ensure initialSolve is called with the *actual* game start state,
             // not necessarily currentState if this is the very first call.
             // Assuming it was called correctly before, or handle error.
@@ -306,11 +382,11 @@ public class KlotskiSolver { // Renamed class for clarity
         }
 
         if (optimalPathIndex != -1) {
-            System.out.println("[findPathFrom] Cache Hit: Current state is on the optimal path at index " + optimalPathIndex + ".");
+            //System.out.println("[findPathFrom] Cache Hit: Current state is on the optimal path at index " + optimalPathIndex + ".");
             return this.optimalPath.subList(optimalPathIndex, this.optimalPath.size());
         } else {
             // Phase 3
-            System.out.println("[findPathFrom] Cache Miss: Current state not on optimal path. Running A*...");
+            //System.out.println("[findPathFrom] Cache Miss: Current state not on optimal path. Running A*...");
             int start_g = trieGetMin_g(canonicalCurrentLayout);
 
             if (start_g == Integer.MAX_VALUE) {
@@ -327,102 +403,80 @@ public class KlotskiSolver { // Renamed class for clarity
     }
 
 
-    // --- runAStarSearch (No changes needed) ---
-    private List<BoardState> runAStarSearch(BoardState startState, int start_g) {
-        this.nodesExploredAStar = 0; // 重置计数器
+    /**
+     * Runs a standard A* search using an ENHANCED heuristic informed by global data.
+     * Uses local 'g' and standard local pruning. Global info influences 'h' only.
+     */
+    private List<BoardState> runAStarSearch(BoardState startState, int start_g_abs) { // start_g_abs is informational
+        this.nodesExploredAStar = 0;
         long startLayout = startState.getLayout();
         long canonicalStartLayout = getCanonicalLayout(startLayout);
 
-        // 添加日志表明全局剪枝已禁用
-        System.out.println("[runAStarSearch DEBUG] Starting A* for state " + canonicalStartLayout
-                + " with start_g=" + start_g + " (GLOBAL PRUNING DISABLED)");
+        //System.out.println("[runAStarSearch EnhancedH] Starting A* for state " + canonicalStartLayout + " (origin_abs_g=" + start_g_abs + ")");
 
         if (isGoalLayout(startLayout)) {
             this.nodesExploredAStar = 1;
+            //System.out.println("[runAStarSearch EnhancedH] Start state is already goal.");
             return Collections.singletonList(startState);
         }
 
         PriorityQueue<ElementNodeAStarV5> openSet = new PriorityQueue<>();
-        // visitedInThisSearch 仍然存储绝对 g 值
-        Map<Long, Integer> visitedInThisSearch = new HashMap<>(); // 本地访问集
+        Map<Long, Integer> visitedInThisSearch = new HashMap<>(); // Stores min LOCAL g
 
+        // *** Uses the ENHANCED heuristic ***
         int initialH = calculateHeuristic(startLayout);
-        // 起始 g 值仍然使用来自 Trie 的全局最小值
-        ElementNodeAStarV5 initialElement = new ElementNodeAStarV5(startState, null, start_g, initialH);
+        ElementNodeAStarV5 initialElement = new ElementNodeAStarV5(startState, null, 0, initialH); // local g = 0
 
         openSet.add(initialElement);
-        visitedInThisSearch.put(canonicalStartLayout, start_g);
+        visitedInThisSearch.put(canonicalStartLayout, 0);
 
         while (!openSet.isEmpty()) {
             ElementNodeAStarV5 currentNode = openSet.poll();
             this.nodesExploredAStar++;
             long currentLayout = currentNode.state.getLayout();
             long canonicalCurrentLayout = getCanonicalLayout(currentLayout);
-            int currentAbsolute_g = currentNode.g; // 当前路径的绝对 g 值
+            int current_g_local = currentNode.g_local;
 
-            // 目标检查
+            // Goal Check
             if (isGoalLayout(currentLayout)) {
-                System.out.println("[runAStarSearch DEBUG] Goal found! (GLOBAL PRUNING DISABLED)");
-                return reconstructAStarPath(currentNode);
+                //System.out.println("[runAStarSearch RelativeG] Goal found!");
+                return reconstructAStarPath(currentNode); // Path reconstruction uses father pointers
             }
 
-            // --- 出队剪枝 ---
-            // 1. 本地剪枝 (保留)
-            int visited_g = visitedInThisSearch.getOrDefault(canonicalCurrentLayout, Integer.MAX_VALUE);
-            if (currentAbsolute_g > visited_g) {
-                // System.out.println("[A* DEBUG Prune Dequeue LocalVisited] Node " + canonicalCurrentLayout + " (g=" + currentAbsolute_g + ") already visited with better g=" + visited_g);
-                continue;
-            }
-            // 2. 全局剪枝 (在某些布局会出错）
-
-            int globalMinG = trieGetMin_g(canonicalCurrentLayout);
-            if (globalMinG != Integer.MAX_VALUE && currentAbsolute_g > globalMinG) {
-                 // System.out.println("[A* DEBUG Prune Dequeue GlobalG] Node " + canonicalCurrentLayout + " (g=" + currentAbsolute_g + ") worse than global min_g=" + globalMinG);
-                 continue; // 全局剪枝被注释掉
-            }
-
-            // --- 出队剪枝结束 ---
+            // --- Local Dequeue Pruning (based on local g) ---
+            int visited_g_local = visitedInThisSearch.getOrDefault(canonicalCurrentLayout, Integer.MAX_VALUE);
+            if (current_g_local > visited_g_local) { continue; }
+            // --- NO GLOBAL PRUNING ---
 
             List<Long> successorLayouts = generateSuccessorLayouts(currentLayout);
 
             for (long successorLayout : successorLayouts) {
-                int newAbsolute_g = currentAbsolute_g + 1; // 新路径的绝对 g 值
+                int new_g_local = current_g_local + 1;
                 long canonicalSuccessorLayout = getCanonicalLayout(successorLayout);
                 boolean pruned = false;
 
-                // --- 入队剪枝 ---
-                // 1. 本地剪枝 (保留, 使用标准 >=)
-                int successor_visited_g = visitedInThisSearch.getOrDefault(canonicalSuccessorLayout, Integer.MAX_VALUE);
-                if (newAbsolute_g >= successor_visited_g) {
-                    // System.out.println("[A* DEBUG EnqueuePrune LocalVisited] Successor " + canonicalSuccessorLayout + " (new_g=" + newAbsolute_g + ") already visited better/equal g=" + successor_visited_g);
+                // --- Local Enqueue Pruning (based on local g, standard >=) ---
+                int successor_visited_g_local = visitedInThisSearch.getOrDefault(canonicalSuccessorLayout, Integer.MAX_VALUE);
+                if (new_g_local >= successor_visited_g_local) {
                     pruned = true;
                 }
-
-                // 2. 全局剪枝 (在某些布局会出错）
-
-                int successorGlobalMinG = trieGetMin_g(canonicalSuccessorLayout);
-                if (!pruned && successorGlobalMinG != Integer.MAX_VALUE && newAbsolute_g > successorGlobalMinG) {
-                    // System.out.println("[A* DEBUG EnqueuePrune GlobalG] Successor " + canonicalSuccessorLayout + " (new_g=" + newAbsolute_g + ") worse than global min_g=" + successorGlobalMinG);
-                    pruned = true;
-                }
-
-                // --- 入队剪枝结束 ---
+                // --- NO GLOBAL PRUNING ---
 
                 if (!pruned) {
+                    // *** Uses the ENHANCED heuristic ***
                     int h_new = calculateHeuristic(successorLayout);
                     BoardState successorState = new BoardState(successorLayout);
-                    ElementNodeAStarV5 newElement = new ElementNodeAStarV5(successorState, currentNode, newAbsolute_g, h_new);
+                    ElementNodeAStarV5 newElement = new ElementNodeAStarV5(successorState, currentNode, new_g_local, h_new);
 
-                    // 更新本地访问集
-                    visitedInThisSearch.put(canonicalSuccessorLayout, newAbsolute_g);
+                    visitedInThisSearch.put(canonicalSuccessorLayout, new_g_local);
                     openSet.add(newElement);
                 }
             }
         }
 
-        // 如果循环结束仍未找到目标
-        System.err.println("[runAStarSearch] A* completed without finding goal from state " + canonicalStartLayout
-                + " (start_g=" + start_g + ") (GLOBAL PRUNING DISABLED)");
+        // If loop finishes without finding the goal
+        System.err.println("[runAStarSearch RelativeG] A* completed without finding goal from state " + canonicalStartLayout
+                + " (abs_g=" + start_g_abs + ")");
         return Collections.emptyList();
     }
 
@@ -432,12 +486,11 @@ public class KlotskiSolver { // Renamed class for clarity
         System.out.println("Klotski Solver V5.0 (Full BFS Hybrid) Test");
         try {
             int[][] initialArray = new int[][]{
-                    {BoardSerializer.EMPTY, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.EMPTY},
-                    {BoardSerializer.SOLDIER, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.SOLDIER},
-                    {BoardSerializer.VERTICAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.VERTICAL},
-                    {BoardSerializer.VERTICAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.VERTICAL},
-                    {BoardSerializer.SOLDIER, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.SOLDIER}
-
+                    {BoardSerializer.VERTICAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.VERTICAL},
+                    {BoardSerializer.VERTICAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.VERTICAL},
+                    {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL},
+                    {BoardSerializer.SOLDIER, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.SOLDIER},
+                    {BoardSerializer.SOLDIER, BoardSerializer.EMPTY, BoardSerializer.EMPTY, BoardSerializer.SOLDIER}
             };
             long initialLayout = BoardSerializer.serialize(initialArray);
             BoardState initialState = new BoardState(initialLayout);
@@ -505,7 +558,7 @@ public class KlotskiSolver { // Renamed class for clarity
                 if (chosenLayout != -1) {
                     layoutForPhase3 = chosenLayout;
                     BoardState stateToDebug = new BoardState(layoutForPhase3);
-                    System.out.println("\nDEBUG: Board layout for Phase 3 start (Layout: " + layoutForPhase3 + ", Canonical: " + getCanonicalLayout(layoutForPhase3) + ")");
+                    //System.out.println("\nDEBUG: Board layout for Phase 3 start (Layout: " + layoutForPhase3 + ", Canonical: " + getCanonicalLayout(layoutForPhase3) + ")");
                     try {
                         BoardSerializer.printBoard(stateToDebug.getBoardArray());
                     } catch (Exception e) { System.out.println("Error printing board: " + e.getMessage());}
