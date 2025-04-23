@@ -88,6 +88,20 @@ public class MapModel {
     }
 
     /**
+     * 创建一个二维数组的深拷贝
+     * 用于在移动前保存当前状态，支持撤销功能
+     *
+     * @return 当前地图矩阵的深拷贝
+     */
+    public int[][] copyMatrix() {
+        int[][] copy = new int[matrix.length][matrix[0].length];
+        for (int i = 0; i < matrix.length; i++) {
+            System.arraycopy(matrix[i], 0, copy[i], 0, matrix[i].length);
+        }
+        return copy;
+    }
+
+    /**
      * 检查指定列索引是否在地图宽度范围内
      * 
      * @param col 列索引

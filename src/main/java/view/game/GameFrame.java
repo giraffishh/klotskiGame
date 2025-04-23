@@ -30,6 +30,10 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
     private JLabel minStepsLabel;
     // 游戏主面板，显示游戏地图
     private GamePanel gamePanel;
+    // 撤销按钮
+    private JButton undoBtn;
+    // 重做按钮
+    private JButton redoBtn;
 
     /**
      * 创建游戏窗口
@@ -61,36 +65,57 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         // 创建游戏控制器，关联面板和模型
         this.controller = new GameController(gamePanel, mapModel);
 
-        // 步数显示标签
+        // 计算右侧控制区域的起始位置和尺寸
+        int controlX = panelX + gamePanel.getWidth() + 20;
+        int controlY = panelY + 20;
+        int controlWidth = windowWidth - controlX - 20;
+        int buttonWidth = (controlWidth - 20) / 2; // 两列按钮，中间留20px间距
+        
+        // 步数显示标签 - 放在顶部中央
         this.stepLabel = FrameUtil.createTitleLabel("Start", JLabel.CENTER);
-        stepLabel.setBounds(panelX + gamePanel.getWidth() + 40, panelY + 20, 180, 50);
+        stepLabel.setBounds(controlX, controlY, controlWidth, 30);
         this.add(stepLabel);
+        controlY += 40;
 
-        // 最短步数显示标签
+        // 最短步数显示标签 - 放在步数标签下方
         this.minStepsLabel = FrameUtil.createTitleLabel("Min Steps: --", JLabel.CENTER);
-        minStepsLabel.setBounds(panelX + gamePanel.getWidth() + 40, panelY + 60, 180, 50);
+        minStepsLabel.setBounds(controlX, controlY, controlWidth, 30);
         this.add(minStepsLabel);
+        controlY += 50;
 
-        // 将步数标签设置到游戏面板中
+        // 将步数标签和最短步数标签设置到游戏面板中
         gamePanel.setStepLabel(stepLabel);
-
-        // 将最短步数标签设置到游戏面板中
         gamePanel.setMinStepsLabel(minStepsLabel);
 
-        // 重新开始按钮
+        // 第一行按钮：左侧重启，右侧保存
         this.restartBtn = FrameUtil.createStyledButton("Restart", true);
-        restartBtn.setBounds(panelX + gamePanel.getWidth() + 40, panelY + 120, 120, 50);
+        restartBtn.setBounds(controlX, controlY, buttonWidth, 45);
         this.add(restartBtn);
+        
+        this.saveBtn = FrameUtil.createStyledButton("Save", true);
+        saveBtn.setBounds(controlX + buttonWidth + 20, controlY, buttonWidth, 45);
+        this.add(saveBtn);
+        controlY += 65;
 
-        // 加载游戏按钮
+        // 第二行按钮：左侧撤销，右侧重做
+        this.undoBtn = FrameUtil.createStyledButton("Undo", false);
+        undoBtn.setBounds(controlX, controlY, buttonWidth, 45);
+        undoBtn.setEnabled(false); // 初始时禁用
+        this.add(undoBtn);
+        
+        this.redoBtn = FrameUtil.createStyledButton("Redo", false);
+        redoBtn.setBounds(controlX + buttonWidth + 20, controlY, buttonWidth, 45);
+        redoBtn.setEnabled(false); // 初始时禁用
+        this.add(redoBtn);
+        controlY += 65;
+
+        // 第三行按钮：居中放置加载按钮
         this.loadBtn = FrameUtil.createStyledButton("Load", false);
-        loadBtn.setBounds(panelX + gamePanel.getWidth() + 40, panelY + 190, 120, 50);
+        loadBtn.setBounds(controlX + controlWidth/4, controlY, controlWidth/2, 45);
         this.add(loadBtn);
 
-        // 保存游戏按钮
-        this.saveBtn = FrameUtil.createStyledButton("Save", true);
-        saveBtn.setBounds(panelX + gamePanel.getWidth() + 40, panelY + 260, 120, 50);
-        this.add(saveBtn);
+        // 设置GameController对GameFrame的引用，用于更新按钮状态
+        controller.setParentFrame(this);
 
         // 为重新开始按钮添加点击事件监听器
         this.restartBtn.addActionListener(e -> {
@@ -118,8 +143,22 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
             gamePanel.requestFocusInWindow();
         });
 
-        //todo: add other button here
+        // 为撤销按钮添加点击事件监听器
+        this.undoBtn.addActionListener(e -> {
+            // 调用控制器的撤销方法
+            controller.undoMove();
+            // 将焦点设置回游戏面板以便接收键盘事件
+            gamePanel.requestFocusInWindow();
+        });
         
+        // 为重做按钮添加点击事件监听器
+        this.redoBtn.addActionListener(e -> {
+            // 调用控制器的重做方法
+            controller.redoMove();
+            // 将焦点设置回游戏面板以便接收键盘事件
+            gamePanel.requestFocusInWindow();
+        });
+
         // 更新按钮状态
         updateButtonsState();
 
@@ -164,5 +203,16 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         // 访客模式下禁用保存和加载功能
         loadBtn.setEnabled(!isGuest);
         saveBtn.setEnabled(!isGuest);
+    }
+
+    /**
+     * 更新撤销和重做按钮状态
+     *
+     * @param canUndo 是否可以撤销
+     * @param canRedo 是否可以重做
+     */
+    public void updateUndoRedoButtons(boolean canUndo, boolean canRedo) {
+        undoBtn.setEnabled(canUndo);
+        redoBtn.setEnabled(canRedo);
     }
 }

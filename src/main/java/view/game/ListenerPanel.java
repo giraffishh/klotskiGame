@@ -30,6 +30,7 @@ public abstract class ListenerPanel extends JPanel {
     /**
      * 处理键盘事件
      * 当方向键被按下时，调用相应的移动方法
+     * 支持Ctrl+Z撤销和Ctrl+Y/Ctrl+Shift+Z重做
      * @param e 键盘事件对象
      */
     @Override
@@ -41,6 +42,24 @@ public abstract class ListenerPanel extends JPanel {
                 case KeyEvent.VK_LEFT -> doMoveLeft();
                 case KeyEvent.VK_UP -> doMoveUp();
                 case KeyEvent.VK_DOWN -> doMoveDown();
+                case KeyEvent.VK_Z -> {
+                    // Ctrl+Z: 撤销
+                    if ((e.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0 &&
+                        (e.getModifiersEx() & KeyEvent.SHIFT_DOWN_MASK) == 0) {
+                        doUndo();
+                    }
+                    // Ctrl+Shift+Z: 重做
+                    else if ((e.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0 &&
+                             (e.getModifiersEx() & KeyEvent.SHIFT_DOWN_MASK) != 0) {
+                        doRedo();
+                    }
+                }
+                case KeyEvent.VK_Y -> {
+                    // Ctrl+Y: 重做
+                    if ((e.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0) {
+                        doRedo();
+                    }
+                }
             }
         }
     }
@@ -70,4 +89,14 @@ public abstract class ListenerPanel extends JPanel {
      * 处理向下移动的抽象方法
      */
     public abstract void doMoveDown();
+
+    /**
+     * 处理撤销操作的抽象方法
+     */
+    public abstract void doUndo();
+
+    /**
+     * 处理重做操作的抽象方法
+     */
+    public abstract void doRedo();
 }
