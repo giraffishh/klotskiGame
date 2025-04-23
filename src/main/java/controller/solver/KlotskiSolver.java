@@ -1,21 +1,23 @@
 package controller.solver;
 
+import controller.util.BoardSerializer;
+
 import java.util.*;
 
 // --- TrieNode for V5 ---
 // Stores only the minimum absolute g-cost found by the initial BFS
-class TrieNodeV5 {
-    TrieNodeV5[] children = new TrieNodeV5[5]; // 0..4 piece codes
+class TrieNode {
+    TrieNode[] children = new TrieNode[5]; // 0..4 piece codes
     int minAbsolute_g = Integer.MAX_VALUE;
 }
 
 // --- ElementNode for BFS ---
-class ElementNodeBFSV5 {
+class ElementNodeBFS {
     BoardState state;
-    ElementNodeBFSV5 father; // Parent in BFS tree
+    ElementNodeBFS father; // Parent in BFS tree
     int moveCount;          // Moves from BFS start (relative depth)
 
-    public ElementNodeBFSV5(BoardState state, ElementNodeBFSV5 father, int moveCount) {
+    public ElementNodeBFS(BoardState state, ElementNodeBFS father, int moveCount) {
         this.state = state;
         this.father = father;
         this.moveCount = moveCount;
@@ -23,19 +25,19 @@ class ElementNodeBFSV5 {
 }
 
 // --- ElementNode for A* ---
-class ElementNodeAStarV5 implements Comparable<ElementNodeAStarV5> {
+class ElementNodeAStar implements Comparable<ElementNodeAStar> {
     BoardState state;
-    ElementNodeAStarV5 father;
+    ElementNodeAStar father;
     int g_local; // Cost from Phase 3 start state 'S'
     int h;       // Enhanced heuristic value
     int f;       // f = g_local + h
 
-    public ElementNodeAStarV5(BoardState s, ElementNodeAStarV5 fth, int g_local, int h) {
+    public ElementNodeAStar(BoardState s, ElementNodeAStar fth, int g_local, int h) {
         this.state = s; this.father = fth; this.g_local = g_local; this.h = h; this.f = this.g_local + h;
     }
 
     @Override
-    public int compareTo(ElementNodeAStarV5 o) {
+    public int compareTo(ElementNodeAStar o) {
         if (f != o.f) return Integer.compare(f, o.f);
         return Integer.compare(h, o.h); // Tie-breaking using heuristic
     }
@@ -44,7 +46,7 @@ class ElementNodeAStarV5 implements Comparable<ElementNodeAStarV5> {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        ElementNodeAStarV5 that = (ElementNodeAStarV5) o;
+        ElementNodeAStar that = (ElementNodeAStar) o;
         // Equality based on the board state's layout's canonical form
         // Assumes BoardState.getLayout() exists and getCanonicalLayout is static/accessible
         return KlotskiSolver.getCanonicalLayout(state.getLayout()) == KlotskiSolver.getCanonicalLayout(that.state.getLayout());
@@ -64,7 +66,7 @@ public class KlotskiSolver { // Renamed class for clarity
     // ... (Keep constants and instance variables: persistentTrieRoot, optimalPath, etc.)
     // ... (Add initialSolveCompleted flag if not already present)
     private boolean initialSolveCompleted = false;
-    private ElementNodeBFSV5 firstGoalNodeFound = null; // Store the first goal node
+    private ElementNodeBFS firstGoalNodeFound = null; // Store the first goal node
 
     // --- Constants ---
     private static final int[] DR = {-1, 1, 0, 0}; private static final int[] DC = {0, 0, -1, 1};
@@ -73,7 +75,7 @@ public class KlotskiSolver { // Renamed class for clarity
     private static final int TOTAL_CELLS = ROWS * COLS;
 
     // --- Instance Variables ---
-    private final TrieNodeV5 persistentTrieRoot = new TrieNodeV5(); // Stores global min_g from BFS
+    private final TrieNode persistentTrieRoot = new TrieNode(); // Stores global min_g from BFS
     private List<BoardState> optimalPath = null; // Stores the first optimal path found by BFS
     private long foundGoalCanonicalLayout = -1L;   // Stores the canonical hash of the goal found by BFS
     private int nodesExploredBFS = 0;
@@ -192,12 +194,12 @@ public class KlotskiSolver { // Renamed class for clarity
     }
     // --- Trie Helper Methods (V5 - Operate on TrieNodeV5) ---
 
-    private TrieNodeV5 getOrCreateTrieNode(long canonicalLayout) {
-        TrieNodeV5 current = persistentTrieRoot;
+    private TrieNode getOrCreateTrieNode(long canonicalLayout) {
+        TrieNode current = persistentTrieRoot;
         for (int i = 0; i < TOTAL_CELLS; i++) {
             int shift = i * BITS_PER_CELL; int cellCode = (int)((canonicalLayout >> shift) & CELL_MASK_3BIT);
             if (cellCode < 0 || cellCode >= current.children.length) throw new ArrayIndexOutOfBoundsException("Invalid cell code "+cellCode);
-            if (current.children[cellCode] == null) current.children[cellCode] = new TrieNodeV5();
+            if (current.children[cellCode] == null) current.children[cellCode] = new TrieNode();
             current = current.children[cellCode];
         }
         return current;
@@ -205,7 +207,7 @@ public class KlotskiSolver { // Renamed class for clarity
 
     /** Updates Trie node ONLY if new_g is better (Used by BFS). */
     private boolean trieUpdate_g(long canonicalLayout, int newAbsolute_g) {
-        TrieNodeV5 node = getOrCreateTrieNode(canonicalLayout);
+        TrieNode node = getOrCreateTrieNode(canonicalLayout);
         if (newAbsolute_g < node.minAbsolute_g) {
             node.minAbsolute_g = newAbsolute_g;
             return true;
@@ -215,7 +217,7 @@ public class KlotskiSolver { // Renamed class for clarity
 
     /** Gets the minimum absolute g-cost from the Trie (Read-only). */
     private int trieGetMin_g(long canonicalLayout) {
-        TrieNodeV5 current = persistentTrieRoot;
+        TrieNode current = persistentTrieRoot;
         for (int i = 0; i < TOTAL_CELLS; i++) {
             int shift = i * BITS_PER_CELL; int cellCode = (int)((canonicalLayout >> shift) & CELL_MASK_3BIT);
             // Need to handle cases where path doesn't exist during lookup
@@ -230,9 +232,9 @@ public class KlotskiSolver { // Renamed class for clarity
 
     // --- Path Reconstruction ---
 
-    private List<BoardState> reconstructBFSPath(ElementNodeBFSV5 endNode) {
+    private List<BoardState> reconstructBFSPath(ElementNodeBFS endNode) {
         LinkedList<BoardState> path = new LinkedList<>();
-        ElementNodeBFSV5 trace = endNode;
+        ElementNodeBFS trace = endNode;
         while (trace != null) {
             path.addFirst(trace.state);
             trace = trace.father;
@@ -240,9 +242,9 @@ public class KlotskiSolver { // Renamed class for clarity
         return path;
     }
 
-    private List<BoardState> reconstructAStarPath(ElementNodeAStarV5 endNode) {
+    private List<BoardState> reconstructAStarPath(ElementNodeAStar endNode) {
         LinkedList<BoardState> path = new LinkedList<>();
-        ElementNodeAStarV5 trace = endNode;
+        ElementNodeAStar trace = endNode;
         while (trace != null) {
             path.addFirst(trace.state);
             trace = trace.father;
@@ -257,29 +259,29 @@ public class KlotskiSolver { // Renamed class for clarity
      */
     public List<BoardState> initialSolve(BoardState initialState) {
         if (initialSolveCompleted) {
-            //System.out.println("[initialSolve] Already completed. Returning cached optimal path.");
+            System.out.println("[initialSolve] Already completed. Returning cached optimal path.");
             // Ensure optimalPath is not null before returning
             return (this.optimalPath != null) ? this.optimalPath : Collections.emptyList();
         }
-        //System.out.println("[initialSolve] Starting FULL BFS (explores all reachable)...");
+        System.out.println("[initialSolve] Starting FULL BFS (explores all reachable)...");
         this.nodesExploredBFS = 0;
         this.firstGoalNodeFound = null; // Reset goal node tracker
         long initialLayout = initialState.getLayout();
         long canonicalInitialLayout = getCanonicalLayout(initialLayout);
 
-        Queue<ElementNodeBFSV5> queue = new ArrayDeque<>();
-        ElementNodeBFSV5 initialElement = new ElementNodeBFSV5(initialState, null, 0);
+        Queue<ElementNodeBFS> queue = new ArrayDeque<>();
+        ElementNodeBFS initialElement = new ElementNodeBFS(initialState, null, 0);
 
         // Update Trie for the start state
         if (trieUpdate_g(canonicalInitialLayout, 0)) { // Check if update happened (first time)
             queue.offer(initialElement);
         } else {
             // This case should ideally not happen if called fresh, but handles re-entry possibility
-            //System.out.println("[initialSolve] Warning: Initial state already had a g-value in Trie.");
+            System.out.println("[initialSolve] Warning: Initial state already had a g-value in Trie.");
             if (trieGetMin_g(canonicalInitialLayout) == 0) {
                 queue.offer(initialElement); // Still start the BFS
             } else {
-                //System.err.println("[initialSolve] Error: Initial state has non-zero g-value. Aborting.");
+                System.err.println("[initialSolve] Error: Initial state has non-zero g-value. Aborting.");
                 this.initialSolveCompleted = true; // Mark as completed (failed)
                 return Collections.emptyList();
             }
@@ -287,7 +289,7 @@ public class KlotskiSolver { // Renamed class for clarity
 
 
         if (isGoalLayout(initialLayout)) {
-            //System.out.println("[initialSolve] Initial state is the goal.");
+            System.out.println("[initialSolve] Initial state is the goal.");
             this.nodesExploredBFS = 1;
             this.optimalPath = Collections.singletonList(initialState);
             this.foundGoalCanonicalLayout = canonicalInitialLayout;
@@ -298,7 +300,7 @@ public class KlotskiSolver { // Renamed class for clarity
 
 
         while (!queue.isEmpty()) {
-            ElementNodeBFSV5 currentNode = queue.poll();
+            ElementNodeBFS currentNode = queue.poll();
             this.nodesExploredBFS++;
             long currentLayout = currentNode.state.getLayout();
             int currentDepth = currentNode.moveCount; // Absolute g = currentDepth
@@ -315,13 +317,13 @@ public class KlotskiSolver { // Renamed class for clarity
                     trieUpdate_g(canonicalSuccessorLayout, new_g);
 
                     BoardState successorState = new BoardState(successorLayout);
-                    ElementNodeBFSV5 newElement = new ElementNodeBFSV5(successorState, currentNode, new_g);
+                    ElementNodeBFS newElement = new ElementNodeBFS(successorState, currentNode, new_g);
 
                     // Check if it's a goal state
                     if (isGoalLayout(successorLayout)) {
                         // If this is the *first* time we found a goal, store this node
                         if (this.firstGoalNodeFound == null || new_g < this.firstGoalNodeFound.moveCount) {
-                            //System.out.println("[initialSolve] Goal found or improved at step " + new_g + "!");
+                            System.out.println("[initialSolve] Goal found or improved at step " + new_g + "!");
                             this.firstGoalNodeFound = newElement;
                             this.foundGoalCanonicalLayout = canonicalSuccessorLayout; // Store canonical layout of goal
                         }
@@ -336,16 +338,16 @@ public class KlotskiSolver { // Renamed class for clarity
         }
 
         // --- BFS Loop Finished ---
-        //System.out.println("[initialSolve] Full BFS completed exploration.");
+        System.out.println("[initialSolve] Full BFS completed exploration.");
         this.initialSolveCompleted = true;
 
         if (this.firstGoalNodeFound != null) {
-            //System.out.println("[initialSolve] Reconstructing path from first goal found at step " + this.firstGoalNodeFound.moveCount);
+            System.out.println("[initialSolve] Reconstructing path from first goal found at step " + this.firstGoalNodeFound.moveCount);
             this.optimalPath = reconstructBFSPath(this.firstGoalNodeFound);
             this.globalOptimalCost = this.firstGoalNodeFound.moveCount; // *** STORE GLOBAL OPTIMAL COST ***
             return this.optimalPath;
         } else {
-            //System.err.println("[initialSolve] Full BFS completed without finding any goal!");
+            System.err.println("[initialSolve] Full BFS completed without finding any goal!");
             this.optimalPath = Collections.emptyList();
             this.globalOptimalCost = Integer.MAX_VALUE; // Indicate no solution found
             return this.optimalPath;
@@ -356,7 +358,7 @@ public class KlotskiSolver { // Renamed class for clarity
         // ... (Existing V5.0 logic remains the same)
         // It relies on initialSolve having been completed and the Trie being populated.
         if (!initialSolveCompleted) {
-            //System.out.println("[findPathFrom] Initial solve not completed. Running initialSolve first...");
+            System.out.println("[findPathFrom] Initial solve not completed. Running initialSolve first...");
             // IMPORTANT: Ensure initialSolve is called with the *actual* game start state,
             // not necessarily currentState if this is the very first call.
             // Assuming it was called correctly before, or handle error.
@@ -382,7 +384,7 @@ public class KlotskiSolver { // Renamed class for clarity
         }
 
         if (optimalPathIndex != -1) {
-            //System.out.println("[findPathFrom] Cache Hit: Current state is on the optimal path at index " + optimalPathIndex + ".");
+            System.out.println("[findPathFrom] Cache Hit: Current state is on the optimal path at index " + optimalPathIndex + ".");
             return this.optimalPath.subList(optimalPathIndex, this.optimalPath.size());
         } else {
             // Phase 3
@@ -412,7 +414,7 @@ public class KlotskiSolver { // Renamed class for clarity
         long startLayout = startState.getLayout();
         long canonicalStartLayout = getCanonicalLayout(startLayout);
 
-        //System.out.println("[runAStarSearch EnhancedH] Starting A* for state " + canonicalStartLayout + " (origin_abs_g=" + start_g_abs + ")");
+        System.out.println("[runAStarSearch EnhancedH] Starting A* for state " + canonicalStartLayout + " (origin_abs_g=" + start_g_abs + ")");
 
         if (isGoalLayout(startLayout)) {
             this.nodesExploredAStar = 1;
@@ -420,18 +422,18 @@ public class KlotskiSolver { // Renamed class for clarity
             return Collections.singletonList(startState);
         }
 
-        PriorityQueue<ElementNodeAStarV5> openSet = new PriorityQueue<>();
+        PriorityQueue<ElementNodeAStar> openSet = new PriorityQueue<>();
         Map<Long, Integer> visitedInThisSearch = new HashMap<>(); // Stores min LOCAL g
 
         // *** Uses the ENHANCED heuristic ***
         int initialH = calculateHeuristic(startLayout);
-        ElementNodeAStarV5 initialElement = new ElementNodeAStarV5(startState, null, 0, initialH); // local g = 0
+        ElementNodeAStar initialElement = new ElementNodeAStar(startState, null, 0, initialH); // local g = 0
 
         openSet.add(initialElement);
         visitedInThisSearch.put(canonicalStartLayout, 0);
 
         while (!openSet.isEmpty()) {
-            ElementNodeAStarV5 currentNode = openSet.poll();
+            ElementNodeAStar currentNode = openSet.poll();
             this.nodesExploredAStar++;
             long currentLayout = currentNode.state.getLayout();
             long canonicalCurrentLayout = getCanonicalLayout(currentLayout);
@@ -439,7 +441,7 @@ public class KlotskiSolver { // Renamed class for clarity
 
             // Goal Check
             if (isGoalLayout(currentLayout)) {
-                //System.out.println("[runAStarSearch RelativeG] Goal found!");
+                System.out.println("[runAStarSearch RelativeG] Goal found!");
                 return reconstructAStarPath(currentNode); // Path reconstruction uses father pointers
             }
 
@@ -466,7 +468,7 @@ public class KlotskiSolver { // Renamed class for clarity
                     // *** Uses the ENHANCED heuristic ***
                     int h_new = calculateHeuristic(successorLayout);
                     BoardState successorState = new BoardState(successorLayout);
-                    ElementNodeAStarV5 newElement = new ElementNodeAStarV5(successorState, currentNode, new_g_local, h_new);
+                    ElementNodeAStar newElement = new ElementNodeAStar(successorState, currentNode, new_g_local, h_new);
 
                     visitedInThisSearch.put(canonicalSuccessorLayout, new_g_local);
                     openSet.add(newElement);

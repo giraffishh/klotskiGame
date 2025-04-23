@@ -246,11 +246,12 @@ public class LoginFrame extends JFrame implements LoginView {
             usernameErrorLabel.setVisible(false);
         }
     }
-    
+
     @Override
-    public void setPasswordError(boolean isError) {
+    public void setPasswordError(boolean isError, String errorMessage) {
         if (isError) {
             password.setBorder(BorderFactory.createLineBorder(FrameUtil.ERROR_COLOR, 2));
+            passwordErrorLabel.setText(errorMessage);
             passwordErrorLabel.setVisible(true);
         } else {
             password.setBorder(UIManager.getBorder("TextField.border"));
@@ -272,7 +273,7 @@ public class LoginFrame extends JFrame implements LoginView {
     @Override
     public void clearAllErrors() {
         setUsernameError(false);
-        setPasswordError(false);
+        setPasswordError(false, "");
         setConfirmPasswordError(false);
     }
     
@@ -316,20 +317,20 @@ public class LoginFrame extends JFrame implements LoginView {
         password.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void insertUpdate(DocumentEvent e) {
-                setPasswordError(false);
+                setPasswordError(false, "");
             }
 
             @Override
             public void removeUpdate(DocumentEvent e) {
                 // 当内容为空时不清除错误状态
                 if (password.getPassword().length > 0) {
-                    setPasswordError(false);
+                    setPasswordError(false, "");
                 }
             }
 
             @Override
             public void changedUpdate(DocumentEvent e) {
-                setPasswordError(false);
+                setPasswordError(false, "");
             }
         });
 

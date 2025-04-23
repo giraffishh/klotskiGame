@@ -1,6 +1,6 @@
 package controller.solverArchived.BiBFSSymmetry; // Can keep same package or make V2
 
-import controller.solver.BoardSerializer;
+import controller.util.BoardSerializer;
 import controller.solver.BoardState;
 
 import java.util.*;

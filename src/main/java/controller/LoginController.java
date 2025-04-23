@@ -66,7 +66,7 @@ public class LoginController {
 
         // 验证密码
         if (password.isEmpty()) {
-            loginView.setPasswordError(true);
+            loginView.setPasswordError(true, "Password cannot be empty");
             isValid = false;
         }
 
@@ -91,7 +91,7 @@ public class LoginController {
         
         // 验证密码
         if (password.isEmpty()) {
-            loginView.setPasswordError(true);
+            loginView.setPasswordError(true, "Password cannot be empty");
             isValid = false;
         }
         
@@ -144,10 +144,8 @@ public class LoginController {
                 loginView.setVisible(false);
             }
         } else {
-            loginView.showStyledMessage(
-                "Incorrect password",
-                "Login Failed",
-                JOptionPane.ERROR_MESSAGE);
+            // 修改：不再弹窗，而是直接在密码输入框下方显示错误信息
+            loginView.setPasswordError(true, "Incorrect password");
         }
     }
 
@@ -232,3 +230,4 @@ public class LoginController {
         loginView.resetForm();
     }
 }
+

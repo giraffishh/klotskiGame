@@ -1,5 +1,7 @@
 package model;
 
+import controller.util.BoardSerializer;
+
 /**
  * 地图模型类，用于记录和管理游戏的地图数据
  * 地图由整数矩阵表示，不同数字代表不同类型的方块：
@@ -113,5 +115,15 @@ public class MapModel {
         for (int i = 0; i < matrix.length; i++) {
             System.arraycopy(initialMatrix[i], 0, matrix[i], 0, matrix[i].length);
         }
+    }
+
+    /**
+     * 获取当前地图状态的序列化长整型表示
+     * 用于华容道求解器的计算
+     *
+     * @return 当前地图的序列化长整型表示
+     */
+    public long getSerializedLayout() {
+        return BoardSerializer.serialize(this.matrix);
     }
 }

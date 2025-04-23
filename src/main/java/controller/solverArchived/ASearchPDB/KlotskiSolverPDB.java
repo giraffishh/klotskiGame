@@ -1,6 +1,6 @@
 package controller.solverArchived.ASearchPDB;
 
-import controller.solver.BoardSerializer;
+import controller.util.BoardSerializer;
 import controller.solver.BoardState;
 import controller.solverArchived.PatternDatabaseGenerator;
 

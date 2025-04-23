@@ -1,9 +1,8 @@
 package service;
 
 import model.User;
-import model.MapModel;
+
 import java.sql.*;
-import java.io.File;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;

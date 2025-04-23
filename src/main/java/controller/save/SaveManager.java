@@ -1,5 +1,6 @@
 package controller.save;
 
+import controller.util.BoardSerializer;
 import model.MapModel;
 import service.DatabaseService;
 import service.UserSession;
@@ -15,6 +16,8 @@ import java.util.Date;
 public class SaveManager {
     private final GamePanel view;
     private final MapModel model;
+    // 添加一个回调接口，用于通知加载完成后需要更新最短步数
+    private Runnable onLoadCompleteCallback;
 
     /**
      * 构造函数
@@ -25,6 +28,14 @@ public class SaveManager {
     public SaveManager(GamePanel view, MapModel model) {
         this.view = view;
         this.model = model;
+    }
+
+    /**
+     * 设置加载完成后的回调函数
+     * @param callback 回调函数
+     */
+    public void setOnLoadCompleteCallback(Runnable callback) {
+        this.onLoadCompleteCallback = callback;
     }
 
     /**
@@ -99,7 +110,7 @@ public class SaveManager {
             long mapStateLong = Long.parseLong(mapState);
 
             // 使用序列化工具将长整型转为矩阵
-            int[][] newMatrix = MapStateSerializer.convertLongToMatrix(mapStateLong, model.getHeight(), model.getWidth());
+            int[][] newMatrix = BoardSerializer.deserialize(mapStateLong);
 
             // 更新模型数据
             model.setMatrix(newMatrix);
@@ -109,6 +120,11 @@ public class SaveManager {
 
             // 设置已加载的步数
             view.setSteps(steps);
+
+            // 在显示成功消息之前调用回调函数更新最短步数
+            if (onLoadCompleteCallback != null) {
+                onLoadCompleteCallback.run();
+            }
 
             JOptionPane.showMessageDialog(view,
                     "Game loaded successfully!",
@@ -151,7 +167,7 @@ public class SaveManager {
         String username = UserSession.getInstance().getCurrentUser().getUsername();
 
         // 使用序列化工具将地图状态转换为长整型
-        long mapStateLong = MapStateSerializer.convertMatrixToLong(model.getMatrix());
+        long mapStateLong = BoardSerializer.serialize(model.getMatrix());
 
         // 将长整型转换为字符串以便存储
         String mapState = String.valueOf(mapStateLong);
@@ -215,3 +231,4 @@ public class SaveManager {
         return DatabaseService.getInstance().hasUserGameSave(username);
     }
 }
+

@@ -1,7 +1,5 @@
 package view.login;
 
-import javax.swing.*;
-
 /**
  * 登录视图接口，定义登录界面所需的方法
  * 用于解耦视图和控制器
@@ -14,11 +12,12 @@ public interface LoginView {
     void setUsernameError(boolean isError);
     
     /**
-     * 设置密码错误状态
+     * 设置密码错误状态和错误消息
      * @param isError 是否显示错误
+     * @param errorMessage 错误消息
      */
-    void setPasswordError(boolean isError);
-    
+    void setPasswordError(boolean isError, String errorMessage);
+
     /**
      * 设置确认密码错误状态
      * @param isError 是否显示错误

@@ -1,5 +1,7 @@
 package controller.solver; // Updated package name
 
+import controller.util.BoardSerializer;
+
 import java.util.Arrays;
 
 /**

@@ -1,6 +1,6 @@
 package controller.solverArchived;
 
-import controller.solver.BoardSerializer;
+import controller.util.BoardSerializer;
 import controller.solver.BoardState;
 
 import java.util.*;

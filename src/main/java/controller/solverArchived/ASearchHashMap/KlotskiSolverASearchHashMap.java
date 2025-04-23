@@ -1,6 +1,6 @@
 package controller.solverArchived.ASearchHashMap; // Keeping original package name
 
-import controller.solver.BoardSerializer; // Assuming these are in the correct location
+import controller.util.BoardSerializer; // Assuming these are in the correct location
 import controller.solver.BoardState;
 
 import java.util.*;

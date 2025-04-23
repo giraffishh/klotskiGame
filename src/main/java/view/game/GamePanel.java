@@ -4,10 +4,8 @@ import controller.GameController;
 import model.Direction;
 import model.MapModel;
 import view.util.FrameUtil;
-import view.util.FontManager;
 
 import javax.swing.*;
-import javax.swing.border.Border;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +20,7 @@ public class GamePanel extends ListenerPanel {
     private MapModel model;                  // 游戏地图模型
     private GameController controller;       // 游戏控制器
     private JLabel stepLabel;                // 步数显示标签
+    private JLabel minStepsLabel;            // 最短步数显示标签
     private int steps;                       // 当前步数
     private final int GRID_SIZE = 70;        // 网格大小（像素），调整为更大尺寸
     private BoxComponent selectedBox;        // 当前选中的盒子
@@ -283,6 +282,28 @@ public class GamePanel extends ListenerPanel {
         this.steps = steps;
         if (this.stepLabel != null) {
             this.stepLabel.setText(String.format("Steps: %d", this.steps));
+        }
+    }
+
+    /**
+     * 设置最短步数标签
+     * @param minStepsLabel 最短步数显示标签
+     */
+    public void setMinStepsLabel(JLabel minStepsLabel) {
+        this.minStepsLabel = minStepsLabel;
+    }
+
+    /**
+     * 设置目标最短步数
+     * @param minSteps 最短步数值
+     */
+    public void setMinSteps(int minSteps) {
+        if (this.minStepsLabel != null) {
+            if (minSteps >= 0) {
+                this.minStepsLabel.setText(String.format("Min Steps: %d", minSteps));
+            } else {
+                this.minStepsLabel.setText("Min Steps: --");
+            }
         }
     }
 
