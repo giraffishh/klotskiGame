@@ -126,6 +126,8 @@ public class GameController {
         view.resetGame();
 
         // 重置后更新最短步数显示
+        this.solver = new KlotskiSolver();
+        initializeSolver();
         updateMinStepsDisplay();
 
         System.out.println("Game restarted successfully");
@@ -223,6 +225,7 @@ public class GameController {
 
         if (loadSuccess) {
             // 加载新布局后重新初始化求解器
+            this.solver = new KlotskiSolver();
             initializeSolver();
 
             // 注意：updateMinStepsDisplay方法现在通过回调在loadGameState内部调用，

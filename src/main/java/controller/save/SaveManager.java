@@ -121,16 +121,19 @@ public class SaveManager {
             // 设置已加载的步数
             view.setSteps(steps);
 
-            // 在显示成功消息之前调用回调函数更新最短步数
-            if (onLoadCompleteCallback != null) {
-                onLoadCompleteCallback.run();
-            }
+            javax.swing.SwingUtilities.invokeLater(() -> {
 
-            JOptionPane.showMessageDialog(view,
-                    "Game loaded successfully!",
-                    "Load Success",
-                    JOptionPane.INFORMATION_MESSAGE);
+                // 在显示成功消息之前调用回调函数更新最短步数
+                if (onLoadCompleteCallback != null) {
+                    onLoadCompleteCallback.run();
+                }
 
+                JOptionPane.showMessageDialog(view,
+                        "Game loaded successfully!",
+                        "Load Success",
+                        JOptionPane.INFORMATION_MESSAGE);
+
+            });
             return true;
         } catch (Exception e) {
             e.printStackTrace();

@@ -337,7 +337,7 @@ class LayoutConfig {
 public class KlotskiBenchmark {
 
     private static final long SOLVE_TIMEOUT_MS = 60 * 1000;
-    private static final int RUNS_PER_SOLVER = 500; // <<< Number of runs for averaging
+    private static final int RUNS_PER_SOLVER = 50; // <<< Number of runs for averaging
 
     /**
      * 定义测试布局的初始状态
@@ -420,15 +420,15 @@ public class KlotskiBenchmark {
      */
     private static List<KlotskiSolverInterface> defineSolvers(BoardState targetState) {
         List<KlotskiSolverInterface> solvers = new ArrayList<>();
-        //solvers.add(new AStarHashMapSolverWrapper());
+        solvers.add(new AStarHashMapSolverWrapper());
         //solvers.add(new AStarTrieSolverWrapper());
         //solvers.add(new BFSSolverWrapper());
         //solvers.add(new BiBFSSolverWrapper(targetState));
         //solvers.add(new TrieBFSSolverWrapper());
         //solvers.add(new BiBFSSymmetrySolverWrapper(targetState));
-        //solvers.add(new BiBFSOptLayoutGenSolverWrapper(targetState));
-        //solvers.add(new BFSTrieOptLayoutGenSolverWrapper());
-        //solvers.add(new ASearchTrieOptLayoutGenSolverWrapper()); // 添加新的 A*+Trie+OptLG 求解器
+        solvers.add(new BiBFSOptLayoutGenSolverWrapper(targetState));
+        solvers.add(new BFSTrieOptLayoutGenSolverWrapper());
+        //solvers.add(new ASearchTrieOptLayoutGenSolverWrapper());
         
         // 将新的求解器添加到最后，使其单独处理
         solvers.add(new NewKlotskiSolverWrapper(new controller.solver.KlotskiSolver()));
