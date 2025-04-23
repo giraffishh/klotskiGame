@@ -3,11 +3,9 @@ package view.game;
 import controller.GameController;
 import model.MapModel;
 import view.util.FrameUtil;
-import view.util.FontManager;
 import service.UserSession;
 
 import javax.swing.*;
-import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
@@ -28,6 +26,8 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
     private JButton saveBtn;
     // 步数显示标签
     private JLabel stepLabel;
+    // 最短步数显示标签
+    private JLabel minStepsLabel;
     // 游戏主面板，显示游戏地图
     private GamePanel gamePanel;
 
@@ -66,23 +66,31 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         stepLabel.setBounds(panelX + gamePanel.getWidth() + 40, panelY + 20, 180, 50);
         this.add(stepLabel);
 
+        // 最短步数显示标签
+        this.minStepsLabel = FrameUtil.createTitleLabel("Min Steps: --", JLabel.CENTER);
+        minStepsLabel.setBounds(panelX + gamePanel.getWidth() + 40, panelY + 60, 180, 50);
+        this.add(minStepsLabel);
+
+        // 将步数标签设置到游戏面板中
+        gamePanel.setStepLabel(stepLabel);
+
+        // 将最短步数标签设置到游戏面板中
+        gamePanel.setMinStepsLabel(minStepsLabel);
+
         // 重新开始按钮
         this.restartBtn = FrameUtil.createStyledButton("Restart", true);
-        restartBtn.setBounds(panelX + gamePanel.getWidth() + 40, panelY + 90, 120, 50);
+        restartBtn.setBounds(panelX + gamePanel.getWidth() + 40, panelY + 120, 120, 50);
         this.add(restartBtn);
 
         // 加载游戏按钮
         this.loadBtn = FrameUtil.createStyledButton("Load", false);
-        loadBtn.setBounds(panelX + gamePanel.getWidth() + 40, panelY + 160, 120, 50);
+        loadBtn.setBounds(panelX + gamePanel.getWidth() + 40, panelY + 190, 120, 50);
         this.add(loadBtn);
 
         // 保存游戏按钮
         this.saveBtn = FrameUtil.createStyledButton("Save", true);
-        saveBtn.setBounds(panelX + gamePanel.getWidth() + 40, panelY + 230, 120, 50);
+        saveBtn.setBounds(panelX + gamePanel.getWidth() + 40, panelY + 260, 120, 50);
         this.add(saveBtn);
-
-        // 将步数标签设置到游戏面板中
-        gamePanel.setStepLabel(stepLabel);
 
         // 为重新开始按钮添加点击事件监听器
         this.restartBtn.addActionListener(e -> {
@@ -125,6 +133,10 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
                 UserSession.getInstance().removeListener(GameFrame.this);
             }
         });
+
+        // 在UI组件完全初始化后，调用控制器初始化游戏
+        // 这将计算并显示初始的最短步数
+        controller.initializeGame();
 
         // 窗口居中显示
         this.setLocationRelativeTo(null);
