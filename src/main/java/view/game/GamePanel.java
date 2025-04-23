@@ -4,10 +4,8 @@ import controller.GameController;
 import model.Direction;
 import model.MapModel;
 import view.util.FrameUtil;
-import view.util.FontManager;
 
 import javax.swing.*;
-import javax.swing.border.Border;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +20,7 @@ public class GamePanel extends ListenerPanel {
     private MapModel model;                  // 游戏地图模型
     private GameController controller;       // 游戏控制器
     private JLabel stepLabel;                // 步数显示标签
+    private JLabel minStepsLabel;            // 最短步数显示标签
     private int steps;                       // 当前步数
     private final int GRID_SIZE = 70;        // 网格大小（像素），调整为更大尺寸
     private BoxComponent selectedBox;        // 当前选中的盒子
@@ -76,8 +75,8 @@ public class GamePanel extends ListenerPanel {
                     box.setSize(GRID_SIZE, GRID_SIZE);
                     map[i][j] = 0;
                 } else if (map[i][j] == 2) {
-                    // 创建2x1粉色水平盒子
-                    box = new BoxComponent(FrameUtil.PRIMARY_COLOR, i, j);
+                    // 创建2x1紫色水平盒子
+                    box = new BoxComponent(FrameUtil.HORIZOTAL_BLOCK_COLOR, i, j);
                     box.setSize(GRID_SIZE * 2, GRID_SIZE);
                     map[i][j] = 0;
                     map[i][j + 1] = 0;
@@ -262,6 +261,49 @@ public class GamePanel extends ListenerPanel {
         this.stepLabel = stepLabel;
         if (this.stepLabel != null) {
             this.stepLabel.setText("Steps: 0");
+        }
+    }
+
+    /**
+     * 获取当前步数
+     * @return 当前步数
+     */
+    public int getSteps() {
+        return steps;
+    }
+
+    /**
+     * 设置当前步数
+     * 用于从存档加载步数
+     *
+     * @param steps 要设置的步数
+     */
+    public void setSteps(int steps) {
+        this.steps = steps;
+        if (this.stepLabel != null) {
+            this.stepLabel.setText(String.format("Steps: %d", this.steps));
+        }
+    }
+
+    /**
+     * 设置最短步数标签
+     * @param minStepsLabel 最短步数显示标签
+     */
+    public void setMinStepsLabel(JLabel minStepsLabel) {
+        this.minStepsLabel = minStepsLabel;
+    }
+
+    /**
+     * 设置目标最短步数
+     * @param minSteps 最短步数值
+     */
+    public void setMinSteps(int minSteps) {
+        if (this.minStepsLabel != null) {
+            if (minSteps >= 0) {
+                this.minStepsLabel.setText(String.format("Min Steps: %d", minSteps));
+            } else {
+                this.minStepsLabel.setText("Min Steps: --");
+            }
         }
     }
 

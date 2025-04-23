@@ -1,6 +1,8 @@
 package controller;
 
+import model.User;
 import service.DatabaseService;
+import service.UserSession;
 import view.game.GameFrame;
 import view.login.LoginView;
 
@@ -13,6 +15,8 @@ import javax.swing.*;
 public class LoginController {
     // 数据库服务
     private final DatabaseService databaseService;
+    // 用户会话
+    private final UserSession userSession;
     // 视图引用
     private final LoginView loginView;
     // 游戏窗口引用
@@ -25,6 +29,7 @@ public class LoginController {
     public LoginController(LoginView loginView) {
         this.loginView = loginView;
         this.databaseService = DatabaseService.getInstance();
+        this.userSession = UserSession.getInstance();
     }
 
     /**
@@ -61,7 +66,7 @@ public class LoginController {
 
         // 验证密码
         if (password.isEmpty()) {
-            loginView.setPasswordError(true);
+            loginView.setPasswordError(true, "Password cannot be empty");
             isValid = false;
         }
 
@@ -86,7 +91,7 @@ public class LoginController {
         
         // 验证密码
         if (password.isEmpty()) {
-            loginView.setPasswordError(true);
+            loginView.setPasswordError(true, "Password cannot be empty");
             isValid = false;
         }
         
@@ -128,6 +133,7 @@ public class LoginController {
         // 尝试登录
         int result = databaseService.loginOrRegister(username, password);
         if (result == 0) {
+            User loggedInUser = userSession.getCurrentUser();
             loginView.showStyledMessage(
                 "Login successful!",
                 "Welcome",
@@ -138,10 +144,8 @@ public class LoginController {
                 loginView.setVisible(false);
             }
         } else {
-            loginView.showStyledMessage(
-                "Incorrect password",
-                "Login Failed",
-                JOptionPane.ERROR_MESSAGE);
+            // 修改：不再弹窗，而是直接在密码输入框下方显示错误信息
+            loginView.setPasswordError(true, "Incorrect password");
         }
     }
 
@@ -172,6 +176,7 @@ public class LoginController {
         // 尝试注册
         int result = databaseService.loginOrRegister(username, password);
         if (result == 1) {
+            User newUser = userSession.getCurrentUser();
             loginView.showStyledMessage(
                 "Register successfully!",
                 "Welcome",
@@ -189,6 +194,34 @@ public class LoginController {
         }
     }
 
+    /**
+     * 处理访客登录请求
+     */
+    public void processGuestLogin() {
+        // 设置访客状态
+        User guestUser = new User("Guest", "");
+        userSession.setCurrentUser(guestUser);
+        userSession.setGuest(true);
+
+        loginView.showStyledMessage(
+            "Logged in as guest",
+            "Welcome Guest",
+            JOptionPane.INFORMATION_MESSAGE);
+
+        // 显示游戏窗口
+        if (this.gameFrame != null) {
+            this.gameFrame.setVisible(true);
+            loginView.setVisible(false);
+        }
+    }
+
+    /**
+     * 获取当前登录用户
+     * @return 当前登录用户，如未登录返回null
+     */
+    public User getCurrentUser() {
+        return userSession.getCurrentUser();
+    }
 
     /**
      * 重置表单
@@ -197,3 +230,4 @@ public class LoginController {
         loginView.resetForm();
     }
 }
+

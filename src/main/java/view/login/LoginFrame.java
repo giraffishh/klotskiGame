@@ -30,8 +30,8 @@ public class LoginFrame extends JFrame implements LoginView {
     private JPasswordField confirmPassword;
     // 提交按钮
     private JButton submitBtn;
-    // 重置按钮
-    private JButton resetBtn;
+    // 访客登录按钮
+    private JButton guestLoginBtn;
     // 错误提示标签
     private JLabel usernameErrorLabel;
     private JLabel passwordErrorLabel;
@@ -129,10 +129,11 @@ public class LoginFrame extends JFrame implements LoginView {
 
         // 创建按钮
         submitBtn = FrameUtil.createStyledButton("Login / Register", true);
-        resetBtn = FrameUtil.createStyledButton("Reset", false);
-        
+        // 访客登录按钮
+        guestLoginBtn = FrameUtil.createStyledButton("Guest Login", false);
+
         // 创建按钮面板
-        JButton[] buttons = {submitBtn, resetBtn};
+        JButton[] buttons = {submitBtn, guestLoginBtn};
         JPanel buttonPanel = FrameUtil.createButtonPanel(buttons, 15);
         FrameUtil.setPadding(buttonPanel, 10, 20, 0, 20);
         
@@ -201,8 +202,8 @@ public class LoginFrame extends JFrame implements LoginView {
             }
         });
         
-        // 添加重置按钮事件监听器 - 使用控制器处理逻辑
-        resetBtn.addActionListener(e -> controller.resetForm());
+        // 添加访客登录按钮事件监听器
+        guestLoginBtn.addActionListener(e -> controller.processGuestLogin());
 
         // 设置初始窗口大小为登录模式尺寸
         this.setSize(LOGIN_MODE_SIZE);
@@ -245,11 +246,12 @@ public class LoginFrame extends JFrame implements LoginView {
             usernameErrorLabel.setVisible(false);
         }
     }
-    
+
     @Override
-    public void setPasswordError(boolean isError) {
+    public void setPasswordError(boolean isError, String errorMessage) {
         if (isError) {
             password.setBorder(BorderFactory.createLineBorder(FrameUtil.ERROR_COLOR, 2));
+            passwordErrorLabel.setText(errorMessage);
             passwordErrorLabel.setVisible(true);
         } else {
             password.setBorder(UIManager.getBorder("TextField.border"));
@@ -271,7 +273,7 @@ public class LoginFrame extends JFrame implements LoginView {
     @Override
     public void clearAllErrors() {
         setUsernameError(false);
-        setPasswordError(false);
+        setPasswordError(false, "");
         setConfirmPasswordError(false);
     }
     
@@ -315,20 +317,20 @@ public class LoginFrame extends JFrame implements LoginView {
         password.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void insertUpdate(DocumentEvent e) {
-                setPasswordError(false);
+                setPasswordError(false, "");
             }
 
             @Override
             public void removeUpdate(DocumentEvent e) {
                 // 当内容为空时不清除错误状态
                 if (password.getPassword().length > 0) {
-                    setPasswordError(false);
+                    setPasswordError(false, "");
                 }
             }
 
             @Override
             public void changedUpdate(DocumentEvent e) {
-                setPasswordError(false);
+                setPasswordError(false, "");
             }
         });
 
@@ -376,9 +378,7 @@ public class LoginFrame extends JFrame implements LoginView {
         dialog.setVisible(true);
 
         // 恢复默认UI设置
-        UIManager.put("OptionPane.messageFont", null);
-        UIManager.put("OptionPane.buttonFont", null);
-        UIManager.put("OptionPane.titleFont", null);
+        FrameUtil.initUIDefaults();
     }
 
     /**
@@ -389,4 +389,3 @@ public class LoginFrame extends JFrame implements LoginView {
         this.controller.setGameFrame(gameFrame);
     }
 }
-

@@ -1,7 +1,6 @@
 package view.util;
 
 import javax.swing.*;
-import javax.swing.border.Border;
 import java.awt.*;
 
 /**
@@ -20,9 +19,13 @@ public class FrameUtil {
     public static final Color LOGIN_COLOR = new Color(62, 137, 243);       // 登录按钮-绿色
     public static final Color REGISTER_COLOR = new Color(59, 151, 63);    // 注册按钮-橙色
 
+
     // 方块颜色
     public static final Color VERTICAL_BLOCK_COLOR = new Color(100, 149, 237);  // 垂直方块-蓝色
     public static final Color BIG_BLOCK_COLOR = new Color(102, 187, 106);       // 大方块-绿色
+    public static final Color HORIZOTAL_BLOCK_COLOR = new Color(143, 143, 255);       // 大方块-绿色
+
+
 
     // 边框颜色
     public static final Color HOVER_BORDER_COLOR = new Color(255, 251, 0);     // 悬停边框-金色
@@ -38,7 +41,24 @@ public class FrameUtil {
 
     // 添加高光效果颜色
     public static final Color HIGHLIGHT_COLOR = new Color(255, 255, 255, 30);    // 高光效果-半透明白色
-    
+
+    /**
+     * 初始化全局UI设置，包括对话框按钮文本和字体
+     */
+    public static void initUIDefaults() {
+        // 设置对话框按钮为英文
+        UIManager.put("OptionPane.yesButtonText", "Yes");
+        UIManager.put("OptionPane.noButtonText", "No");
+        UIManager.put("OptionPane.cancelButtonText", "Cancel");
+        UIManager.put("OptionPane.okButtonText", "OK");
+
+
+        // 设置对话框使用自定义字体
+        UIManager.put("OptionPane.messageFont", FontManager.getRegularFont());
+        UIManager.put("OptionPane.buttonFont", FontManager.getButtonFont(14));
+        UIManager.put("OptionPane.font", FontManager.getRegularFont());
+    }
+
     /**
      * 创建标准文本标签
      * @param frame 父窗口，标签将被添加到此窗口中

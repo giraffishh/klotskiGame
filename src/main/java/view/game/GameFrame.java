@@ -3,17 +3,18 @@ package view.game;
 import controller.GameController;
 import model.MapModel;
 import view.util.FrameUtil;
-import view.util.FontManager;
+import service.UserSession;
 
 import javax.swing.*;
-import java.awt.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 /**
  * 游戏主窗口类
  * 包含游戏面板和控制按钮等组件
  * 负责显示游戏界面和处理用户交互
  */
-public class GameFrame extends JFrame {
+public class GameFrame extends JFrame implements UserSession.UserSessionListener {
 
     // 游戏控制器，处理游戏逻辑
     private GameController controller;
@@ -21,8 +22,12 @@ public class GameFrame extends JFrame {
     private JButton restartBtn;
     // 加载游戏按钮
     private JButton loadBtn;
+    // 保存游戏按钮
+    private JButton saveBtn;
     // 步数显示标签
     private JLabel stepLabel;
+    // 最短步数显示标签
+    private JLabel minStepsLabel;
     // 游戏主面板，显示游戏地图
     private GamePanel gamePanel;
 
@@ -56,23 +61,36 @@ public class GameFrame extends JFrame {
         // 创建游戏控制器，关联面板和模型
         this.controller = new GameController(gamePanel, mapModel);
 
-        // 步数显示标签 - 调整位置到游戏面板右侧
+        // 步数显示标签
         this.stepLabel = FrameUtil.createTitleLabel("Start", JLabel.CENTER);
         stepLabel.setBounds(panelX + gamePanel.getWidth() + 40, panelY + 20, 180, 50);
         this.add(stepLabel);
 
-        // 重新开始按钮 - 调整位置
-        this.restartBtn = FrameUtil.createStyledButton("Restart", true);
-        restartBtn.setBounds(panelX + gamePanel.getWidth() + 40, panelY + 90, 120, 50);
-        this.add(restartBtn);
-
-        // 加载游戏按钮 - 调整位置
-        this.loadBtn = FrameUtil.createStyledButton("Load", false);
-        loadBtn.setBounds(panelX + gamePanel.getWidth() + 40, panelY + 160, 120, 50);
-        this.add(loadBtn);
+        // 最短步数显示标签
+        this.minStepsLabel = FrameUtil.createTitleLabel("Min Steps: --", JLabel.CENTER);
+        minStepsLabel.setBounds(panelX + gamePanel.getWidth() + 40, panelY + 60, 180, 50);
+        this.add(minStepsLabel);
 
         // 将步数标签设置到游戏面板中
         gamePanel.setStepLabel(stepLabel);
+
+        // 将最短步数标签设置到游戏面板中
+        gamePanel.setMinStepsLabel(minStepsLabel);
+
+        // 重新开始按钮
+        this.restartBtn = FrameUtil.createStyledButton("Restart", true);
+        restartBtn.setBounds(panelX + gamePanel.getWidth() + 40, panelY + 120, 120, 50);
+        this.add(restartBtn);
+
+        // 加载游戏按钮
+        this.loadBtn = FrameUtil.createStyledButton("Load", false);
+        loadBtn.setBounds(panelX + gamePanel.getWidth() + 40, panelY + 190, 120, 50);
+        this.add(loadBtn);
+
+        // 保存游戏按钮
+        this.saveBtn = FrameUtil.createStyledButton("Save", true);
+        saveBtn.setBounds(panelX + gamePanel.getWidth() + 40, panelY + 260, 120, 50);
+        this.add(saveBtn);
 
         // 为重新开始按钮添加点击事件监听器
         this.restartBtn.addActionListener(e -> {
@@ -84,26 +102,67 @@ public class GameFrame extends JFrame {
         
         // 为加载游戏按钮添加点击事件监听器
         this.loadBtn.addActionListener(e -> {
-            JTextField inputField = FrameUtil.createStyledTextField(20);
-            JPanel panel = FrameUtil.createInputPanel("Enter Path:", inputField);
-
-            int result = JOptionPane.showConfirmDialog(this, panel, "Load Game",
-                    JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-
-            if (result == JOptionPane.OK_OPTION) {
-                String path = inputField.getText();
-                System.out.println(path);
-            }
+            // 调用控制器的加载游戏方法
+            controller.loadGameState();
 
             // 将焦点设置回游戏面板以便接收键盘事件
             gamePanel.requestFocusInWindow();
         });
         
+        // 为保存游戏按钮添加点击事件监听器
+        this.saveBtn.addActionListener(e -> {
+            // 调用控制器的保存游戏方法
+            controller.saveGameState();
+
+            // 将焦点设置回游戏面板以便接收键盘事件
+            gamePanel.requestFocusInWindow();
+        });
+
         //todo: add other button here
         
+        // 更新按钮状态
+        updateButtonsState();
+
+        // 将此窗口注册为用户会话监听器
+        UserSession.getInstance().addListener(this);
+
+        // 窗口关闭时取消注册监听器
+        this.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                UserSession.getInstance().removeListener(GameFrame.this);
+            }
+        });
+
+        // 在UI组件完全初始化后，调用控制器初始化游戏
+        // 这将计算并显示初始的最短步数
+        controller.initializeGame();
+
         // 窗口居中显示
         this.setLocationRelativeTo(null);
         // 设置关闭窗口时退出程序
         this.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+    }
+
+    /**
+     * 实现UserSessionListener接口方法，在用户会话状态变化时调用
+     */
+    @Override
+    public void onSessionStateChanged() {
+        // 在UI线程中安全地更新按钮状态
+        SwingUtilities.invokeLater(this::updateButtonsState);
+    }
+
+    /**
+     * 更新按钮状态
+     * 根据用户会话状态启用或禁用保存和加载按钮
+     */
+    public void updateButtonsState() {
+        UserSession session = UserSession.getInstance();
+        boolean isGuest = session.isGuest();
+
+        // 访客模式下禁用保存和加载功能
+        loadBtn.setEnabled(!isGuest);
+        saveBtn.setEnabled(!isGuest);
     }
 }

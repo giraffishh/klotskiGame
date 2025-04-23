@@ -4,6 +4,21 @@ import model.Direction;
 import model.MapModel;
 import view.game.BoxComponent;
 import view.game.GamePanel;
+import controller.solver.KlotskiSolver;
+import controller.solver.BoardState;
+
+// 导入移动策略类
+import controller.mover.BlockMover;
+import controller.mover.SingleBlockMover;
+import controller.mover.HorizontalBlockMover;
+import controller.mover.VerticalBlockMover;
+import controller.mover.BigBlockMover;
+
+// 导入格子布局序列化工具类和存档管理器
+import controller.save.SaveManager;
+
+import javax.swing.JOptionPane;
+import java.util.List;
 
 /**
  * 该类作为GamePanel(视图)和MapMatrix(模型)之间的桥梁，实现MVC设计模式中的控制器。
@@ -14,6 +29,18 @@ public class GameController {
     private final GamePanel view;
     // 游戏地图模型引用
     private final MapModel model;
+    
+    // 方块移动策略对象
+    private final BlockMover singleBlockMover;
+    private final BlockMover horizontalBlockMover;
+    private final BlockMover verticalBlockMover;
+    private final BlockMover bigBlockMover;
+
+    // 游戏存档管理器
+    private final SaveManager saveManager;
+
+    // 华容道求解器
+    private KlotskiSolver solver;
 
     /**
      * 构造函数初始化控制器，建立视图和模型之间的连接
@@ -24,6 +51,65 @@ public class GameController {
         this.view = view;
         this.model = model;
         view.setController(this); // 将当前控制器设置到视图中，使视图能够调用控制器方法
+        
+        // 初始化方块移动策略
+        this.singleBlockMover = new SingleBlockMover();
+        this.horizontalBlockMover = new HorizontalBlockMover();
+        this.verticalBlockMover = new VerticalBlockMover();
+        this.bigBlockMover = new BigBlockMover();
+
+        // 初始化游戏状态管理器
+        this.saveManager = new SaveManager(view, model);
+
+        // 设置加载完成后更新最短步数的回调
+        this.saveManager.setOnLoadCompleteCallback(this::updateMinStepsDisplay);
+
+        // 初始化华容道求解器，但不立即计算和更新显示
+        this.solver = new KlotskiSolver();
+    }
+
+    /**
+     * 初始化游戏，在UI组件完全准备好后调用
+     * 这个方法应在GameFrame完成所有UI元素设置后调用
+     */
+    public void initializeGame() {
+        // 初始化华容道求解器并计算最优解
+        initializeSolver();
+        
+        // 确保更新最短步数显示
+        updateMinStepsDisplay();
+    }
+
+    /**
+     * 初始化华容道求解器并预先计算最优解
+     * 将此逻辑抽取为单独方法，以便在构造函数和加载游戏后调用
+     */
+    private void initializeSolver() {
+        System.out.println("=== Initializing Klotski Solver ===");
+
+        // 获取当前布局并预先计算最优解
+        BoardState initialState = new BoardState(model.getSerializedLayout());
+
+        // 记录求解开始时间
+        long startTime = System.currentTimeMillis();
+
+        // 执行初始求解
+        List<BoardState> solution = solver.initialSolve(initialState);
+
+        // 记录求解结束时间
+        long endTime = System.currentTimeMillis();
+
+        // 输出求解统计信息
+        System.out.println("Solving time: " + (endTime - startTime) + " ms");
+        System.out.println("BFS nodes explored: " + solver.getNodesExploredBFS());
+
+        // 输出求解结果
+        if (solution != null && !solution.isEmpty()) {
+            System.out.println("Optimal solution found, steps: " + (solution.size() - 1));
+        } else {
+            System.out.println("No solution found");
+        }
+        System.out.println("==============================");
     }
 
     /**
@@ -38,6 +124,11 @@ public class GameController {
 
         // 重置游戏面板
         view.resetGame();
+
+        // 重置后更新最短步数显示
+        this.solver = new KlotskiSolver();
+        initializeSolver();
+        updateMinStepsDisplay();
 
         System.out.println("Game restarted successfully");
     }
@@ -60,344 +151,91 @@ public class GameController {
             return false;
         }
         
-        // 根据不同类型的方块处理移动
-        switch (blockId) {
-            case 1: // 1x1方块
-                return moveSingleBlock(row, col, direction);
-            case 2: // 2x1水平方块
-                return moveHorizontalBlock(row, col, direction);
-            case 3: // 1x2垂直方块
-                return moveVerticalBlock(row, col, direction);
-            case 4: // 2x2大方块
-                return moveBigBlock(row, col, direction);
-            default:
-                return false;
-        }
-    }
-    
-    /**
-     * 移动1x1单元方块
-     * 判断目标位置是否可用，更新模型数据和视图位置
-     * 
-     * @param row 方块当前行索引
-     * @param col 方块当前列索引
-     * @param direction 移动方向
-     * @return 是否成功移动
-     */
-    private boolean moveSingleBlock(int row, int col, Direction direction) {
-        // 计算移动后的目标位置
-        int nextRow = row + direction.getRow();
-        int nextCol = col + direction.getCol();
+        // 获取当前选中的方块组件
+        BoxComponent selectedBox = view.getSelectedBox();
         
-        // 检查目标位置是否在地图范围内且为空
-        if (model.checkInHeightSize(nextRow) && model.checkInWidthSize(nextCol) && 
-            model.getId(nextRow, nextCol) == 0) {
-            
-            // 更新模型数据：将方块从原位置移除，放置到新位置
-            model.getMatrix()[row][col] = 0;  // 原位置设为空
-            model.getMatrix()[nextRow][nextCol] = 1;  // 新位置设为1x1方块
-            
-            // 更新视图中的方块位置
-            BoxComponent box = view.getSelectedBox();
-            box.setRow(nextRow);  // 更新方块的行属性
-            box.setCol(nextCol);  // 更新方块的列属性
-            // 更新方块在面板中的实际像素位置（加2是为了边框偏移）
-            box.setLocation(box.getCol() * view.getGRID_SIZE() + 2, box.getRow() * view.getGRID_SIZE() + 2);
-            box.repaint();  // 重绘方块
-            
-            return true;  // 移动成功
+        boolean moved = false;
+
+        // 根据不同类型的方块应用相应的移动策略
+        moved = switch (blockId) {
+            case 1 -> // 1x1方块
+                    singleBlockMover.move(row, col, direction, model, view, selectedBox);
+            case 2 -> // 2x1水平方块
+                    horizontalBlockMover.move(row, col, direction, model, view, selectedBox);
+            case 3 -> // 1x2垂直方块
+                    verticalBlockMover.move(row, col, direction, model, view, selectedBox);
+            case 4 -> // 2x2大方块
+                    bigBlockMover.move(row, col, direction, model, view, selectedBox);
+            default -> false;
+        };
+
+        // 如果移动成功，更新最短步数显示
+        if (moved) {
+            updateMinStepsDisplay();
         }
-        return false;  // 移动失败
-    }
-    
-    /**
-     * 移动2x1水平方块
-     * 水平方块占据两个水平相邻的格子
-     * 
-     * @param row 方块当前行索引
-     * @param col 方块当前列索引
-     * @param direction 移动方向
-     * @return 是否成功移动
-     */
-    private boolean moveHorizontalBlock(int row, int col, Direction direction) {
-        // 计算移动后的目标位置
-        int nextRow = row + direction.getRow();
-        int nextCol = col + direction.getCol();
-        
-        // 确保当前位置是水平方块的左侧起点
-        if (col + 1 < model.getWidth() && model.getId(row, col + 1) == 2) {
-            // 根据方向检查移动是否可行
-            if (direction == Direction.LEFT) {
-                // 向左移动：检查左侧一格是否可用
-                if (model.checkInWidthSize(nextCol) && model.getId(nextRow, nextCol) == 0) {
-                    // 更新模型数据：清除原位置，设置新位置
-                    model.getMatrix()[row][col] = 0;
-                    model.getMatrix()[row][col + 1] = 0;
-                    model.getMatrix()[row][nextCol] = 2;
-                    model.getMatrix()[row][nextCol + 1] = 2;
-                    
-                    // 更新视图
-                    BoxComponent box = view.getSelectedBox();
-                    box.setRow(nextRow);
-                    box.setCol(nextCol);
-                    box.setLocation(box.getCol() * view.getGRID_SIZE() + 2, box.getRow() * view.getGRID_SIZE() + 2);
-                    box.repaint();
-                    
-                    return true;
-                }
-            } else if (direction == Direction.RIGHT) {
-                // 向右移动：检查最右侧的下一格是否可用
-                if (model.checkInWidthSize(col + 2) && model.getId(row, col + 2) == 0) {
-                    // 更新模型数据
-                    model.getMatrix()[row][col] = 0;
-                    model.getMatrix()[row][col + 1] = 0;
-                    model.getMatrix()[row][col + 1] = 2;
-                    model.getMatrix()[row][col + 2] = 2;
-                    
-                    // 更新视图
-                    BoxComponent box = view.getSelectedBox();
-                    box.setRow(row);
-                    box.setCol(col + 1);
-                    box.setLocation(box.getCol() * view.getGRID_SIZE() + 2, box.getRow() * view.getGRID_SIZE() + 2);
-                    box.repaint();
-                    
-                    return true;
-                }
-            } else if (direction == Direction.UP || direction == Direction.DOWN) {
-                // 上下移动：检查移动方向上的两个位置是否都可用（整个2x1方块需要同时移动）
-                int nextRow2 = nextRow;
-                int nextCol2 = nextCol + 1;
-                
-                if (model.checkInHeightSize(nextRow) && model.checkInWidthSize(nextCol) && 
-                    model.checkInHeightSize(nextRow2) && model.checkInWidthSize(nextCol2) &&
-                    model.getId(nextRow, nextCol) == 0 && model.getId(nextRow2, nextCol2) == 0) {
-                    
-                    // 更新模型数据
-                    model.getMatrix()[row][col] = 0;
-                    model.getMatrix()[row][col + 1] = 0;
-                    model.getMatrix()[nextRow][nextCol] = 2;
-                    model.getMatrix()[nextRow][nextCol + 1] = 2;
-                    
-                    // 更新视图
-                    BoxComponent box = view.getSelectedBox();
-                    box.setRow(nextRow);
-                    box.setCol(nextCol);
-                    box.setLocation(box.getCol() * view.getGRID_SIZE() + 2, box.getRow() * view.getGRID_SIZE() + 2);
-                    box.repaint();
-                    
-                    return true;
-                }
-            }
-        }
-        return false;  // 无法移动
-    }
-    
-    /**
-     * 移动1x2垂直方块
-     * 垂直方块占据两个垂直相邻的格子
-     * 
-     * @param row 方块当前行索引
-     * @param col 方块当前列索引
-     * @param direction 移动方向
-     * @return 是否成功移动
-     */
-    private boolean moveVerticalBlock(int row, int col, Direction direction) {
-        // 计算移动后的目标位置
-        int nextRow = row + direction.getRow();
-        int nextCol = col + direction.getCol();
-        
-        // 确保当前位置是垂直方块的顶部起点
-        if (row + 1 < model.getHeight() && model.getId(row + 1, col) == 3) {
-            // 根据方向检查移动是否可行
-            if (direction == Direction.UP) {
-                // 向上移动：检查上方一格是否可用
-                if (model.checkInHeightSize(nextRow) && model.getId(nextRow, nextCol) == 0) {
-                    // 更新模型数据
-                    model.getMatrix()[row][col] = 0;  // 清除原顶部位置
-                    model.getMatrix()[row + 1][col] = 0;  // 清除原底部位置
-                    model.getMatrix()[nextRow][col] = 3;  // 设置新顶部位置
-                    model.getMatrix()[nextRow + 1][col] = 3;  // 设置新底部位置
-                    
-                    // 更新视图
-                    BoxComponent box = view.getSelectedBox();
-                    box.setRow(nextRow);
-                    box.setCol(nextCol);
-                    box.setLocation(box.getCol() * view.getGRID_SIZE() + 2, box.getRow() * view.getGRID_SIZE() + 2);
-                    box.repaint();
-                    
-                    return true;
-                }
-            } else if (direction == Direction.DOWN) {
-                // 向下移动：检查最下方的下一格是否可用
-                if (model.checkInHeightSize(row + 2) && model.getId(row + 2, col) == 0) {
-                    // 更新模型数据
-                    model.getMatrix()[row][col] = 0;  // 清除原顶部位置
-                    model.getMatrix()[row + 1][col] = 0;  // 清除原底部位置
-                    model.getMatrix()[row + 1][col] = 3;  // 设置新顶部位置
-                    model.getMatrix()[row + 2][col] = 3;  // 设置新底部位置
-                    
-                    // 更新视图
-                    BoxComponent box = view.getSelectedBox();
-                    box.setRow(row + 1);
-                    box.setCol(col);
-                    box.setLocation(box.getCol() * view.getGRID_SIZE() + 2, box.getRow() * view.getGRID_SIZE() + 2);
-                    box.repaint();
-                    
-                    return true;
-                }
-            } else if (direction == Direction.LEFT || direction == Direction.RIGHT) {
-                // 左右移动：检查移动方向上的两个位置是否都可用
-                int nextRow2 = nextRow + 1;  // 垂直方块底部位置的行
-                int nextCol2 = nextCol;  // 垂直方块底部位置的列
-                
-                if (model.checkInHeightSize(nextRow) && model.checkInWidthSize(nextCol) && 
-                    model.checkInHeightSize(nextRow2) && model.checkInWidthSize(nextCol2) &&
-                    model.getId(nextRow, nextCol) == 0 && model.getId(nextRow2, nextCol2) == 0) {
-                    
-                    // 更新模型数据
-                    model.getMatrix()[row][col] = 0;
-                    model.getMatrix()[row + 1][col] = 0;
-                    model.getMatrix()[nextRow][nextCol] = 3;
-                    model.getMatrix()[nextRow + 1][nextCol] = 3;
-                    
-                    // 更新视图
-                    BoxComponent box = view.getSelectedBox();
-                    box.setRow(nextRow);
-                    box.setCol(nextCol);
-                    box.setLocation(box.getCol() * view.getGRID_SIZE() + 2, box.getRow() * view.getGRID_SIZE() + 2);
-                    box.repaint();
-                    
-                    return true;
-                }
-            }
-        }
-        return false;  // 无法移动
-    }
-    
-    /**
-     * 移动2x2大方块
-     * 大方块占据2x2=4个格子
-     * 
-     * @param row 方块当前行索引（左上角位置）
-     * @param col 方块当前列索引（左上角位置）
-     * @param direction 移动方向
-     * @return 是否成功移动
-     */
-    private boolean moveBigBlock(int row, int col, Direction direction) {
-        // 计算移动后的目标位置
-        int nextRow = row + direction.getRow();
-        int nextCol = col + direction.getCol();
-        
-        // 确保当前位置是2x2方块的左上角起点
-        if (row + 1 < model.getHeight() && col + 1 < model.getWidth() && 
-            model.getId(row + 1, col) == 4 && model.getId(row, col + 1) == 4 && model.getId(row + 1, col + 1) == 4) {
-            
-            // 根据移动方向检查所需的新位置是否可用
-            if (direction == Direction.LEFT) {
-                // 向左移动：检查左侧两个位置是否可用
-                if (model.checkInWidthSize(col - 1) && 
-                    model.getId(row, col - 1) == 0 && model.getId(row + 1, col - 1) == 0) {
-                    
-                    // 更新模型数据
-                    // 清除原右侧位置
-                    model.getMatrix()[row][col + 1] = 0;
-                    model.getMatrix()[row + 1][col + 1] = 0;
-                    // 设置新左侧位置
-                    model.getMatrix()[row][col - 1] = 4;
-                    model.getMatrix()[row + 1][col - 1] = 4;
-                    // 保留原左侧位置（现为中间位置）
-                    model.getMatrix()[row][col] = 4;
-                    model.getMatrix()[row + 1][col] = 4;
-                    
-                    // 更新视图
-                    BoxComponent box = view.getSelectedBox();
-                    box.setRow(row);
-                    box.setCol(col - 1);  // 左移一格
-                    box.setLocation(box.getCol() * view.getGRID_SIZE() + 2, box.getRow() * view.getGRID_SIZE() + 2);
-                    box.repaint();
-                    
-                    return true;
-                }
-            } else if (direction == Direction.RIGHT) {
-                // 向右移动：检查右侧两个位置是否可用
-                if (model.checkInWidthSize(col + 2) && 
-                    model.getId(row, col + 2) == 0 && model.getId(row + 1, col + 2) == 0) {
-                    
-                    // 更新模型数据
-                    // 清除原左侧位置
-                    model.getMatrix()[row][col] = 0;
-                    model.getMatrix()[row + 1][col] = 0;
-                    // 现有右侧位置变为左侧位置
-                    model.getMatrix()[row][col + 1] = 4;
-                    model.getMatrix()[row + 1][col + 1] = 4;
-                    // 设置新右侧位置
-                    model.getMatrix()[row][col + 2] = 4;
-                    model.getMatrix()[row + 1][col + 2] = 4;
-                    
-                    // 更新视图
-                    BoxComponent box = view.getSelectedBox();
-                    box.setRow(row);
-                    box.setCol(col + 1);  // 右移一格
-                    box.setLocation(box.getCol() * view.getGRID_SIZE() + 2, box.getRow() * view.getGRID_SIZE() + 2);
-                    box.repaint();
-                    
-                    return true;
-                }
-            } else if (direction == Direction.UP) {
-                // 向上移动：检查上方两个位置是否可用
-                if (model.checkInHeightSize(row - 1) && 
-                    model.getId(row - 1, col) == 0 && model.getId(row - 1, col + 1) == 0) {
-                    
-                    // 更新模型数据
-                    // 清除原底部位置
-                    model.getMatrix()[row + 1][col] = 0;
-                    model.getMatrix()[row + 1][col + 1] = 0;
-                    // 设置新顶部位置
-                    model.getMatrix()[row - 1][col] = 4;
-                    model.getMatrix()[row - 1][col + 1] = 4;
-                    // 保留原顶部位置（现为中间位置）
-                    model.getMatrix()[row][col] = 4;
-                    model.getMatrix()[row][col + 1] = 4;
-                    
-                    // 更新视图
-                    BoxComponent box = view.getSelectedBox();
-                    box.setRow(row - 1);  // 上移一格
-                    box.setCol(col);
-                    box.setLocation(box.getCol() * view.getGRID_SIZE() + 2, box.getRow() * view.getGRID_SIZE() + 2);
-                    box.repaint();
-                    
-                    return true;
-                }
-            } else if (direction == Direction.DOWN) {
-                // 向下移动：检查下方两个位置是否可用
-                if (model.checkInHeightSize(row + 2) && 
-                    model.getId(row + 2, col) == 0 && model.getId(row + 2, col + 1) == 0) {
-                    
-                    // 更新模型数据
-                    // 清除原顶部位置
-                    model.getMatrix()[row][col] = 0;
-                    model.getMatrix()[row][col + 1] = 0;
-                    // 现有底部位置变为顶部位置
-                    model.getMatrix()[row + 1][col] = 4;
-                    model.getMatrix()[row + 1][col + 1] = 4;
-                    // 设置新底部位置
-                    model.getMatrix()[row + 2][col] = 4;
-                    model.getMatrix()[row + 2][col + 1] = 4;
-                    
-                    // 更新视图
-                    BoxComponent box = view.getSelectedBox();
-                    box.setRow(row + 1);  // 下移一格
-                    box.setCol(col);
-                    box.setLocation(box.getCol() * view.getGRID_SIZE() + 2, box.getRow() * view.getGRID_SIZE() + 2);
-                    box.repaint();
-                    
-                    return true;
-                }
-            }
-        }
-        return false;  // 无法移动
+
+        return moved;
     }
 
-    //todo: 添加其他方法如loadGame, saveGame等游戏功能
+    /**
+     * 更新最短步数显示
+     * 使用求解器获取当前布局到目标的最短步数
+     */
+    public void updateMinStepsDisplay() {
+        try {
+            // 获取当前游戏布局的序列化表示
+            long currentLayout = model.getSerializedLayout();
+            BoardState currentState = new BoardState(currentLayout);
+
+            // 记录求解开始时间
+            long startTime = System.currentTimeMillis();
+
+            // 使用求解器获取从当前状态到目标的路径
+            List<BoardState> path = solver.findPathFrom(currentState);
+
+            // 记录求解结束时间
+            long endTime = System.currentTimeMillis();
+
+            if (path != null && !path.isEmpty()) {
+                // 路径长度减1即为所需最少步数
+                int minSteps = path.size() - 1;
+                view.setMinSteps(minSteps);
+
+                // 输出当前求解信息
+                System.out.println("Current layout solved in: " + (endTime - startTime) + " ms");
+                System.out.println("A* nodes explored: " + solver.getNodesExploredAStar());
+                System.out.println("Minimum steps: " + minSteps);
+            } else {
+                // 如果找不到路径，显示默认值
+                view.setMinSteps(-1);
+                System.out.println("No solution found for current layout");
+            }
+        } catch (Exception e) {
+            System.err.println("Error calculating minimum steps: " + e.getMessage());
+            view.setMinSteps(-1);
+        }
+    }
+
+    /**
+     * 加载游戏存档
+     */
+    public void loadGameState() {
+        // 加载游戏状态
+        boolean loadSuccess = saveManager.loadGameState();
+
+        if (loadSuccess) {
+            // 加载新布局后重新初始化求解器
+            this.solver = new KlotskiSolver();
+            initializeSolver();
+
+            // 注意：updateMinStepsDisplay方法现在通过回调在loadGameState内部调用，
+            // 确保在显示成功消息之前更新最短步数
+        }
+    }
+
+    /**
+     * 保存当前游戏状态到数据库
+     */
+    public void saveGameState() {saveManager.saveGameState();}
+
 }
-

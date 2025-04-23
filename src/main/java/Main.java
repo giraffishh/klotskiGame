@@ -1,9 +1,12 @@
 import com.formdev.flatlaf.FlatLightLaf;
+import controller.util.BoardSerializer;
 import model.MapModel;
 import service.DatabaseService;
+import service.UserSession;
 import view.util.FontManager;
 import view.game.GameFrame;
 import view.login.LoginFrame;
+import view.util.FrameUtil;
 
 import javax.swing.*;
 
@@ -22,7 +25,7 @@ public class Main {
         } catch (Exception ex) {
             System.err.println("无法初始化 FlatLaf");
         }
-        
+
         // 确保字体已加载（FontManager 类的静态初始化块会执行字体加载）
         try {
             Class.forName(FontManager.class.getName());
@@ -30,8 +33,14 @@ public class Main {
             System.err.println("无法初始化字体管理器");
         }
 
+        // 初始化全局UI设置（包含对话框按钮文本和字体）
+        FrameUtil.initUIDefaults();
+
         // 初始化数据库服务
         DatabaseService.getInstance();
+
+        // 初始化用户会话服务
+        UserSession.getInstance();
 
         SwingUtilities.invokeLater(() -> {
             // 创建登录窗口并显示，增加窗口尺寸以适应更大的组件
@@ -40,10 +49,11 @@ public class Main {
 
             // 创建地图模型，初始化游戏数据
             MapModel mapModel = new MapModel(new int[][]{
-                    {1, 2, 2, 1},
-                    {1, 3, 2, 2},
-                    {1, 3, 4, 4},
-                    {0, 0, 4, 4}
+                    {BoardSerializer.VERTICAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.VERTICAL},
+                    {BoardSerializer.VERTICAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.VERTICAL},
+                    {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL},
+                    {BoardSerializer.SOLDIER, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.SOLDIER},
+                    {BoardSerializer.SOLDIER, BoardSerializer.EMPTY, BoardSerializer.EMPTY, BoardSerializer.SOLDIER}
             });
 
             // 创建游戏窗口，增加窗口尺寸以适应更大的棋盘
