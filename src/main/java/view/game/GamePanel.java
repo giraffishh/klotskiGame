@@ -244,6 +244,28 @@ public class GamePanel extends ListenerPanel {
     }
 
     /**
+     * 处理撤销操作
+     * 调用控制器的撤销方法
+     */
+    @Override
+    public void doUndo() {
+        if (controller != null) {
+            controller.undoMove();
+        }
+    }
+
+    /**
+     * 处理重做操作
+     * 调用控制器的重做方法
+     */
+    @Override
+    public void doRedo() {
+        if (controller != null) {
+            controller.redoMove();
+        }
+    }
+
+    /**
      * 移动后的处理，更新步数显示
      */
     public void afterMove() {
@@ -274,7 +296,7 @@ public class GamePanel extends ListenerPanel {
 
     /**
      * 设置当前步数
-     * 用于从存档加载步数
+     * 用于从存档加载步数或撤销/重做操作后更新步数
      *
      * @param steps 要设置的步数
      */
@@ -332,6 +354,14 @@ public class GamePanel extends ListenerPanel {
     }
 
     /**
+     * 获取所有盒子组件
+     * @return 盒子组件列表
+     */
+    public List<BoxComponent> getBoxes() {
+        return boxes;
+    }
+
+    /**
      * 重置游戏面板
      * 清除所有方块组件并重新初始化
      */
@@ -358,4 +388,3 @@ public class GamePanel extends ListenerPanel {
         initialGame();
     }
 }
-
