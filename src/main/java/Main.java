@@ -1,5 +1,5 @@
-import com.formdev.flatlaf.FlatLightLaf;
 import controller.util.BoardSerializer;
+import model.AppSettings;
 import model.MapModel;
 import service.DatabaseService;
 import service.UserSession;
@@ -7,6 +7,7 @@ import view.util.FontManager;
 import view.game.GameFrame;
 import view.home.HomeFrame;
 import view.login.LoginFrame;
+import view.settings.SettingsFrame;
 import view.util.FrameUtil;
 
 import javax.swing.*;
@@ -20,12 +21,12 @@ public class Main {
      * @param args 命令行参数
      */
     public static void main(String[] args) {
-        // 应用 FlatLaf 浅色主题
-        try {
-            UIManager.setLookAndFeel(new FlatLightLaf());
-        } catch (Exception ex) {
-            System.err.println("无法初始化 FlatLaf");
-        }
+        // 不再直接设置主题，改由AppSettings管理
+        // try {
+        //     UIManager.setLookAndFeel(new FlatLightLaf());
+        // } catch (Exception ex) {
+        //     System.err.println("无法初始化 FlatLaf");
+        // }
 
         // 确保字体已加载（FontManager 类的静态初始化块会执行字体加载）
         try {
@@ -42,12 +43,15 @@ public class Main {
 
         // 初始化用户会话服务
         UserSession.getInstance();
+        
+        // 初始化应用程序设置管理器
+        AppSettings.getInstance();
 
         SwingUtilities.invokeLater(() -> {
-            // 创建登录窗口并显示，增加窗口尺寸以适应更大的组件
+            // 创建登录窗口并显示
             LoginFrame loginFrame = new LoginFrame(460, 370);
 
-            // 创建地图模型，初始化游戏数据
+            // 创建地图模型
             MapModel mapModel = new MapModel(new int[][]{
                     {BoardSerializer.VERTICAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.VERTICAL},
                     {BoardSerializer.VERTICAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.VERTICAL},
@@ -56,18 +60,23 @@ public class Main {
                     {BoardSerializer.SOLDIER, BoardSerializer.EMPTY, BoardSerializer.EMPTY, BoardSerializer.SOLDIER}
             });
 
-            // 创建游戏窗口，增加窗口尺寸以适应更大的棋盘
+            // 创建游戏窗口
             GameFrame gameFrame = new GameFrame(700, 550, mapModel);
             gameFrame.setVisible(false);
 
             // 创建Home窗口
-            HomeFrame homeFrame = new HomeFrame();
+            HomeFrame homeFrame = new HomeFrame(500, 400);
             homeFrame.setVisible(false);
+
+            // 创建Settings窗口 - 控制器的创建已移到SettingsFrame内部
+            SettingsFrame settingsFrame = new SettingsFrame(400, 300);
+            settingsFrame.setVisible(false);
 
             // 设置窗口之间的相互引用
             loginFrame.setHomeFrame(homeFrame);
             homeFrame.setLoginFrame(loginFrame);
             homeFrame.setGameFrame(gameFrame);
+            homeFrame.setSettingsFrame(settingsFrame);
             loginFrame.setGameFrame(gameFrame);
 
             // 显示登录窗口

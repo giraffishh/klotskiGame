@@ -4,6 +4,7 @@ import controller.HomeController;
 import service.UserSession;
 import view.game.GameFrame;
 import view.login.LoginFrame;
+import view.settings.SettingsFrame; // 导入 SettingsFrame
 import view.util.FontManager;
 import view.util.FrameUtil;
 
@@ -15,13 +16,11 @@ import java.awt.*;
  * 显示欢迎信息、用户信息和功能按钮
  */
 public class HomeFrame extends JFrame implements HomeView {
-    // 窗口尺寸常量
-    private static final Dimension HOME_SIZE = new Dimension(500, 400);
-    
     // UI组件
     private JLabel welcomeLabel;
     private JLabel usernameLabel;
     private JButton startGameButton;
+    private JButton settingsButton; // 添加设置按钮
     private JButton logoutButton;
     
     // 控制器
@@ -29,10 +28,12 @@ public class HomeFrame extends JFrame implements HomeView {
     
     /**
      * 创建Home窗口
+     * @param width 窗口宽度
+     * @param height 窗口高度
      */
-    public HomeFrame() {
+    public HomeFrame(int width, int height) {
         this.setTitle("Klotski - Home");
-        this.setSize(HOME_SIZE);
+        this.setSize(width, height);
         this.setLocationRelativeTo(null); // 窗口居中显示
         this.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         
@@ -79,6 +80,12 @@ public class HomeFrame extends JFrame implements HomeView {
         startGameButton.setMaximumSize(new Dimension(200, 50));
         startGameButton.setPreferredSize(new Dimension(200, 50));
         
+        // 设置按钮
+        settingsButton = FrameUtil.createStyledButton("Settings", false); // 使用次要样式
+        settingsButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        settingsButton.setMaximumSize(new Dimension(200, 50));
+        settingsButton.setPreferredSize(new Dimension(200, 50));
+        
         // 退出登录按钮
         logoutButton = FrameUtil.createStyledButton("Logout", false);
         logoutButton.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -87,6 +94,8 @@ public class HomeFrame extends JFrame implements HomeView {
         
         // 添加按钮到内容面板
         contentPanel.add(startGameButton);
+        contentPanel.add(Box.createVerticalStrut(20));
+        contentPanel.add(settingsButton); // 添加设置按钮
         contentPanel.add(Box.createVerticalStrut(20));
         contentPanel.add(logoutButton);
         
@@ -98,6 +107,7 @@ public class HomeFrame extends JFrame implements HomeView {
         
         // 添加按钮事件监听器
         startGameButton.addActionListener(e -> controller.startGame());
+        settingsButton.addActionListener(e -> controller.openSettings()); // 添加设置按钮监听器
         logoutButton.addActionListener(e -> controller.logout());
     }
     
@@ -161,6 +171,14 @@ public class HomeFrame extends JFrame implements HomeView {
         this.controller.setLoginFrame(loginFrame);
     }
     
+    /**
+     * 设置设置窗口引用
+     * @param settingsFrame 设置窗口实例
+     */
+    public void setSettingsFrame(SettingsFrame settingsFrame) {
+        this.controller.setSettingsFrame(settingsFrame); // 将 SettingsFrame 传递给控制器
+    }
+
     /**
      * 初始化并显示Home页面
      */

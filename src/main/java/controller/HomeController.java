@@ -4,6 +4,7 @@ import service.UserSession;
 import view.game.GameFrame;
 import view.home.HomeView;
 import view.login.LoginFrame;
+import view.settings.SettingsFrame; // 导入 SettingsFrame
 
 import javax.swing.*;
 
@@ -15,6 +16,7 @@ public class HomeController {
     private final HomeView homeView;
     private GameFrame gameFrame;
     private LoginFrame loginFrame;
+    private SettingsFrame settingsFrame; // 添加 SettingsFrame 引用
 
     /**
      * 创建HomeController
@@ -41,6 +43,14 @@ public class HomeController {
     }
 
     /**
+     * 设置设置窗口引用
+     * @param settingsFrame 设置窗口实例
+     */
+    public void setSettingsFrame(SettingsFrame settingsFrame) {
+        this.settingsFrame = settingsFrame;
+    }
+
+    /**
      * 开始游戏
      * 显示游戏窗口并隐藏Home窗口
      */
@@ -50,6 +60,20 @@ public class HomeController {
             homeView.closeHome();
         } else {
             homeView.showStyledMessage("Game window not properly initialized", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    /**
+     * 打开设置页面
+     * 显示设置窗口
+     */
+    public void openSettings() {
+        if (settingsFrame != null) {
+            // 确保每次打开时都加载最新的设置（如果需要）
+            // settingsFrame.getController().loadSettings(); // Controller 引用现在在 SettingsFrame 内部管理
+            settingsFrame.setVisible(true);
+        } else {
+            homeView.showStyledMessage("Settings window not properly initialized", "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 

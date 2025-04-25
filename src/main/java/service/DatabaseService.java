@@ -7,6 +7,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Base64;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * 数据库服务类，提供用户登录和注册功能
@@ -37,74 +39,42 @@ public class DatabaseService {
         }
         return instance;
     }
-    
+
     /**
-     * 初始化数据库，创建用户表
+     * 初始化数据库，创建用户表、游戏存档表和用户设置表
      */
     private void initDatabase() {
         try (Connection conn = getConnection()) {
             Statement stmt = conn.createStatement();
+
             // 创建用户表(如果不存在)，包含密码哈希和盐值列
             stmt.execute("CREATE TABLE IF NOT EXISTS users (" +
-                         "username VARCHAR(255) PRIMARY KEY, " +
-                         "password_hash VARCHAR(255) NOT NULL, " +
-                         "salt VARCHAR(255) NOT NULL)");
+                    "username VARCHAR(255) PRIMARY KEY, " +
+                    "password_hash VARCHAR(255) NOT NULL, " +
+                    "salt VARCHAR(255) NOT NULL)");
 
-            // 检查是否存在旧表结构（没有salt列）
-            try {
-                ResultSet rs = conn.getMetaData().getColumns(null, null, "USERS", "SALT");
-                if (!rs.next()) {
-                    // 如果不存在salt列，说明是旧表结构，需要删除重建
-                    stmt.execute("DROP TABLE users");
-                    stmt.execute("CREATE TABLE users (" +
-                                "username VARCHAR(255) PRIMARY KEY, " +
-                                "password_hash VARCHAR(255) NOT NULL, " +
-                                "salt VARCHAR(255) NOT NULL)");
-                    System.out.println("数据库表结构已更新");
-                }
-            } catch (SQLException e) {
-                System.out.println("检查表结构时出错: " + e.getMessage());
-            }
+            // 创建游戏保存记录表(如果不存在)，增加data_hash列用于数据完整性验证
+            stmt.execute("CREATE TABLE IF NOT EXISTS game_saves (" +
+                    "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                    "username VARCHAR(255) NOT NULL, " +
+                    "map_state VARCHAR(1000) NOT NULL, " + // 存储地图状态的字符串
+                    "steps INT NOT NULL, " +               // 已走步数
+                    "save_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " + // 保存时间
+                    "description VARCHAR(255), " +         // 可选描述
+                    "data_hash VARCHAR(255) NOT NULL, " +  // 数据哈希，用于验证完整性
+                    "FOREIGN KEY (username) REFERENCES users(username))");
 
-            // 检查game_saves表是否存在
-            ResultSet tablesRS = conn.getMetaData().getTables(null, null, "GAME_SAVES", null);
-            boolean gameTableExists = tablesRS.next();
-
-            // 如果game_saves表存在，检查是否有data_hash列
-            boolean hasDataHashColumn = false;
-            if (gameTableExists) {
-                ResultSet columnsRS = conn.getMetaData().getColumns(null, null, "GAME_SAVES", "DATA_HASH");
-                hasDataHashColumn = columnsRS.next();
-
-                // 如果表存在但没有data_hash列，先删除旧表
-                if (!hasDataHashColumn) {
-                    stmt.execute("DROP TABLE game_saves");
-                    gameTableExists = false;
-                    System.out.println("删除旧版game_saves表结构");
-                }
-            }
-
-            // 如果表不存在或已删除，创建新表
-            if (!gameTableExists) {
-                // 创建游戏保存记录表，增加data_hash列用于数据完整性验证
-                stmt.execute("CREATE TABLE game_saves (" +
-                             "id INT AUTO_INCREMENT PRIMARY KEY, " +
-                             "username VARCHAR(255) NOT NULL, " +
-                             "map_state VARCHAR(1000) NOT NULL, " + // 存储地图状态的字符串
-                             "steps INT NOT NULL, " +               // 已走步数
-                             "save_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " + // 保存时间
-                             "description VARCHAR(255), " +         // 可选描述
-                             "data_hash VARCHAR(255) NOT NULL, " +  // 数据哈希，用于验证完整性
-                             "FOREIGN KEY (username) REFERENCES users(username))");
-                System.out.println("创建新版game_saves表结构，包含数据哈希验证");
-            }
+            // 创建user_settings表(如果不存在)
+            stmt.execute("CREATE TABLE IF NOT EXISTS user_settings (" +
+                    "username VARCHAR(255) PRIMARY KEY, " +
+                    "theme VARCHAR(50) NOT NULL DEFAULT 'Light', " +
+                    "FOREIGN KEY (username) REFERENCES users(username))");
 
             System.out.println("Database setup successfully");
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
-    
     /**
      * 获取数据库连接
      * @return 数据库连接
@@ -426,5 +396,136 @@ public class DatabaseService {
             e.printStackTrace();
             return null;
         }
+    }
+
+    /**
+     * 保存用户设置
+     * @param username 用户名
+     * @param settings 设置键值对
+     * @return 是否保存成功
+     */
+    public boolean saveUserSettings(String username, Map<String, String> settings) {
+        try (Connection conn = getConnection()) {
+            // 首先检查用户设置是否存在
+            PreparedStatement checkStmt = conn.prepareStatement(
+                "SELECT username FROM user_settings WHERE username = ?");
+            checkStmt.setString(1, username);
+            ResultSet rs = checkStmt.executeQuery();
+
+            PreparedStatement stmt;
+            boolean exists = rs.next();
+
+            if (exists) {
+                // 更新现有设置
+                StringBuilder updateSQL = new StringBuilder("UPDATE user_settings SET ");
+                boolean first = true;
+
+                for (Map.Entry<String, String> entry : settings.entrySet()) {
+                    if (!first) {
+                        updateSQL.append(", ");
+                    }
+                    updateSQL.append(entry.getKey()).append(" = ?");
+                    first = false;
+                }
+
+                updateSQL.append(" WHERE username = ?");
+
+                stmt = conn.prepareStatement(updateSQL.toString());
+
+                int paramIndex = 1;
+                for (String value : settings.values()) {
+                    stmt.setString(paramIndex++, value);
+                }
+                stmt.setString(paramIndex, username);
+            } else {
+                // 插入新设置
+                StringBuilder insertSQL = new StringBuilder("INSERT INTO user_settings (username");
+                StringBuilder valuesSQL = new StringBuilder(") VALUES (?");
+
+                for (String key : settings.keySet()) {
+                    insertSQL.append(", ").append(key);
+                    valuesSQL.append(", ?");
+                }
+
+                insertSQL.append(valuesSQL).append(")");
+
+                stmt = conn.prepareStatement(insertSQL.toString());
+
+                stmt.setString(1, username);
+                int paramIndex = 2;
+                for (String value : settings.values()) {
+                    stmt.setString(paramIndex++, value);
+                }
+            }
+
+            int result = stmt.executeUpdate();
+            return result > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * 保存单个用户设置
+     * @param username 用户名
+     * @param settingKey 设置键
+     * @param settingValue 设置值
+     * @return 是否保存成功
+     */
+    public boolean saveUserSetting(String username, String settingKey, String settingValue) {
+        Map<String, String> settings = new HashMap<>();
+        settings.put(settingKey, settingValue);
+        return saveUserSettings(username, settings);
+    }
+
+    /**
+     * 加载用户设置
+     * @param username 用户名
+     * @return 包含用户设置的Map
+     */
+    public Map<String, String> loadUserSettings(String username) {
+        Map<String, String> settings = new HashMap<>();
+        try (Connection conn = getConnection()) {
+            PreparedStatement stmt = conn.prepareStatement(
+                "SELECT * FROM user_settings WHERE username = ?");
+            stmt.setString(1, username);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                ResultSetMetaData metaData = rs.getMetaData();
+                int columnCount = metaData.getColumnCount();
+
+                for (int i = 1; i <= columnCount; i++) {
+                    String columnName = metaData.getColumnName(i);
+                    // 跳过username列
+                    if (!"USERNAME".equalsIgnoreCase(columnName)) {
+                        settings.put(columnName.toLowerCase(), rs.getString(i));
+                    }
+                }
+            } else {
+                // 用户没有设置，返回默认值
+                settings.put("theme", "Light");
+            }
+
+            return settings;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            // 出错时返回默认设置
+            settings.put("theme", "Light");
+            return settings;
+        }
+    }
+
+    /**
+     * 加载单个用户设置
+     * @param username 用户名
+     * @param settingKey 设置键
+     * @param defaultValue 默认值，如果设置不存在
+     * @return 设置值
+     */
+    public String loadUserSetting(String username, String settingKey, String defaultValue) {
+        Map<String, String> settings = loadUserSettings(username);
+        return settings.getOrDefault(settingKey.toLowerCase(), defaultValue);
     }
 }
