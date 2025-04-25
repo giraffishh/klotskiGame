@@ -23,4 +23,9 @@ public interface HomeView {
      * 关闭Home页面
      */
     void closeHome();
+
+    /**
+     * 显示Home页面
+     */
+    void showHome();
 }

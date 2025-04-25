@@ -362,6 +362,14 @@ public class GamePanel extends ListenerPanel {
     }
 
     /**
+     * 获取游戏地图模型
+     * @return 游戏地图模型
+     */
+    public MapModel getModel() {
+        return model;
+    }
+
+    /**
      * 重置游戏面板
      * 清除所有方块组件并重新初始化
      */
@@ -388,3 +396,4 @@ public class GamePanel extends ListenerPanel {
         initialGame();
     }
 }
+

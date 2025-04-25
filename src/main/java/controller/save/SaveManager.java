@@ -39,12 +39,95 @@ public class SaveManager {
     }
 
     /**
+     * 显示加载确认对话框
+     * 在实际加载游戏前调用，询问用户是否加载
+     * 
+     * @return 用户是否确认加载
+     */
+    public boolean showLoadConfirmation() {
+        // 检查用户是否为访客
+        if (UserSession.getInstance().isGuest()) {
+            JOptionPane.showMessageDialog(view,
+                    "Unable to load game: Please login first",
+                    "Load Failed",
+                    JOptionPane.ERROR_MESSAGE);
+            return false;
+        }
+
+        // 检查用户是否已登录
+        if (!UserSession.getInstance().isLoggedIn()) {
+            System.out.println("Unable to load game: Login status is abnormal");
+            JOptionPane.showMessageDialog(view,
+                    "Unable to load game: You are not logged in",
+                    "Load Failed",
+                    JOptionPane.ERROR_MESSAGE);
+            return false;
+        }
+
+        // 获取当前登录用户名
+        String username = UserSession.getInstance().getCurrentUser().getUsername();
+
+        // 调用数据库服务加载游戏存档数据
+        DatabaseService.GameSaveData saveData = DatabaseService.getInstance().loadGameSave(username);
+
+        if (saveData == null) {
+            JOptionPane.showMessageDialog(view,
+                    "No valid save found or save data is corrupted",
+                    "Load Failed",
+                    JOptionPane.WARNING_MESSAGE);
+            return false;
+        }
+
+        try {
+            // 创建一个包含存档信息的确认对话框
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            String saveTimeStr = dateFormat.format(saveData.getSaveTime());
+
+            String message = String.format("Save Information:\n" +
+                                          " Steps: %d\n" +
+                                          " Save Time: %s\n\n" +
+                                          "Are you sure you want to load this save?\nCurrent progress will be lost.",
+                                          saveData.getSteps(), saveTimeStr);
+
+            int choice = JOptionPane.showConfirmDialog(
+                view,
+                message,
+                "Confirm Load",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE
+            );
+
+            // 返回用户选择结果
+            return choice == JOptionPane.YES_OPTION;
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(view,
+                    "Error parsing saved game data: " + e.getMessage(),
+                    "Load Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return false;
+        }
+    }
+
+    /**
      * 加载游戏存档
      * 从数据库中读取存档并验证完整性
      *
      * @return 加载是否成功
      */
     public boolean loadGameState() {
+        return loadGameState(false);
+    }
+
+    /**
+     * 加载游戏存档
+     * 从数据库中读取存档并验证完整性
+     * 
+     * @param skipConfirmation 是否跳过确认对话框
+     * @return 加载是否成功
+     */
+    public boolean loadGameState(boolean skipConfirmation) {
         // 检查用户是否为访客
         if (UserSession.getInstance().isGuest()) {
             JOptionPane.showMessageDialog(view,
@@ -79,30 +162,14 @@ public class SaveManager {
         }
 
         try {
-            // 创建一个包含存档信息的确认对话框
-            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            String saveTimeStr = dateFormat.format(saveData.getSaveTime());
-
-            String message = String.format("Save Information:\n" +
-                                          " Steps: %d\n" +
-                                          " Save Time: %s\n\n" +
-                                          "Are you sure you want to load this save?\nCurrent progress will be lost.",
-                                          saveData.getSteps(), saveTimeStr);
-
-            int choice = JOptionPane.showConfirmDialog(
-                view,
-                message,
-                "Confirm Load",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.QUESTION_MESSAGE
-            );
-
-            // 如果用户取消了加载，则返回
-            if (choice != JOptionPane.YES_OPTION) {
-                return false;
+            // 仅当需要确认时才显示确认对话框
+            if (!skipConfirmation) {
+                if (!showLoadConfirmation()) {
+                    return false;
+                }
             }
 
-            // 用户确认加载，继续处理存档数据
+            // 用户确认加载或跳过确认，继续处理存档数据
             String mapState = saveData.getMapState();
             int steps = saveData.getSteps();
 
@@ -127,12 +194,6 @@ public class SaveManager {
                 if (onLoadCompleteCallback != null) {
                     onLoadCompleteCallback.run();
                 }
-
-                JOptionPane.showMessageDialog(view,
-                        "Game loaded successfully!",
-                        "Load Success",
-                        JOptionPane.INFORMATION_MESSAGE);
-
             });
             return true;
         } catch (Exception e) {

@@ -1,12 +1,16 @@
 package controller;
 
+import controller.save.SaveManager;
+import service.DatabaseService;
 import service.UserSession;
 import view.game.GameFrame;
 import view.home.HomeView;
 import view.login.LoginFrame;
-import view.settings.SettingsFrame; // 导入 SettingsFrame
+import view.settings.SettingsFrame;
 
 import javax.swing.*;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 /**
  * Home页面控制器
@@ -16,7 +20,8 @@ public class HomeController {
     private final HomeView homeView;
     private GameFrame gameFrame;
     private LoginFrame loginFrame;
-    private SettingsFrame settingsFrame; // 添加 SettingsFrame 引用
+    private SettingsFrame settingsFrame;
+    private SaveManager saveManager;
 
     /**
      * 创建HomeController
@@ -32,6 +37,11 @@ public class HomeController {
      */
     public void setGameFrame(GameFrame gameFrame) {
         this.gameFrame = gameFrame;
+        
+        // 创建SaveManager实例
+        if (gameFrame != null && gameFrame.getGamePanel() != null) {
+            this.saveManager = new SaveManager(gameFrame.getGamePanel(), gameFrame.getGamePanel().getModel());
+        }
     }
 
     /**
@@ -62,6 +72,57 @@ public class HomeController {
             homeView.showStyledMessage("Game window not properly initialized", "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
+    
+    /**
+     * 加载保存的游戏
+     * 先检查并确认存档，确认后才显示游戏界面
+     */
+    public void loadGame() {
+        // 检查必要对象是否已初始化
+        if (gameFrame == null || saveManager == null) {
+            homeView.showStyledMessage(
+                "Game window or save manager not properly initialized", 
+                "Error", 
+                JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        
+        // 检查用户是否为访客
+        if (UserSession.getInstance().isGuest()) {
+            homeView.showStyledMessage(
+                "Game saving and loading is not available in guest mode. Please create an account to use this feature.",
+                "Guest Mode Restriction", 
+                JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        
+        // 检查用户是否有存档
+        if (!saveManager.hasUserSave()) {
+            homeView.showStyledMessage(
+                "No saved game found for current user.", 
+                "No Save Found", 
+                JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        
+        // 加载前先显示确认对话框
+        boolean shouldLoad = saveManager.showLoadConfirmation();
+        
+        // 只有在用户确认后才进入游戏页面
+        if (shouldLoad) {
+            gameFrame.setVisible(true);
+            homeView.closeHome();
+            
+            // 直接使用SaveManager加载游戏状态，跳过确认对话框
+            boolean loadSuccess = saveManager.loadGameState(true); // true表示跳过确认
+            
+            // 如果加载失败，返回主页
+            if (!loadSuccess) {
+                gameFrame.setVisible(false);
+                homeView.showHome();
+            }
+        }
+    }
 
     /**
      * 打开设置页面
@@ -69,8 +130,6 @@ public class HomeController {
      */
     public void openSettings() {
         if (settingsFrame != null) {
-            // 确保每次打开时都加载最新的设置（如果需要）
-            // settingsFrame.getController().loadSettings(); // Controller 引用现在在 SettingsFrame 内部管理
             settingsFrame.setVisible(true);
         } else {
             homeView.showStyledMessage("Settings window not properly initialized", "Error", JOptionPane.ERROR_MESSAGE);
@@ -82,17 +141,21 @@ public class HomeController {
      * 清除用户会话，显示登录窗口，关闭Home窗口
      */
     public void logout() {
-        // 清除用户会话
-        UserSession.getInstance().logout();
-        
-        // 显示登录窗口
         if (loginFrame != null) {
+            // 清除用户会话
+            UserSession.getInstance().logout();
+            
+            // 重置登录表单，清除输入框内容
             loginFrame.resetForm();
+            
+            // 显示登录窗口
             loginFrame.setVisible(true);
+            homeView.closeHome();
+        } else {
+            homeView.showStyledMessage("Login window not properly initialized", "Error", JOptionPane.ERROR_MESSAGE);
+            UserSession.getInstance().logout();
+            System.exit(0); // 如果loginFrame为null，则直接退出程序
         }
-        
-        // 关闭Home窗口
-        homeView.closeHome();
     }
 
     /**
@@ -110,3 +173,4 @@ public class HomeController {
         homeView.updateUsername(username);
     }
 }
+

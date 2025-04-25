@@ -20,7 +20,8 @@ public class HomeFrame extends JFrame implements HomeView {
     private JLabel welcomeLabel;
     private JLabel usernameLabel;
     private JButton startGameButton;
-    private JButton settingsButton; // 添加设置按钮
+    private JButton loadGameButton;
+    private JButton settingsButton;
     private JButton logoutButton;
     
     // 控制器
@@ -75,13 +76,21 @@ public class HomeFrame extends JFrame implements HomeView {
         FrameUtil.setPadding(contentPanel, 30, 0, 0, 0);
         
         // 开始游戏按钮
-        startGameButton = FrameUtil.createStyledButton("Start Game", true);
+        startGameButton = FrameUtil.createStyledButton("New Game", true);
         startGameButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         startGameButton.setMaximumSize(new Dimension(200, 50));
         startGameButton.setPreferredSize(new Dimension(200, 50));
         
+        // 加载游戏按钮
+        loadGameButton = FrameUtil.createStyledButton("Load Game", true);
+        loadGameButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        loadGameButton.setMaximumSize(new Dimension(200, 50));
+        loadGameButton.setPreferredSize(new Dimension(200, 50));
+        // 访客模式下禁用加载按钮
+        loadGameButton.setEnabled(!UserSession.getInstance().isGuest());
+
         // 设置按钮
-        settingsButton = FrameUtil.createStyledButton("Settings", false); // 使用次要样式
+        settingsButton = FrameUtil.createStyledButton("Settings", false);
         settingsButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         settingsButton.setMaximumSize(new Dimension(200, 50));
         settingsButton.setPreferredSize(new Dimension(200, 50));
@@ -95,7 +104,9 @@ public class HomeFrame extends JFrame implements HomeView {
         // 添加按钮到内容面板
         contentPanel.add(startGameButton);
         contentPanel.add(Box.createVerticalStrut(20));
-        contentPanel.add(settingsButton); // 添加设置按钮
+        contentPanel.add(loadGameButton);  // 添加加载游戏按钮
+        contentPanel.add(Box.createVerticalStrut(20));
+        contentPanel.add(settingsButton);
         contentPanel.add(Box.createVerticalStrut(20));
         contentPanel.add(logoutButton);
         
@@ -107,7 +118,8 @@ public class HomeFrame extends JFrame implements HomeView {
         
         // 添加按钮事件监听器
         startGameButton.addActionListener(e -> controller.startGame());
-        settingsButton.addActionListener(e -> controller.openSettings()); // 添加设置按钮监听器
+        loadGameButton.addActionListener(e -> controller.loadGame());  // 添加加载游戏按钮监听器
+        settingsButton.addActionListener(e -> controller.openSettings());
         logoutButton.addActionListener(e -> controller.logout());
     }
     
@@ -116,12 +128,14 @@ public class HomeFrame extends JFrame implements HomeView {
         // 更新显示的用户名
         usernameLabel.setText(username);
         
-        // 如果是访客模式，调整UI显示
+        // 如果是访客模式，调整UI显示并禁用加载游戏按钮
         boolean isGuest = UserSession.getInstance().isGuest();
         if (isGuest) {
             welcomeLabel.setText("Guest Mode");
+            loadGameButton.setEnabled(false);
         } else {
             welcomeLabel.setText("Welcome Back");
+            loadGameButton.setEnabled(true);
         }
     }
     
@@ -155,6 +169,26 @@ public class HomeFrame extends JFrame implements HomeView {
         this.setVisible(false);
     }
     
+    /**
+     * 实现HomeView接口方法，显示Home页面
+     */
+    @Override
+    public void showHome() {
+        this.setVisible(true);
+    }
+    
+    /**
+     * 重写setVisible方法，在显示主页面时更新用户信息
+     */
+    @Override
+    public void setVisible(boolean visible) {
+        super.setVisible(visible);
+        if (visible) {
+            // 在重新显示时更新用户信息
+            controller.initializeHome();
+        }
+    }
+
     /**
      * 设置游戏窗口引用
      * @param gameFrame 游戏窗口实例
