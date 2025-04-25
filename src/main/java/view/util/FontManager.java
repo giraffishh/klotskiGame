@@ -17,7 +17,7 @@ public class FontManager {
     private static Font regularFont;
     // 默认按钮字体
     private static Font buttonFont;
-    // 支持中文的输入字体
+    // 通用输入字体
     private static Font inputFont;
 
     // 字体路径常量
@@ -140,7 +140,7 @@ public class FontManager {
     }
 
     /**
-     基于按钮字体创建自定义大小的字体
+     * 基于按钮字体创建自定义大小的字体
      * @param size 字体大小
      * @return 调整大小后的字体
      */

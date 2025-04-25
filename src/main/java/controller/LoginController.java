@@ -4,6 +4,7 @@ import model.User;
 import service.DatabaseService;
 import service.UserSession;
 import view.game.GameFrame;
+import view.home.HomeFrame;
 import view.login.LoginView;
 
 import javax.swing.*;
@@ -21,6 +22,8 @@ public class LoginController {
     private final LoginView loginView;
     // 游戏窗口引用
     private GameFrame gameFrame;
+    // Home窗口引用
+    private HomeFrame homeFrame;
 
     /**
      * 创建登录控制器
@@ -38,6 +41,14 @@ public class LoginController {
      */
     public void setGameFrame(GameFrame gameFrame) {
         this.gameFrame = gameFrame;
+    }
+
+    /**
+     * 设置Home窗口引用
+     * @param homeFrame Home主窗口
+     */
+    public void setHomeFrame(HomeFrame homeFrame) {
+        this.homeFrame = homeFrame;
     }
 
     /**
@@ -138,9 +149,10 @@ public class LoginController {
                 "Login successful!",
                 "Welcome",
                 JOptionPane.INFORMATION_MESSAGE);
-            // 显示游戏窗口
-            if (this.gameFrame != null) {
-                this.gameFrame.setVisible(true);
+            // 显示Home窗口
+            if (this.homeFrame != null) {
+                this.homeFrame.initialize(); // 初始化Home页面
+                this.homeFrame.setVisible(true);
                 loginView.setVisible(false);
             }
         } else {
@@ -181,9 +193,10 @@ public class LoginController {
                 "Register successfully!",
                 "Welcome",
                 JOptionPane.INFORMATION_MESSAGE);
-            // 显示游戏窗口
-            if (this.gameFrame != null) {
-                this.gameFrame.setVisible(true);
+            // 显示Home窗口
+            if (this.homeFrame != null) {
+                this.homeFrame.initialize(); // 初始化Home页面
+                this.homeFrame.setVisible(true);
                 loginView.setVisible(false);
             }
         } else {
@@ -208,9 +221,10 @@ public class LoginController {
             "Welcome Guest",
             JOptionPane.INFORMATION_MESSAGE);
 
-        // 显示游戏窗口
-        if (this.gameFrame != null) {
-            this.gameFrame.setVisible(true);
+        // 显示Home窗口
+        if (this.homeFrame != null) {
+            this.homeFrame.initialize(); // 初始化Home页面
+            this.homeFrame.setVisible(true);
             loginView.setVisible(false);
         }
     }
@@ -230,4 +244,3 @@ public class LoginController {
         loginView.resetForm();
     }
 }
-

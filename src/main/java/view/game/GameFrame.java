@@ -4,6 +4,7 @@ import controller.GameController;
 import model.MapModel;
 import view.util.FrameUtil;
 import service.UserSession;
+import view.home.HomeFrame;
 
 import javax.swing.*;
 import java.awt.event.WindowAdapter;
@@ -34,6 +35,10 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
     private JButton undoBtn;
     // 重做按钮
     private JButton redoBtn;
+    // 返回主页面按钮
+    private JButton homeBtn;
+    // 主页面引用
+    private HomeFrame homeFrame;
 
     /**
      * 创建游戏窗口
@@ -48,6 +53,11 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         // 使用绝对布局
         this.setLayout(null);
         
+        // 添加返回主页按钮到左上角
+        this.homeBtn = FrameUtil.createStyledButton("Home", false);
+        homeBtn.setBounds(10, 10, 80, 35); // 位置在左上角，大小为80x35
+        this.add(homeBtn);
+
         // 创建游戏面板
         gamePanel = new GamePanel(mapModel);
         
@@ -159,6 +169,14 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
             gamePanel.requestFocusInWindow();
         });
 
+        // 为返回主页面按钮添加点击事件监听器
+        this.homeBtn.addActionListener(e -> {
+            // 返回主页面
+            returnToHome();
+            // 将焦点设置回游戏面板以便接收键盘事件
+            gamePanel.requestFocusInWindow();
+        });
+
         // 更新按钮状态
         updateButtonsState();
 
@@ -181,6 +199,32 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         this.setLocationRelativeTo(null);
         // 设置关闭窗口时退出程序
         this.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+    }
+
+    /**
+     * 设置主页面窗口引用
+     * @param homeFrame 主页面窗口
+     */
+    public void setHomeFrame(HomeFrame homeFrame) {
+        this.homeFrame = homeFrame;
+    }
+
+    /**
+     * 返回主页面
+     */
+    private void returnToHome() {
+        if (homeFrame != null) {
+            // 显示主页面
+            homeFrame.setVisible(true);
+            // 隐藏游戏窗口
+            this.setVisible(false);
+        } else {
+            // 如果homeFrame为null，显示错误消息
+            JOptionPane.showMessageDialog(this,
+                "Cannot return to home page. Home page reference is missing.",
+                "Error",
+                JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     /**
