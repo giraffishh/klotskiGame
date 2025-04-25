@@ -77,6 +77,7 @@ public class Main {
             homeFrame.setLoginFrame(loginFrame);
             homeFrame.setGameFrame(gameFrame);
             homeFrame.setSettingsFrame(settingsFrame);
+            gameFrame.setHomeFrame(homeFrame);
             loginFrame.setGameFrame(gameFrame);
 
             // 显示登录窗口
