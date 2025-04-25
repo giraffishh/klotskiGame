@@ -4,6 +4,7 @@ import controller.LoginController;
 import view.util.FontManager;
 import view.util.FrameUtil;
 import view.game.GameFrame;
+import view.home.HomeFrame;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -14,7 +15,7 @@ import java.awt.event.FocusEvent;
 
 /**
  * 登录界面窗口，提供用户名和密码输入功能
- * 登录成功后可跳转到游戏主界面
+ * 登录成功后可跳转到Home主界面
  * 使用 FlatLaf 浅色主题
  */
 public class LoginFrame extends JFrame implements LoginView {
@@ -382,6 +383,14 @@ public class LoginFrame extends JFrame implements LoginView {
     }
 
     /**
+     * 设置Home窗口引用，用于登录成功后的界面跳转
+     * @param homeFrame Home主窗口实例
+     */
+    public void setHomeFrame(HomeFrame homeFrame) {
+        this.controller.setHomeFrame(homeFrame);
+    }
+    
+    /**
      * 设置游戏窗口引用，用于登录成功后的界面跳转
      * @param gameFrame 游戏主窗口实例
      */
@@ -389,3 +398,4 @@ public class LoginFrame extends JFrame implements LoginView {
         this.controller.setGameFrame(gameFrame);
     }
 }
+
