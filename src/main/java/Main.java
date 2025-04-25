@@ -21,12 +21,6 @@ public class Main {
      * @param args 命令行参数
      */
     public static void main(String[] args) {
-        // 不再直接设置主题，改由AppSettings管理
-        // try {
-        //     UIManager.setLookAndFeel(new FlatLightLaf());
-        // } catch (Exception ex) {
-        //     System.err.println("无法初始化 FlatLaf");
-        // }
 
         // 确保字体已加载（FontManager 类的静态初始化块会执行字体加载）
         try {

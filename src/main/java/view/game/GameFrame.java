@@ -21,8 +21,6 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
     private GameController controller;
     // 重新开始按钮
     private JButton restartBtn;
-    // 加载游戏按钮
-    private JButton loadBtn;
     // 保存游戏按钮
     private JButton saveBtn;
     // 步数显示标签
@@ -117,12 +115,6 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         redoBtn.setBounds(controlX + buttonWidth + 20, controlY, buttonWidth, 45);
         redoBtn.setEnabled(false); // 初始时禁用
         this.add(redoBtn);
-        controlY += 65;
-
-        // 第三行按钮：居中放置加载按钮
-        this.loadBtn = FrameUtil.createStyledButton("Load", false);
-        loadBtn.setBounds(controlX + controlWidth/4, controlY, controlWidth/2, 45);
-        this.add(loadBtn);
 
         // 设置GameController对GameFrame的引用，用于更新按钮状态
         controller.setParentFrame(this);
@@ -134,16 +126,7 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
             // 将焦点设置回游戏面板以便接收键盘事件
             gamePanel.requestFocusInWindow();
         });
-        
-        // 为加载游戏按钮添加点击事件监听器
-        this.loadBtn.addActionListener(e -> {
-            // 调用控制器的加载游戏方法
-            controller.loadGameState();
 
-            // 将焦点设置回游戏面板以便接收键盘事件
-            gamePanel.requestFocusInWindow();
-        });
-        
         // 为保存游戏按钮添加点击事件监听器
         this.saveBtn.addActionListener(e -> {
             // 调用控制器的保存游戏方法
@@ -202,6 +185,14 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
     }
 
     /**
+     * 获取游戏面板
+     * @return 游戏面板
+     */
+    public GamePanel getGamePanel() {
+        return gamePanel;
+    }
+
+    /**
      * 设置主页面窗口引用
      * @param homeFrame 主页面窗口
      */
@@ -238,14 +229,13 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
 
     /**
      * 更新按钮状态
-     * 根据用户会话状态启用或禁用保存和加载按钮
+     * 根据用户会话状态启用或禁用保存按钮
      */
     public void updateButtonsState() {
         UserSession session = UserSession.getInstance();
         boolean isGuest = session.isGuest();
 
-        // 访客模式下禁用保存和加载功能
-        loadBtn.setEnabled(!isGuest);
+        // 访客模式下禁用保存功能
         saveBtn.setEnabled(!isGuest);
     }
 
