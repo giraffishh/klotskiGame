@@ -6,6 +6,7 @@ import view.game.BoxComponent;
 import view.game.GamePanel;
 import controller.solver.KlotskiSolver;
 import controller.solver.BoardState;
+import controller.history.HistoryManager;
 
 // 导入移动策略类
 import controller.mover.BlockMover;
@@ -18,10 +19,13 @@ import controller.mover.BigBlockMover;
 import controller.save.SaveManager;
 
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
+import javax.swing.JLabel;
+
 import java.util.List;
-import java.util.Stack;
-import java.util.ArrayList;
 import view.game.GameFrame;
+import view.util.FontManager;
+import view.victory.VictoryView;
 
 /**
  * 该类作为GamePanel(视图)和MapMatrix(模型)之间的桥梁，实现MVC设计模式中的控制器。
@@ -46,9 +50,16 @@ public class GameController {
     private KlotskiSolver solver;
 
     // 历史记录管理
-    private final Stack<MoveRecord> undoStack; // 撤销栈，存储已执行的移动
-    private final Stack<MoveRecord> redoStack; // 重做栈，存储被撤销的移动
-    private GameFrame parentFrame;  // 父窗口引用，用于更新按钮状态
+    private final HistoryManager historyManager;
+
+    // 父窗口引用，用于更新按钮状态
+    private GameFrame parentFrame;
+
+    // 游戏胜利状态标志，防止重复弹出胜利提示
+    private boolean victoryAchieved = false;
+
+    // 胜利界面
+    private VictoryView victoryView;
 
     /**
      * 构造函数初始化控制器，建立视图和模型之间的连接
@@ -75,9 +86,8 @@ public class GameController {
         // 初始化华容道求解器，但不立即计算和更新显示
         this.solver = new KlotskiSolver();
 
-        // 初始化撤销和重做栈
-        this.undoStack = new Stack<>();
-        this.redoStack = new Stack<>();
+        // 初始化历史记录管理器
+        this.historyManager = new HistoryManager(view, model);
     }
 
     /**
@@ -86,7 +96,51 @@ public class GameController {
      */
     public void setParentFrame(GameFrame frame) {
         this.parentFrame = frame;
-        updateUndoRedoButtons();
+        // 将父窗口引用也传递给历史管理器
+        historyManager.setParentFrame(frame);
+    }
+
+    /**
+     * 设置胜利视图
+     * @param victoryView 胜利界面视图
+     */
+    public void setVictoryView(VictoryView victoryView) {
+        this.victoryView = victoryView;
+        // 为胜利界面设置按钮监听器
+        setupVictoryListeners();
+    }
+
+    /**
+     * 设置胜利界面的按钮监听器
+     */
+    private void setupVictoryListeners() {
+        if (victoryView == null) return;
+
+        // 设置回到主页按钮监听器 - 直接返回，不显示确认对话框
+        victoryView.setHomeListener(e -> {
+            if (parentFrame != null) {
+                victoryView.hideVictory();
+                parentFrame.returnToHomeDirectly(); // 使用直接返回方法，不显示确认对话框
+            }
+        });
+
+        // 其他按钮监听器保持不变...
+        victoryView.setLevelSelectListener(e -> {
+            victoryView.hideVictory();
+            // 此处仅关闭胜利界面，不实现实际功能
+        });
+
+        // 设置再来一次按钮监听器
+        victoryView.setRestartListener(e -> {
+            victoryView.hideVictory();
+            restartGame();
+        });
+
+        // 设置下一关按钮监听器
+        victoryView.setNextLevelListener(e -> {
+            victoryView.hideVictory();
+            // 此处仅关闭胜利界面，不实现实际功能
+        });
     }
 
     /**
@@ -138,7 +192,6 @@ public class GameController {
 
     /**
      * 重新开始游戏的方法
-     * 重置地图模型到初始状态，并重置游戏面板
      */
     public void restartGame() {
         System.out.println("Restarting game...");
@@ -155,7 +208,15 @@ public class GameController {
         updateMinStepsDisplay();
 
         // 清空历史记录
-        clearHistory();
+        historyManager.clearHistory();
+
+        // 重置胜利状态
+        victoryAchieved = false;
+
+        // 隐藏胜利界面
+        if (victoryView != null) {
+            victoryView.hideVictory();
+        }
 
         System.out.println("Game restarted successfully");
     }
@@ -208,26 +269,8 @@ public class GameController {
 
         // 如果移动成功，记录操作并清空重做栈
         if (moved) {
-            // 记录移动操作
-            MoveRecord record = new MoveRecord(
-                beforeState,
-                model.copyMatrix(),
-                originalRow,
-                originalCol,
-                selectedBox.getRow(),
-                selectedBox.getCol(),
-                blockId,
-                direction
-            );
-
-            // 添加到撤销栈
-            undoStack.push(record);
-
-            // 清空重做栈，因为新的操作使之前的重做记录无效
-            redoStack.clear();
-
-            // 更新按钮状态
-            updateUndoRedoButtons();
+            // 记录移动操作到历史管理器
+            historyManager.recordMove(beforeState, originalRow, originalCol, selectedBox, blockId, direction);
 
             // 更新最短步数显示
             updateMinStepsDisplay();
@@ -241,34 +284,12 @@ public class GameController {
      * @return 撤销是否成功
      */
     public boolean undoMove() {
-        // 如果没有可撤销的移动，返回失败
-        if (undoStack.isEmpty()) {
-            return false;
+        boolean success = historyManager.undoMove();
+        if (success) {
+            // 更新最短步数显示
+            updateMinStepsDisplay();
         }
-
-        // 弹出最近的移动记录
-        MoveRecord record = undoStack.pop();
-
-        // 保存到重做栈
-        redoStack.push(record);
-
-        // 恢复到移动前的状态
-        model.setMatrix(record.getBeforeState());
-
-        // 更新视图
-        updateViewAfterUndoRedo(record, true);
-
-        // 更新步数
-        view.setSteps(view.getSteps() - 1);
-
-        // 更新按钮状态
-        updateUndoRedoButtons();
-
-        // 更新最短步数显示
-        updateMinStepsDisplay();
-
-        System.out.println("Move undone successfully");
-        return true;
+        return success;
     }
 
     /**
@@ -276,34 +297,12 @@ public class GameController {
      * @return 重做是否成功
      */
     public boolean redoMove() {
-        // 如果没有可重做的移动，返回失败
-        if (redoStack.isEmpty()) {
-            return false;
+        boolean success = historyManager.redoMove();
+        if (success) {
+            // 更新最短步数显示
+            updateMinStepsDisplay();
         }
-
-        // 弹出最近撤销的移动记录
-        MoveRecord record = redoStack.pop();
-
-        // 保存到撤销栈
-        undoStack.push(record);
-
-        // 应用移动后的状态
-        model.setMatrix(record.getAfterState());
-
-        // 更新视图
-        updateViewAfterUndoRedo(record, false);
-
-        // 更新步数
-        view.setSteps(view.getSteps() + 1);
-
-        // 更新按钮状态
-        updateUndoRedoButtons();
-
-        // 更新最短步数显示
-        updateMinStepsDisplay();
-
-        System.out.println("Move redone successfully");
-        return true;
+        return success;
     }
 
     /**
@@ -311,7 +310,7 @@ public class GameController {
      */
     private void updateUndoRedoButtons() {
         if (parentFrame != null) {
-            parentFrame.updateUndoRedoButtons(!undoStack.isEmpty(), !redoStack.isEmpty());
+            parentFrame.updateUndoRedoButtons(historyManager.canUndo(), historyManager.canRedo());
         }
     }
 
@@ -319,90 +318,7 @@ public class GameController {
      * 清空移动历史
      */
     private void clearHistory() {
-        undoStack.clear();
-        redoStack.clear();
-        updateUndoRedoButtons();
-    }
-
-    /**
-     * 在撤销/重做后更新视图
-     * @param record 移动记录
-     * @param isUndo 是否为撤销操作
-     */
-    private void updateViewAfterUndoRedo(MoveRecord record, boolean isUndo) {
-        // 根据记录找到对应的方块（而不是使用当前选中的方块）
-        BoxComponent targetBlock = findBlockByPosition(
-            isUndo ? record.getNewRow() : record.getOriginalRow(),
-            isUndo ? record.getNewCol() : record.getOriginalCol(),
-            record.getBlockId()
-        );
-
-        if (targetBlock != null) {
-            int targetRow, targetCol;
-
-            if (isUndo) {
-                // 撤销操作：恢复到原始位置
-                targetRow = record.getOriginalRow();
-                targetCol = record.getOriginalCol();
-            } else {
-                // 重做操作：恢复到移动后的位置
-                targetRow = record.getNewRow();
-                targetCol = record.getNewCol();
-            }
-
-            // 更新方块位置
-            targetBlock.setRow(targetRow);
-            targetBlock.setCol(targetCol);
-            targetBlock.setLocation(targetCol * view.getGRID_SIZE() + 2,
-                                   targetRow * view.getGRID_SIZE() + 2);
-
-            // 如果当前正好是选中的方块，更新选中状态
-            BoxComponent selectedBox = view.getSelectedBox();
-            if (selectedBox != null && selectedBox == targetBlock) {
-                targetBlock.setSelected(true);
-            }
-
-            // 重绘方块
-            targetBlock.repaint();
-        } else {
-            System.err.println("无法找到要撤销/重做的方块，位置: " +
-                (isUndo ? record.getNewRow() : record.getOriginalRow()) + "," +
-                (isUndo ? record.getNewCol() : record.getOriginalCol()) +
-                " ID: " + record.getBlockId());
-        }
-
-        // 重绘整个面板
-        view.repaint();
-    }
-
-    /**
-     * 根据位置和方块类型ID查找方块组件
-     * @param row 行索引
-     * @param col 列索引
-     * @param blockId 方块类型ID
-     * @return 找到的方块组件，如果未找到则返回null
-     */
-    private BoxComponent findBlockByPosition(int row, int col, int blockId) {
-        // 从GamePanel获取所有方块组件
-        for (BoxComponent box : view.getBoxes()) {
-            if (box.getRow() == row && box.getCol() == col) {
-                // 对于2x2大方块和2x1水平方块，只检查左上角位置
-                if ((blockId == 4 || blockId == 2) && box.getWidth() > view.getGRID_SIZE()) {
-                    return box;
-                }
-                // 对于1x2垂直方块，只检查左上角位置
-                else if (blockId == 3 && box.getHeight() > view.getGRID_SIZE()) {
-                    return box;
-                }
-                // 对于1x1小方块，检查精确位置
-                else if (blockId == 1 &&
-                         box.getWidth() == view.getGRID_SIZE() &&
-                         box.getHeight() == view.getGRID_SIZE()) {
-                    return box;
-                }
-            }
-        }
-        return null;
+        historyManager.clearHistory();
     }
 
     /**
@@ -433,6 +349,23 @@ public class GameController {
                 System.out.println("Current layout solved in: " + (endTime - startTime) + " ms");
                 System.out.println("A* nodes explored: " + solver.getNodesExploredAStar());
                 System.out.println("Minimum steps: " + minSteps);
+
+                // 检查是否达到胜利条件且尚未显示胜利提示
+                if (minSteps == 0 && !victoryAchieved) {
+                    victoryAchieved = true; // 标记已经显示过胜利提示
+                    // 显示胜利界面，并传递当前步数
+                    SwingUtilities.invokeLater(() -> {
+                        if (victoryView != null) {
+                            int currentSteps = historyManager.getMoveCount(); // 获取当前步数
+                            victoryView.showVictory("Victory!", currentSteps);
+                        } else {
+                            // 如果胜利视图未设置，使用旧的对话框显示
+                            JLabel messageLabel = new JLabel("Congratulations! You have completed the Klotski challenge!");
+                            messageLabel.setFont(FontManager.getTitleFont(16));
+                            JOptionPane.showMessageDialog(view, messageLabel, "Victory", JOptionPane.INFORMATION_MESSAGE);
+                        }
+                    });
+                }
             } else {
                 // 如果找不到路径，显示默认值
                 view.setMinSteps(-1);
@@ -459,6 +392,14 @@ public class GameController {
             // 清空历史记录
             clearHistory();
 
+            // 重置胜利状态，因为加载了新布局
+            victoryAchieved = false;
+
+            // 隐藏胜利界面
+            if (victoryView != null) {
+                victoryView.hideVictory();
+            }
+
             // 注意：updateMinStepsDisplay方法现在通过回调在loadGameState内部调用，
             // 确保在显示成功消息之前更新最短步数
         }
@@ -469,64 +410,5 @@ public class GameController {
      */
     public void saveGameState() {
         saveManager.saveGameState();
-    }
-
-    /**
-     * 内部类：移动记录
-     * 用于存储每次移动的前后状态和相关信息
-     */
-    private static class MoveRecord {
-        private final int[][] beforeState;  // 移动前的地图状态
-        private final int[][] afterState;   // 移动后的地图状态
-        private final int originalRow;      // 移动前的行位置
-        private final int originalCol;      // 移动前的列位置
-        private final int newRow;           // 移动后的行位置
-        private final int newCol;           // 移动后的列位置
-        private final int blockId;          // 方块ID
-        private final Direction direction;  // 移动方向
-
-        public MoveRecord(int[][] beforeState, int[][] afterState, int originalRow, int originalCol,
-                         int newRow, int newCol, int blockId, Direction direction) {
-            this.beforeState = beforeState;
-            this.afterState = afterState;
-            this.originalRow = originalRow;
-            this.originalCol = originalCol;
-            this.newRow = newRow;
-            this.newCol = newCol;
-            this.blockId = blockId;
-            this.direction = direction;
-        }
-
-        public int[][] getBeforeState() {
-            return beforeState;
-        }
-
-        public int[][] getAfterState() {
-            return afterState;
-        }
-
-        public int getOriginalRow() {
-            return originalRow;
-        }
-
-        public int getOriginalCol() {
-            return originalCol;
-        }
-
-        public int getNewRow() {
-            return newRow;
-        }
-
-        public int getNewCol() {
-            return newCol;
-        }
-
-        public int getBlockId() {
-            return blockId;
-        }
-
-        public Direction getDirection() {
-            return direction;
-        }
     }
 }

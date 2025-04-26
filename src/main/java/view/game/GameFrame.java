@@ -5,6 +5,7 @@ import model.MapModel;
 import view.util.FrameUtil;
 import service.UserSession;
 import view.home.HomeFrame;
+import view.victory.VictoryFrame;
 
 import javax.swing.*;
 import java.awt.event.WindowAdapter;
@@ -37,6 +38,8 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
     private JButton homeBtn;
     // 主页面引用
     private HomeFrame homeFrame;
+    // 胜利界面
+    private VictoryFrame victoryFrame;
 
     /**
      * 创建游戏窗口
@@ -178,6 +181,11 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         // 这将计算并显示初始的最短步数
         controller.initializeGame();
 
+        // 初始化胜利界面
+        this.victoryFrame = new VictoryFrame(this);
+        // 将胜利界面设置到控制器
+        controller.setVictoryView(victoryFrame);
+
         // 窗口居中显示
         this.setLocationRelativeTo(null);
         // 设置关闭窗口时退出程序
@@ -205,10 +213,25 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
      */
     private void returnToHome() {
         if (homeFrame != null) {
-            // 显示主页面
-            homeFrame.setVisible(true);
-            // 隐藏游戏窗口
-            this.setVisible(false);
+            // 显示确认对话框，询问用户是否确定要返回主界面
+            int result = JOptionPane.showConfirmDialog(
+                this,
+                "Are you sure you want to return to the main menu? \nThe current game progress will be lost.",
+                "Return to Main Menu",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+
+            // 如果用户确认，则重置游戏状态并返回主界面
+            if (result == JOptionPane.YES_OPTION) {
+                // 重置游戏状态到初始状态
+                controller.restartGame();
+
+                // 显示主页面
+                homeFrame.setVisible(true);
+                // 隐藏游戏窗口
+                this.setVisible(false);
+            }
+            // 如果用户选择否，则什么都不做，继续游戏
         } else {
             // 如果homeFrame为null，显示错误消息
             JOptionPane.showMessageDialog(this,
@@ -248,5 +271,27 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
     public void updateUndoRedoButtons(boolean canUndo, boolean canRedo) {
         undoBtn.setEnabled(canUndo);
         redoBtn.setEnabled(canRedo);
+    }
+
+    /**
+     * 直接返回主页面，不显示确认对话框
+     * 用于从胜利界面返回
+     */
+    public void returnToHomeDirectly() {
+        if (homeFrame != null) {
+            // 重置游戏状态到初始状态
+            controller.restartGame();
+
+            // 显示主页面
+            homeFrame.setVisible(true);
+            // 隐藏游戏窗口
+            this.setVisible(false);
+        } else {
+            // 如果homeFrame为null，显示错误消息
+            JOptionPane.showMessageDialog(this,
+                    "无法返回主页面。主页面引用丢失。",
+                    "错误",
+                    JOptionPane.ERROR_MESSAGE);
+        }
     }
 }
