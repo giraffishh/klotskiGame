@@ -18,15 +18,14 @@ import controller.mover.BigBlockMover;
 // 导入格子布局序列化工具类和存档管理器
 import controller.save.SaveManager;
 
-<<<<<<< HEAD
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import javax.swing.JLabel;
-=======
->>>>>>> main
+
 import java.util.List;
 import view.game.GameFrame;
 import view.util.FontManager;
+import view.victory.VictoryView;
 
 /**
  * 该类作为GamePanel(视图)和MapMatrix(模型)之间的桥梁，实现MVC设计模式中的控制器。
@@ -58,6 +57,9 @@ public class GameController {
 
     // 游戏胜利状态标志，防止重复弹出胜利提示
     private boolean victoryAchieved = false;
+
+    // 胜利界面
+    private VictoryView victoryView;
 
     /**
      * 构造函数初始化控制器，建立视图和模型之间的连接
@@ -96,6 +98,49 @@ public class GameController {
         this.parentFrame = frame;
         // 将父窗口引用也传递给历史管理器
         historyManager.setParentFrame(frame);
+    }
+
+    /**
+     * 设置胜利视图
+     * @param victoryView 胜利界面视图
+     */
+    public void setVictoryView(VictoryView victoryView) {
+        this.victoryView = victoryView;
+        // 为胜利界面设置按钮监听器
+        setupVictoryListeners();
+    }
+
+    /**
+     * 设置胜利界面的按钮监听器
+     */
+    private void setupVictoryListeners() {
+        if (victoryView == null) return;
+
+        // 设置回到主页按钮监听器 - 直接返回，不显示确认对话框
+        victoryView.setHomeListener(e -> {
+            if (parentFrame != null) {
+                victoryView.hideVictory();
+                parentFrame.returnToHomeDirectly(); // 使用直接返回方法，不显示确认对话框
+            }
+        });
+
+        // 其他按钮监听器保持不变...
+        victoryView.setLevelSelectListener(e -> {
+            victoryView.hideVictory();
+            // 此处仅关闭胜利界面，不实现实际功能
+        });
+
+        // 设置再来一次按钮监听器
+        victoryView.setRestartListener(e -> {
+            victoryView.hideVictory();
+            restartGame();
+        });
+
+        // 设置下一关按钮监听器
+        victoryView.setNextLevelListener(e -> {
+            victoryView.hideVictory();
+            // 此处仅关闭胜利界面，不实现实际功能
+        });
     }
 
     /**
@@ -167,6 +212,11 @@ public class GameController {
 
         // 重置胜利状态
         victoryAchieved = false;
+
+        // 隐藏胜利界面
+        if (victoryView != null) {
+            victoryView.hideVictory();
+        }
 
         System.out.println("Game restarted successfully");
     }
@@ -303,19 +353,17 @@ public class GameController {
                 // 检查是否达到胜利条件且尚未显示胜利提示
                 if (minSteps == 0 && !victoryAchieved) {
                     victoryAchieved = true; // 标记已经显示过胜利提示
-                    // 显示胜利提示
+                    // 显示胜利界面，并传递当前步数
                     SwingUtilities.invokeLater(() -> {
-                        // 创建使用自定义字体的消息标签
-                        JLabel messageLabel = new JLabel("Congratulations! You have completed the Klotski challenge!");
-                        messageLabel.setFont(FontManager.getTitleFont(16));
-
-                        // 使用自定义消息组件显示对话框
-                        JOptionPane.showMessageDialog(
-                            view,
-                            messageLabel,
-                            "Victory",
-                            JOptionPane.INFORMATION_MESSAGE
-                        );
+                        if (victoryView != null) {
+                            int currentSteps = historyManager.getMoveCount(); // 获取当前步数
+                            victoryView.showVictory("Victory!", currentSteps);
+                        } else {
+                            // 如果胜利视图未设置，使用旧的对话框显示
+                            JLabel messageLabel = new JLabel("Congratulations! You have completed the Klotski challenge!");
+                            messageLabel.setFont(FontManager.getTitleFont(16));
+                            JOptionPane.showMessageDialog(view, messageLabel, "Victory", JOptionPane.INFORMATION_MESSAGE);
+                        }
                     });
                 }
             } else {
@@ -346,6 +394,11 @@ public class GameController {
 
             // 重置胜利状态，因为加载了新布局
             victoryAchieved = false;
+
+            // 隐藏胜利界面
+            if (victoryView != null) {
+                victoryView.hideVictory();
+            }
 
             // 注意：updateMinStepsDisplay方法现在通过回调在loadGameState内部调用，
             // 确保在显示成功消息之前更新最短步数

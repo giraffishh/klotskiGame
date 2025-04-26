@@ -232,4 +232,12 @@ public class HistoryManager {
     public boolean canRedo() {
         return !redoStack.isEmpty();
     }
+
+    /**
+     * 获取当前移动次数
+     * @return 玩家已执行的移动次数
+     */
+    public int getMoveCount() {
+        return undoStack.size();
+    }
 }
