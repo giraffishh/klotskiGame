@@ -205,10 +205,25 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
      */
     private void returnToHome() {
         if (homeFrame != null) {
-            // 显示主页面
-            homeFrame.setVisible(true);
-            // 隐藏游戏窗口
-            this.setVisible(false);
+            // 显示确认对话框，询问用户是否确定要返回主界面
+            int result = JOptionPane.showConfirmDialog(
+                this,
+                "Are you sure you want to return to the main menu? \nThe current game progress will be lost.",
+                "Return to Main Menu",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+
+            // 如果用户确认，则重置游戏状态并返回主界面
+            if (result == JOptionPane.YES_OPTION) {
+                // 重置游戏状态到初始状态
+                controller.restartGame();
+
+                // 显示主页面
+                homeFrame.setVisible(true);
+                // 隐藏游戏窗口
+                this.setVisible(false);
+            }
+            // 如果用户选择否，则什么都不做，继续游戏
         } else {
             // 如果homeFrame为null，显示错误消息
             JOptionPane.showMessageDialog(this,
