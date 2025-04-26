@@ -62,7 +62,7 @@ public class Main {
             HomeFrame homeFrame = new HomeFrame(500, 400);
             homeFrame.setVisible(false);
 
-            // 创建Settings窗口 - 控制器的创建已移到SettingsFrame内部
+            // 创建Settings窗口
             SettingsFrame settingsFrame = new SettingsFrame(400, 300);
             settingsFrame.setVisible(false);
 
