@@ -148,28 +148,59 @@ public class VictoryFrame extends JDialog implements VictoryView {
     private class ConfettiPanel extends JPanel {
         private final List<Confetti> confettiList = new ArrayList<>();
         private final Timer animationTimer;
+        private Timer durationTimer;
+        private Timer fadeOutTimer;
+        private boolean isFadingOut = false;
+        private float fadeAlpha = 1.0f;
         private final Random random = new Random();
+
+        // 撒花颜色数组，改回彩色系列带透明度
         private final Color[] colors = {
-                Color.RED, Color.BLUE, Color.GREEN, Color.YELLOW,
-                Color.PINK, Color.ORANGE, Color.MAGENTA, Color.CYAN
+                new Color(255, 0, 0, getRandomAlpha()),      // 红色
+                new Color(255, 165, 0, getRandomAlpha()),    // 橙色
+                new Color(255, 255, 0, getRandomAlpha()),    // 黄色
+                new Color(0, 255, 0, getRandomAlpha()),      // 绿色
+                new Color(0, 191, 255, getRandomAlpha()),    // 天蓝色
+                new Color(0, 0, 255, getRandomAlpha()),      // 蓝色
+                new Color(138, 43, 226, getRandomAlpha()),   // 紫色
+                new Color(255, 20, 147, getRandomAlpha()),   // 粉红色
+                new Color(64, 224, 208, getRandomAlpha()),   // 青色
+                new Color(255, 215, 0, getRandomAlpha())     // 金色
         };
 
         public ConfettiPanel() {
             setOpaque(false);
-
-            // 设置为不拦截鼠标事件，确保按钮可点击
             setVisible(false);
 
-            // 初始化100个彩色纸片
-            for (int i = 0; i < 100; i++) {
+            // 初始化350个彩色纸片，增加数量使效果更丰富
+            for (int i = 0; i < 350; i++) {
                 confettiList.add(createRandomConfetti());
             }
 
-            // 创建动画计时器，每30毫秒更新一次
-            animationTimer = new Timer(30, e -> {
+            // 创建动画计时器，每20毫秒更新一次
+            animationTimer = new Timer(20, e -> {
                 updateConfetti();
-                repaint();
+                repaint(0, 0, getWidth(), getHeight()); // 限制重绘区域
             });
+
+            // 创建持续时间计时器，5秒后开始淡出
+            durationTimer = new Timer(5000, e -> {
+                startFadeOut();
+                durationTimer.stop();
+            });
+            durationTimer.setRepeats(false);
+
+            // 创建淡出计时器
+            fadeOutTimer = new Timer(50, e -> {
+                updateFadeOut();
+                repaint(0, 0, getWidth(), getHeight());
+            });
+            fadeOutTimer.setRepeats(true);
+        }
+
+        // 获取随机透明度 (70-90% 不透明度)
+        private int getRandomAlpha() {
+            return 180 + random.nextInt(50);
         }
 
         /**
@@ -179,9 +210,9 @@ public class VictoryFrame extends JDialog implements VictoryView {
             int width = getWidth() > 0 ? getWidth() : 450;
             int x = random.nextInt(width);
             int y = random.nextInt(50) - 100; // 从屏幕上方开始
-            int size = random.nextInt(10) + 5; // 5-15的随机大小
+            int size = random.nextInt(8) + 5; // 5-12的随机大小
             Color color = colors[random.nextInt(colors.length)];
-            double speed = 1.0 + random.nextDouble() * 3.0; // 1-4的随机速度
+            double speed = 3.0 + random.nextDouble() * 5.0; // 3-8的随机速度，比原来更快
             return new Confetti(x, y, size, color, speed);
         }
 
@@ -203,12 +234,55 @@ public class VictoryFrame extends JDialog implements VictoryView {
         }
 
         /**
+         * 开始淡出效果
+         */
+        private void startFadeOut() {
+            isFadingOut = true;
+            fadeAlpha = 1.0f;
+            fadeOutTimer.start();
+        }
+
+        /**
+         * 更新淡出效果
+         */
+        private void updateFadeOut() {
+            // 每次更新减少透明度
+            fadeAlpha -= 0.05f;
+
+            // 当透明度为0时，停止淡出动画
+            if (fadeAlpha <= 0) {
+                fadeAlpha = 0;
+                fadeOutTimer.stop();
+                animationTimer.stop();
+                confettiList.clear();  // 清空所有碎片
+                repaint();  // 确保视图更新
+            }
+        }
+
+        /**
          * 启动撒花动画
          */
         public void startAnimation() {
             setVisible(true);
+            isFadingOut = false;
+            fadeAlpha = 1.0f;
+
+            // 停止可能正在运行的计时器
+            if (fadeOutTimer.isRunning()) {
+                fadeOutTimer.stop();
+            }
+
+            // 重新填充碎片列表（如果为空）
+            if (confettiList.isEmpty()) {
+                for (int i = 0; i < 350; i++) {
+                    confettiList.add(createRandomConfetti());
+                }
+            }
+
+            // 启动动画计时器和持续时间计时器
             if (!animationTimer.isRunning()) {
                 animationTimer.start();
+                durationTimer.restart();
             }
         }
 
@@ -219,6 +293,13 @@ public class VictoryFrame extends JDialog implements VictoryView {
             if (animationTimer.isRunning()) {
                 animationTimer.stop();
             }
+            if (durationTimer.isRunning()) {
+                durationTimer.stop();
+            }
+            if (fadeOutTimer.isRunning()) {
+                fadeOutTimer.stop();
+            }
+            confettiList.clear();
         }
 
         @Override
@@ -226,8 +307,14 @@ public class VictoryFrame extends JDialog implements VictoryView {
             super.paintComponent(g);
             Graphics2D g2d = (Graphics2D) g;
 
-            // 启用抗锯齿
+            // 启用高质量渲染
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+
+            // 如果在淡出阶段，应用全局透明度
+            if (isFadingOut) {
+                g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, fadeAlpha));
+            }
 
             // 绘制所有彩色纸片
             for (Confetti c : confettiList) {
@@ -254,7 +341,7 @@ public class VictoryFrame extends JDialog implements VictoryView {
             this.size = size;
             this.color = color;
             this.speed = speed;
-            this.rotationSpeed = 0.05 + Math.random() * 0.1;
+            this.rotationSpeed = 0.08 + Math.random() * 0.12; // 稍微快一点的旋转
             this.horizontalMovement = Math.random() * Math.PI * 2;
         }
 
@@ -266,8 +353,8 @@ public class VictoryFrame extends JDialog implements VictoryView {
             y += speed;
 
             // 纸片水平摆动
-            x += Math.sin(horizontalMovement) * 0.8;
-            horizontalMovement += 0.05;
+            x += Math.sin(horizontalMovement) * 1.0; // 稍微大一点的摆动幅度
+            horizontalMovement += 0.06;
 
             // 纸片旋转
             rotation += rotationSpeed;
@@ -285,7 +372,11 @@ public class VictoryFrame extends JDialog implements VictoryView {
 
             // 绘制彩色纸片
             g2d.setColor(color);
-            g2d.fillRect(-size / 2, -size / 2, size, size);
+            if (Math.random() > 0.5) { // 50%概率为圆形，增加形状多样性
+                g2d.fillOval(-size / 2, -size / 2, size, size);
+            } else {
+                g2d.fillRect(-size / 2, -size / 2, size, size);
+            }
 
             // 恢复原来的变换
             g2d.setTransform(oldTransform);
