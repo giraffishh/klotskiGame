@@ -18,10 +18,13 @@ import controller.mover.BigBlockMover;
 import controller.save.SaveManager;
 
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
+import javax.swing.JLabel;
 import java.util.List;
 import java.util.Stack;
 import java.util.ArrayList;
 import view.game.GameFrame;
+import view.util.FontManager;
 
 /**
  * 该类作为GamePanel(视图)和MapMatrix(模型)之间的桥梁，实现MVC设计模式中的控制器。
@@ -49,6 +52,9 @@ public class GameController {
     private final Stack<MoveRecord> undoStack; // 撤销栈，存储已执行的移动
     private final Stack<MoveRecord> redoStack; // 重做栈，存储被撤销的移动
     private GameFrame parentFrame;  // 父窗口引用，用于更新按钮状态
+
+    // 游戏胜利状态标志，防止重复弹出胜利提示
+    private boolean victoryAchieved = false;
 
     /**
      * 构造函数初始化控制器，建立视图和模型之间的连接
@@ -156,6 +162,9 @@ public class GameController {
 
         // 清空历史记录
         clearHistory();
+
+        // 重置胜利状态
+        victoryAchieved = false;
 
         System.out.println("Game restarted successfully");
     }
@@ -433,6 +442,25 @@ public class GameController {
                 System.out.println("Current layout solved in: " + (endTime - startTime) + " ms");
                 System.out.println("A* nodes explored: " + solver.getNodesExploredAStar());
                 System.out.println("Minimum steps: " + minSteps);
+
+                // 检查是否达到胜利条件且尚未显示胜利提示
+                if (minSteps == 0 && !victoryAchieved) {
+                    victoryAchieved = true; // 标记已经显示过胜利提示
+                    // 显示胜利提示
+                    SwingUtilities.invokeLater(() -> {
+                        // 创建使用自定义字体的消息标签
+                        JLabel messageLabel = new JLabel("Congratulations! You have completed the Klotski challenge!");
+                        messageLabel.setFont(FontManager.getTitleFont(16));
+
+                        // 使用自定义消息组件显示对话框
+                        JOptionPane.showMessageDialog(
+                            view,
+                            messageLabel,
+                            "Victory",
+                            JOptionPane.INFORMATION_MESSAGE
+                        );
+                    });
+                }
             } else {
                 // 如果找不到路径，显示默认值
                 view.setMinSteps(-1);
@@ -458,6 +486,9 @@ public class GameController {
 
             // 清空历史记录
             clearHistory();
+
+            // 重置胜利状态，因为加载了新布局
+            victoryAchieved = false;
 
             // 注意：updateMinStepsDisplay方法现在通过回调在loadGameState内部调用，
             // 确保在显示成功消息之前更新最短步数
