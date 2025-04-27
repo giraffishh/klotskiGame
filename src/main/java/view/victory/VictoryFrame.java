@@ -6,10 +6,8 @@ import view.util.FrameUtil;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionListener;
-import java.awt.geom.AffineTransform;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 /**
  * 游戏胜利界面，显示胜利消息和提供不同的后续操作按钮
@@ -26,6 +24,9 @@ public class VictoryFrame extends JDialog implements VictoryView {
     // 撒花效果面板
     private ConfettiPanel confettiPanel;
 
+    // 存储返回主页的监听器，用于窗口关闭时调用
+    private ActionListener homeListener;
+
     /**
      * 构造方法，初始化胜利界面的UI组件
      * @param parent 父窗口引用
@@ -38,6 +39,21 @@ public class VictoryFrame extends JDialog implements VictoryView {
         setLocationRelativeTo(parent); // 居中显示
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setResizable(false);
+
+        // 添加窗口关闭监听器，使关闭窗口时执行与点击"Back to Home"相同的操作
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                if (homeListener != null) {
+                    // 创建一个ActionEvent并传递给homeListener
+                    homeListener.actionPerformed(
+                        new java.awt.event.ActionEvent(homeButton,
+                                                      java.awt.event.ActionEvent.ACTION_PERFORMED,
+                                                      "windowClosing")
+                    );
+                }
+            }
+        });
 
         // 创建主面板
         JPanel mainPanel = FrameUtil.createPaddedPanel(new BorderLayout(), 20, 20, 20, 20);
@@ -124,6 +140,8 @@ public class VictoryFrame extends JDialog implements VictoryView {
 
     @Override
     public void setHomeListener(ActionListener listener) {
+        // 保存监听器引用，用于窗口关闭时调用
+        this.homeListener = listener;
         homeButton.addActionListener(listener);
     }
 
@@ -141,245 +159,4 @@ public class VictoryFrame extends JDialog implements VictoryView {
     public void setNextLevelListener(ActionListener listener) {
         nextLevelButton.addActionListener(listener);
     }
-
-    /**
-     * 撒花效果面板，用于在胜利界面上显示撒花动画
-     */
-    private class ConfettiPanel extends JPanel {
-        private final List<Confetti> confettiList = new ArrayList<>();
-        private final Timer animationTimer;
-        private Timer durationTimer;
-        private Timer fadeOutTimer;
-        private boolean isFadingOut = false;
-        private float fadeAlpha = 1.0f;
-        private final Random random = new Random();
-
-        // 撒花颜色数组，改回彩色系列带透明度
-        private final Color[] colors = {
-                new Color(255, 0, 0, getRandomAlpha()),      // 红色
-                new Color(255, 165, 0, getRandomAlpha()),    // 橙色
-                new Color(255, 255, 0, getRandomAlpha()),    // 黄色
-                new Color(0, 255, 0, getRandomAlpha()),      // 绿色
-                new Color(0, 191, 255, getRandomAlpha()),    // 天蓝色
-                new Color(0, 0, 255, getRandomAlpha()),      // 蓝色
-                new Color(138, 43, 226, getRandomAlpha()),   // 紫色
-                new Color(255, 20, 147, getRandomAlpha()),   // 粉红色
-                new Color(64, 224, 208, getRandomAlpha()),   // 青色
-                new Color(255, 215, 0, getRandomAlpha())     // 金色
-        };
-
-        public ConfettiPanel() {
-            setOpaque(false);
-            setVisible(false);
-
-            // 初始化350个彩色纸片，增加数量使效果更丰富
-            for (int i = 0; i < 350; i++) {
-                confettiList.add(createRandomConfetti());
-            }
-
-            // 创建动画计时器，每20毫秒更新一次
-            animationTimer = new Timer(20, e -> {
-                updateConfetti();
-                repaint(0, 0, getWidth(), getHeight()); // 限制重绘区域
-            });
-
-            // 创建持续时间计时器，5秒后开始淡出
-            durationTimer = new Timer(5000, e -> {
-                startFadeOut();
-                durationTimer.stop();
-            });
-            durationTimer.setRepeats(false);
-
-            // 创建淡出计时器
-            fadeOutTimer = new Timer(50, e -> {
-                updateFadeOut();
-                repaint(0, 0, getWidth(), getHeight());
-            });
-            fadeOutTimer.setRepeats(true);
-        }
-
-        // 获取随机透明度 (70-90% 不透明度)
-        private int getRandomAlpha() {
-            return 180 + random.nextInt(50);
-        }
-
-        /**
-         * 创建一个随机位置、颜色和大小的彩色纸片
-         */
-        private Confetti createRandomConfetti() {
-            int width = getWidth() > 0 ? getWidth() : 450;
-            int x = random.nextInt(width);
-            int y = random.nextInt(50) - 100; // 从屏幕上方开始
-            int size = random.nextInt(8) + 5; // 5-12的随机大小
-            Color color = colors[random.nextInt(colors.length)];
-            double speed = 3.0 + random.nextDouble() * 5.0; // 3-8的随机速度，比原来更快
-            return new Confetti(x, y, size, color, speed);
-        }
-
-        /**
-         * 更新所有纸片的位置
-         */
-        private void updateConfetti() {
-            int height = getHeight() > 0 ? getHeight() : 350;
-
-            for (int i = 0; i < confettiList.size(); i++) {
-                Confetti c = confettiList.get(i);
-                c.update();
-
-                // 如果纸片落到屏幕底部，重新创建一个从顶部下落的纸片
-                if (c.y > height) {
-                    confettiList.set(i, createRandomConfetti());
-                }
-            }
-        }
-
-        /**
-         * 开始淡出效果
-         */
-        private void startFadeOut() {
-            isFadingOut = true;
-            fadeAlpha = 1.0f;
-            fadeOutTimer.start();
-        }
-
-        /**
-         * 更新淡出效果
-         */
-        private void updateFadeOut() {
-            // 每次更新减少透明度
-            fadeAlpha -= 0.05f;
-
-            // 当透明度为0时，停止淡出动画
-            if (fadeAlpha <= 0) {
-                fadeAlpha = 0;
-                fadeOutTimer.stop();
-                animationTimer.stop();
-                confettiList.clear();  // 清空所有碎片
-                repaint();  // 确保视图更新
-            }
-        }
-
-        /**
-         * 启动撒花动画
-         */
-        public void startAnimation() {
-            setVisible(true);
-            isFadingOut = false;
-            fadeAlpha = 1.0f;
-
-            // 停止可能正在运行的计时器
-            if (fadeOutTimer.isRunning()) {
-                fadeOutTimer.stop();
-            }
-
-            // 重新填充碎片列表（如果为空）
-            if (confettiList.isEmpty()) {
-                for (int i = 0; i < 350; i++) {
-                    confettiList.add(createRandomConfetti());
-                }
-            }
-
-            // 启动动画计时器和持续时间计时器
-            if (!animationTimer.isRunning()) {
-                animationTimer.start();
-                durationTimer.restart();
-            }
-        }
-
-        /**
-         * 停止撒花动画
-         */
-        public void stopAnimation() {
-            if (animationTimer.isRunning()) {
-                animationTimer.stop();
-            }
-            if (durationTimer.isRunning()) {
-                durationTimer.stop();
-            }
-            if (fadeOutTimer.isRunning()) {
-                fadeOutTimer.stop();
-            }
-            confettiList.clear();
-        }
-
-        @Override
-        protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
-            Graphics2D g2d = (Graphics2D) g;
-
-            // 启用高质量渲染
-            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-
-            // 如果在淡出阶段，应用全局透明度
-            if (isFadingOut) {
-                g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, fadeAlpha));
-            }
-
-            // 绘制所有彩色纸片
-            for (Confetti c : confettiList) {
-                c.draw(g2d);
-            }
-        }
-    }
-
-    /**
-     * 表示单个彩色纸片的类
-     */
-    private class Confetti {
-        private double x, y;
-        private final int size;
-        private final Color color;
-        private final double speed;
-        private double rotation = 0;
-        private final double rotationSpeed;
-        private double horizontalMovement = 0;
-
-        public Confetti(double x, double y, int size, Color color, double speed) {
-            this.x = x;
-            this.y = y;
-            this.size = size;
-            this.color = color;
-            this.speed = speed;
-            this.rotationSpeed = 0.08 + Math.random() * 0.12; // 稍微快一点的旋转
-            this.horizontalMovement = Math.random() * Math.PI * 2;
-        }
-
-        /**
-         * 更新纸片的位置和旋转角度
-         */
-        public void update() {
-            // 纸片下落
-            y += speed;
-
-            // 纸片水平摆动
-            x += Math.sin(horizontalMovement) * 1.0; // 稍微大一点的摆动幅度
-            horizontalMovement += 0.06;
-
-            // 纸片旋转
-            rotation += rotationSpeed;
-        }
-
-        /**
-         * 绘制纸片
-         */
-        public void draw(Graphics2D g2d) {
-            AffineTransform oldTransform = g2d.getTransform();
-
-            // 应用旋转和平移
-            g2d.translate(x, y);
-            g2d.rotate(rotation);
-
-            // 绘制彩色纸片
-            g2d.setColor(color);
-            if (Math.random() > 0.5) { // 50%概率为圆形，增加形状多样性
-                g2d.fillOval(-size / 2, -size / 2, size, size);
-            } else {
-                g2d.fillRect(-size / 2, -size / 2, size, size);
-            }
-
-            // 恢复原来的变换
-            g2d.setTransform(oldTransform);
-        }
-    }
-}
+  }
