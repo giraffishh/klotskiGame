@@ -166,8 +166,12 @@ public class GameController {
 
         // 设置下一关按钮监听器
         victoryView.setNextLevelListener(e -> {
-            victoryView.hideVictory();
-            loadNextLevel();
+            // 增加检查：如果当前是最后一关，不执行任何操作
+            if (!isLastLevel()) {
+                // 先隐藏胜利界面，再加载下一关
+                victoryView.hideVictory();
+                SwingUtilities.invokeLater(this::loadNextLevel); // 使用invokeLater确保UI更新完成后再加载
+            }
         });
     }
 
@@ -253,34 +257,65 @@ public class GameController {
      * 加载下一关
      */
     public void loadNextLevel() {
+        // 添加前置检查：如果当前已经是最后一关，直接显示提示
+        if (isLastLevel()) {
+            // 只显示一个"确定"按钮，点击后直接返回主页
+            JLabel messageLabel = new JLabel("Congratulations! You have completed all levels!");
+            messageLabel.setFont(FontManager.getRegularFont(16));
+
+            JOptionPane.showMessageDialog(
+                    parentFrame,
+                    messageLabel,
+                    "Game Complete",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+
+            // 直接返回主页，不需要用户选择
+            if (parentFrame != null) {
+                parentFrame.returnToHomeDirectly();
+            }
+            return; // 直接返回，不执行后续加载逻辑
+        }
+
+        // 原有的加载下一关逻辑
         if (levelSelectFrame != null) {
-            int nextLevelIndex = currentLevelIndex + 1;
             LevelSelectController levelController = levelSelectFrame.getController();
             if (levelController != null) {
-                List<LevelSelectController.LevelData> levels = levelController.getLevels();
-                if (nextLevelIndex < levels.size()) {
-                    // 加载下一关
-                    levelController.selectLevel(nextLevelIndex);
+                // 首先隐藏胜利界面（确保界面关闭后再加载新关卡）
+                if (victoryView != null) {
+                    victoryView.hideVictory();
+                }
+
+                // 使用我们新增的方法尝试加载下一关
+                boolean success = levelController.loadNextLevel(currentLevelIndex);
+
+                if (success) {
                     // 更新当前关卡索引
-                    currentLevelIndex = nextLevelIndex;
+                    currentLevelIndex = levelController.getNextLevelIndex(currentLevelIndex);
                 } else {
-                    // 已经是最后一关，返回关卡选择界面
+                    // 这部分逻辑理论上不会执行到，因为前面的isLastLevel()检查已经处理了
+                    // 但为了代码健壮性，显示确认提示并直接返回主页
+                    JLabel messageLabel = new JLabel("Congratulations! You have completed all levels!");
+                    messageLabel.setFont(FontManager.getRegularFont(16));
+
                     JOptionPane.showMessageDialog(
                             parentFrame,
-                            "Congratulations! You have completed all levels!",
-                            "Game Completed",
+                            messageLabel,
+                            "Game Complete",
                             JOptionPane.INFORMATION_MESSAGE
                     );
 
-                    // 关卡选择界面可能有更多选项
-                    levelSelectFrame.showLevelSelect();
+                    // 直接返回主页
+                    if (parentFrame != null) {
+                        parentFrame.returnToHomeDirectly();
+                    }
                 }
             } else {
                 // 用户友好的错误提示
                 if (parentFrame != null) {
                     JOptionPane.showMessageDialog(
                             parentFrame,
-                            "Unable to load next level. Please return to level selection and try again.",
+                            "Unable to load next level. Please return to level selection.",
                             "Error",
                             JOptionPane.ERROR_MESSAGE
                     );
@@ -293,7 +328,7 @@ public class GameController {
             if (parentFrame != null) {
                 JOptionPane.showMessageDialog(
                         parentFrame,
-                        "Unable to load next level. Level selection interface is not initialized.",
+                        "Unable to load next level. Level selection frame not initialized.",
                         "Error",
                         JOptionPane.ERROR_MESSAGE
                 );
@@ -311,11 +346,11 @@ public class GameController {
         if (levelSelectFrame != null) {
             LevelSelectController levelController = levelSelectFrame.getController();
             if (levelController != null) {
-                List<LevelSelectController.LevelData> levels = levelController.getLevels();
-                return currentLevelIndex >= levels.size() - 1;
+                return !levelController.hasNextLevel(currentLevelIndex);
             }
         }
-        return false; // 默认不视为最后一关
+        // 如果无法确定，为安全起见，假设是最后一关
+        return true;
     }
 
     /**

@@ -181,12 +181,58 @@ public class LevelSelectController {
     }
 
     /**
+     * 重置所有关卡数据
+     * 当从具体关卡返回时调用，确保再次进入时为初始状态
+     */
+    public void resetAllLevels() {
+        // 重新初始化所有关卡数据
+        this.levels.clear();
+        this.levels.addAll(initializeLevels());
+    }
+
+    /**
      * 直接选择第一关
      * 供Home界面的New Game按钮调用
      */
     public void selectFirstLevel() {
         // 始终加载索引为0的第一关
         selectLevel(0);
+    }
+
+    /**
+     * 获取指定关卡的索引的下一关索引
+     * @param currentIndex 当前关卡索引
+     * @return 下一关索引，如果没有下一关则返回-1
+     */
+    public int getNextLevelIndex(int currentIndex) {
+        int nextIndex = currentIndex + 1;
+        if (nextIndex < levels.size()) {
+            return nextIndex;
+        }
+        return -1;  // 表示没有下一关
+    }
+
+    /**
+     * 检查指定关卡是否有下一关
+     * @param currentIndex 当前关卡索引
+     * @return 是否有下一关
+     */
+    public boolean hasNextLevel(int currentIndex) {
+        return getNextLevelIndex(currentIndex) != -1;
+    }
+
+    /**
+     * 直接加载下一关
+     * @param currentIndex 当前关卡索引
+     * @return 是否成功加载下一关
+     */
+    public boolean loadNextLevel(int currentIndex) {
+        int nextLevelIndex = getNextLevelIndex(currentIndex);
+        if (nextLevelIndex != -1) {
+            selectLevel(nextLevelIndex);
+            return true;
+        }
+        return false;
     }
 
     /**

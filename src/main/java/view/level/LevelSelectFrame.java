@@ -164,6 +164,11 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
 
     @Override
     public void showLevelSelect() {
+        // 在显示前重置所有关卡状态
+        if (controller != null) {
+            controller.resetAllLevels();
+        }
+
         // 在显示前更新关卡列表
         populateLevelList();
         this.setVisible(true);
