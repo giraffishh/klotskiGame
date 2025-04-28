@@ -1,17 +1,26 @@
 package view.victory;
 
-import javax.swing.*;
-import java.awt.*;
+import java.awt.AlphaComposite;
+import java.awt.Color;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GraphicsConfiguration;
+import java.awt.RenderingHints;
+import java.awt.Transparency;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import javax.swing.JPanel;
+import javax.swing.Timer;
+
 /**
  * 撒花效果面板，用于在胜利界面上显示撒花动画
  */
 public class ConfettiPanel extends JPanel {
+
     private final List<Confetti> confettiList = new CopyOnWriteArrayList<>();
     private final List<Confetti> confettiPool = new ArrayList<>();
     private final Random random = new Random();
@@ -34,16 +43,16 @@ public class ConfettiPanel extends JPanel {
     private static final int HORIZONTAL_SECTIONS = 8; // 减少分区
 
     private final Color[] colors = {
-            new Color(255, 0, 0, getRandomAlpha()),      // 红色
-            new Color(255, 165, 0, getRandomAlpha()),    // 橙色
-            new Color(255, 255, 0, getRandomAlpha()),    // 黄色
-            new Color(0, 255, 0, getRandomAlpha()),      // 绿色
-            new Color(0, 191, 255, getRandomAlpha()),    // 天蓝色
-            new Color(0, 0, 255, getRandomAlpha()),      // 蓝色
-            new Color(138, 43, 226, getRandomAlpha()),   // 紫色
-            new Color(255, 20, 147, getRandomAlpha()),   // 粉红色
-            new Color(64, 224, 208, getRandomAlpha()),   // 青色
-            new Color(255, 215, 0, getRandomAlpha())     // 金色
+        new Color(255, 0, 0, getRandomAlpha()), // 红色
+        new Color(255, 165, 0, getRandomAlpha()), // 橙色
+        new Color(255, 255, 0, getRandomAlpha()), // 黄色
+        new Color(0, 255, 0, getRandomAlpha()), // 绿色
+        new Color(0, 191, 255, getRandomAlpha()), // 天蓝色
+        new Color(0, 0, 255, getRandomAlpha()), // 蓝色
+        new Color(138, 43, 226, getRandomAlpha()), // 紫色
+        new Color(255, 20, 147, getRandomAlpha()), // 粉红色
+        new Color(64, 224, 208, getRandomAlpha()), // 青色
+        new Color(255, 215, 0, getRandomAlpha()) // 金色
     };
 
     // 使用硬件加速渲染
@@ -224,7 +233,9 @@ public class ConfettiPanel extends JPanel {
         if (buffer == null || buffer.getWidth() != getWidth() || buffer.getHeight() != getHeight()) {
             int width = getWidth();
             int height = getHeight();
-            if (width <= 0 || height <= 0) return;
+            if (width <= 0 || height <= 0) {
+                return;
+            }
 
             GraphicsConfiguration gc = getGraphicsConfiguration();
             if (gc != null) {

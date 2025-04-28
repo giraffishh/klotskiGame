@@ -1,19 +1,21 @@
 package controller.save;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+import javax.swing.JOptionPane;
+
 import controller.util.BoardSerializer;
 import model.MapModel;
 import service.DatabaseService;
 import service.UserSession;
 import view.game.GamePanel;
 
-import javax.swing.JOptionPane;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-
 /**
  * 游戏状态管理类，负责游戏的保存、加载和存档检测功能
  */
 public class SaveManager {
+
     private final GamePanel view;
     private final MapModel model;
     // 添加一个回调接口，用于通知加载完成后需要更新最短步数
@@ -21,7 +23,7 @@ public class SaveManager {
 
     /**
      * 构造函数
-     * 
+     *
      * @param view 游戏面板视图
      * @param model 地图数据模型
      */
@@ -32,6 +34,7 @@ public class SaveManager {
 
     /**
      * 设置加载完成后的回调函数
+     *
      * @param callback 回调函数
      */
     public void setOnLoadCompleteCallback(Runnable callback) {
@@ -39,9 +42,8 @@ public class SaveManager {
     }
 
     /**
-     * 显示加载确认对话框
-     * 在实际加载游戏前调用，询问用户是否加载
-     * 
+     * 显示加载确认对话框 在实际加载游戏前调用，询问用户是否加载
+     *
      * @return 用户是否确认加载
      */
     public boolean showLoadConfirmation() {
@@ -83,23 +85,31 @@ public class SaveManager {
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             String saveTimeStr = dateFormat.format(saveData.getSaveTime());
 
-            String message = String.format("Save Information:\n" +
-                                          " Steps: %d\n" +
-                                          " Save Time: %s\n\n" +
-                                          "Are you sure you want to load this save?\nCurrent progress will be lost.",
-                                          saveData.getSteps(), saveTimeStr);
+            // 格式化游戏时间
+            long gameTime = saveData.getGameTime();
+            int minutes = (int) (gameTime / 60000);
+            int seconds = (int) ((gameTime % 60000) / 1000);
+            int centiseconds = (int) ((gameTime % 1000) / 10);
+            String gameTimeStr = String.format("%02d:%02d.%02d", minutes, seconds, centiseconds);
+
+            String message = String.format("Save Information:\n"
+                    + " Steps: %d\n"
+                    + " Game Time: %s\n"
+                    + " Save Time: %s\n\n"
+                    + "Are you sure you want to load this save?\nCurrent progress will be lost.",
+                    saveData.getSteps(), gameTimeStr, saveTimeStr);
 
             int choice = JOptionPane.showConfirmDialog(
-                view,
-                message,
-                "Confirm Load",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.QUESTION_MESSAGE
+                    view,
+                    message,
+                    "Confirm Load",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE
             );
 
             // 返回用户选择结果
             return choice == JOptionPane.YES_OPTION;
-            
+
         } catch (Exception e) {
             e.printStackTrace();
             JOptionPane.showMessageDialog(view,
@@ -111,8 +121,7 @@ public class SaveManager {
     }
 
     /**
-     * 加载游戏存档
-     * 从数据库中读取存档并验证完整性
+     * 加载游戏存档 从数据库中读取存档并验证完整性
      *
      * @return 加载是否成功
      */
@@ -121,9 +130,8 @@ public class SaveManager {
     }
 
     /**
-     * 加载游戏存档
-     * 从数据库中读取存档并验证完整性
-     * 
+     * 加载游戏存档 从数据库中读取存档并验证完整性
+     *
      * @param skipConfirmation 是否跳过确认对话框
      * @return 加载是否成功
      */
@@ -172,6 +180,7 @@ public class SaveManager {
             // 用户确认加载或跳过确认，继续处理存档数据
             String mapState = saveData.getMapState();
             int steps = saveData.getSteps();
+            long gameTime = saveData.getGameTime();
 
             // 将字符串类型的地图状态转换为长整型
             long mapStateLong = Long.parseLong(mapState);
@@ -187,6 +196,9 @@ public class SaveManager {
 
             // 设置已加载的步数
             view.setSteps(steps);
+
+            // 通知GameController加载了游戏时间
+            view.setLoadedGameTime(gameTime);
 
             javax.swing.SwingUtilities.invokeLater(() -> {
 
@@ -207,8 +219,8 @@ public class SaveManager {
     }
 
     /**
-     * 保存当前游戏状态到数据库
-     * 检查用户是否有已存在的存档，提示新建或覆盖
+     * 保存当前游戏状态到数据库 检查用户是否有已存在的存档，提示新建或覆盖
+     *
      * @return 保存是否成功
      */
     public boolean saveGameState() {
@@ -239,6 +251,9 @@ public class SaveManager {
         // 获取当前步数
         int steps = view.getSteps();
 
+        // 获取当前游戏用时（毫秒）
+        long gameTime = view.getGameTime();
+
         // 生成存档描述信息（使用当前日期时间）
         String description = "Saved at " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
 
@@ -260,7 +275,7 @@ public class SaveManager {
 
         if (result == JOptionPane.YES_OPTION) {
             // 调用数据库服务保存游戏状态
-            boolean saved = DatabaseService.getInstance().saveGameState(username, mapState, steps, description);
+            boolean saved = DatabaseService.getInstance().saveGameState(username, mapState, steps, gameTime, description);
 
             // 显示保存结果
             if (saved) {
@@ -274,10 +289,10 @@ public class SaveManager {
                         "Failed",
                         JOptionPane.ERROR_MESSAGE);
             }
-            
+
             return saved;
         }
-        
+
         return false;
     }
 
@@ -295,4 +310,3 @@ public class SaveManager {
         return DatabaseService.getInstance().hasUserGameSave(username);
     }
 }
-
