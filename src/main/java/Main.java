@@ -47,17 +47,8 @@ public class Main {
             // 创建登录窗口并显示
             LoginFrame loginFrame = new LoginFrame(460, 370);
 
-            // 创建地图模型
-            MapModel mapModel = new MapModel(new int[][]{
-                    {BoardSerializer.VERTICAL, BoardSerializer.SOLDIER, BoardSerializer.SOLDIER, BoardSerializer.VERTICAL},
-                    {BoardSerializer.VERTICAL, BoardSerializer.SOLDIER, BoardSerializer.SOLDIER, BoardSerializer.VERTICAL},
-                    {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL},
-                    {BoardSerializer.SOLDIER, BoardSerializer.EMPTY, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO},
-                    {BoardSerializer.SOLDIER, BoardSerializer.EMPTY, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO}
-            });
-
-            // 创建游戏窗口
-            GameFrame gameFrame = new GameFrame(700, 550, mapModel);
+            // 创建游戏窗口（不再直接传入地图模型）
+            GameFrame gameFrame = new GameFrame(700, 550, null);
             gameFrame.setVisible(false);
 
             // 创建Home窗口

@@ -5,7 +5,7 @@ import service.UserSession;
 import view.game.GameFrame;
 import view.level.LevelSelectFrame;
 import view.login.LoginFrame;
-import view.settings.SettingsFrame; // 导入 SettingsFrame
+import view.settings.SettingsFrame;
 import view.util.FontManager;
 import view.util.FrameUtil;
 
@@ -20,7 +20,7 @@ public class HomeFrame extends JFrame implements HomeView {
     // UI组件
     private JLabel welcomeLabel;
     private JLabel usernameLabel;
-    private JButton startGameButton;
+    private JButton newGameButton;
     private JButton loadGameButton;
     private JButton settingsButton;
     private JButton logoutButton;
@@ -76,11 +76,11 @@ public class HomeFrame extends JFrame implements HomeView {
         contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
         FrameUtil.setPadding(contentPanel, 30, 0, 0, 0);
         
-        // 开始游戏按钮
-        startGameButton = FrameUtil.createStyledButton("New Game", true);
-        startGameButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-        startGameButton.setMaximumSize(new Dimension(200, 50));
-        startGameButton.setPreferredSize(new Dimension(200, 50));
+        // 新游戏按钮 (合并原有的New Game和Level Selection功能)
+        newGameButton = FrameUtil.createStyledButton("New Game", true);
+        newGameButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        newGameButton.setMaximumSize(new Dimension(200, 50));
+        newGameButton.setPreferredSize(new Dimension(200, 50));
         
         // 加载游戏按钮
         loadGameButton = FrameUtil.createStyledButton("Load Game", true);
@@ -101,17 +101,9 @@ public class HomeFrame extends JFrame implements HomeView {
         logoutButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         logoutButton.setMaximumSize(new Dimension(200, 50));
         logoutButton.setPreferredSize(new Dimension(200, 50));
-
-        // 关卡选择按钮
-        JButton levelSelectButton = FrameUtil.createStyledButton("Level Selection", true);
-        levelSelectButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-        levelSelectButton.setMaximumSize(new Dimension(200, 50));
-        levelSelectButton.setPreferredSize(new Dimension(200, 50));
         
         // 添加按钮到内容面板
-        contentPanel.add(startGameButton);
-        contentPanel.add(Box.createVerticalStrut(20));
-        contentPanel.add(levelSelectButton);
+        contentPanel.add(newGameButton);
         contentPanel.add(Box.createVerticalStrut(20));
         contentPanel.add(loadGameButton);  // 添加加载游戏按钮
         contentPanel.add(Box.createVerticalStrut(20));
@@ -126,8 +118,7 @@ public class HomeFrame extends JFrame implements HomeView {
         this.add(mainPanel, BorderLayout.CENTER);
         
         // 添加按钮事件监听器
-        startGameButton.addActionListener(e -> controller.startGame());
-        levelSelectButton.addActionListener(e -> controller.openLevelSelect());
+        newGameButton.addActionListener(e -> controller.openLevelSelect()); // 将New Game按钮的行为改为打开关卡选择
         loadGameButton.addActionListener(e -> controller.loadGame());  // 添加加载游戏按钮监听器
         settingsButton.addActionListener(e -> controller.openSettings());
         logoutButton.addActionListener(e -> controller.logout());

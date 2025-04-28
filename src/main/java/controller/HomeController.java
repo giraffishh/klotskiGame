@@ -70,19 +70,6 @@ public class HomeController {
     }
 
     /**
-     * 开始游戏
-     * 显示游戏窗口并隐藏Home窗口
-     */
-    public void startGame() {
-        if (gameFrame != null) {
-            gameFrame.setVisible(true);
-            homeView.closeHome();
-        } else {
-            homeView.showStyledMessage("Game window not properly initialized", "Error", JOptionPane.ERROR_MESSAGE);
-        }
-    }
-    
-    /**
      * 加载保存的游戏
      * 先检查并确认存档，确认后才显示游戏界面
      */
