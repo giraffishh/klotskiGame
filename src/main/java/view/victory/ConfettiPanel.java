@@ -62,7 +62,7 @@ public class ConfettiPanel extends JPanel {
     public ConfettiPanel() {
         setOpaque(false);
         setVisible(false);
-        //setDoubleBuffered(true); // 确保双缓冲开启
+        setDoubleBuffered(true); // 确保双缓冲开启
 
         // 预先创建纸片对象池
         for (int i = 0; i < MAX_CONFETTI; i++) {
