@@ -1,15 +1,21 @@
 package view.game;
 
-import controller.GameController;
-import model.MapModel;
-import view.util.FrameUtil;
-import service.UserSession;
-import view.home.HomeFrame;
-import view.victory.VictoryFrame;
-
-import javax.swing.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
+import javax.swing.WindowConstants;
+
+import controller.GameController;
+import model.MapModel;
+import service.UserSession;
+import view.home.HomeFrame;
+import view.util.FrameUtil;
+import view.victory.VictoryFrame;
 
 /**
  * 游戏主窗口类 包含游戏面板和控制按钮等组件 负责显示游戏界面和处理用户交互
@@ -222,6 +228,9 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
      */
     private void returnToHome() {
         if (homeFrame != null) {
+            // 在显示确认对话框前暂停计时器
+            controller.stopTimer();
+
             // 显示确认对话框，询问用户是否确定要返回主界面
             int result = JOptionPane.showConfirmDialog(
                     this,
@@ -230,10 +239,9 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
                     JOptionPane.YES_NO_OPTION,
                     JOptionPane.WARNING_MESSAGE);
 
-            // 如果用户确认，则停止计时器、重置游戏状态并返回主界面
+            // 根据用户选择进行不同处理
             if (result == JOptionPane.YES_OPTION) {
-                // 停止计时器
-                controller.stopTimer();
+                // 用户确认返回主界面，计时器已经停止，不需要再次停止
 
                 // 重置游戏状态到初始状态
                 controller.restartGame();
@@ -242,8 +250,10 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
                 homeFrame.setVisible(true);
                 // 隐藏游戏窗口
                 this.setVisible(false);
+            } else {
+                // 用户选择继续游戏，恢复计时器
+                controller.startTimer();
             }
-            // 如果用户选择否，则什么都不做，继续游戏
         } else {
             // 如果homeFrame为null，显示错误消息
             JOptionPane.showMessageDialog(this,

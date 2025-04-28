@@ -1,36 +1,43 @@
 package service;
 
-import model.User;
-
-import java.sql.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Timestamp;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 
+import model.User;
+
 /**
- * 数据库服务类，提供用户登录和注册功能
- * 使用H2轻量级数据库存储用户信息
- * 密码使用SHA-256加盐哈希存储，提高安全性
+ * 数据库服务类，提供用户登录和注册功能 使用H2轻量级数据库存储用户信息 密码使用SHA-256加盐哈希存储，提高安全性
  */
 public class DatabaseService {
+
     private static final String DB_URL = "jdbc:h2:file:./gamedb";
     private static final String USER = "sa";
     private static final String PASS = "";
-    
+
     private static DatabaseService instance;
-    
+
     /**
      * 私有构造方法，初始化数据库
      */
     private DatabaseService() {
         initDatabase();
     }
-    
+
     /**
      * 获取单例实例
+     *
      * @return 数据库服务实例
      */
     public static synchronized DatabaseService getInstance() {
@@ -48,44 +55,55 @@ public class DatabaseService {
             Statement stmt = conn.createStatement();
 
             // 创建用户表(如果不存在)，包含密码哈希和盐值列
-            stmt.execute("CREATE TABLE IF NOT EXISTS users (" +
-                    "username VARCHAR(255) PRIMARY KEY, " +
-                    "password_hash VARCHAR(255) NOT NULL, " +
-                    "salt VARCHAR(255) NOT NULL)");
+            stmt.execute("CREATE TABLE IF NOT EXISTS users ("
+                    + "username VARCHAR(255) PRIMARY KEY, "
+                    + "password_hash VARCHAR(255) NOT NULL, "
+                    + "salt VARCHAR(255) NOT NULL)");
 
             // 创建游戏保存记录表(如果不存在)，增加data_hash列用于数据完整性验证
-            stmt.execute("CREATE TABLE IF NOT EXISTS game_saves (" +
-                    "id INT AUTO_INCREMENT PRIMARY KEY, " +
-                    "username VARCHAR(255) NOT NULL, " +
-                    "map_state VARCHAR(1000) NOT NULL, " + // 存储地图状态的字符串
-                    "steps INT NOT NULL, " +               // 已走步数
-                    "save_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " + // 保存时间
-                    "description VARCHAR(255), " +         // 可选描述
-                    "data_hash VARCHAR(255) NOT NULL, " +  // 数据哈希，用于验证完整性
+            // 增加game_time列用于存储游戏用时（毫秒）
+            stmt.execute("CREATE TABLE IF NOT EXISTS game_saves ("
+                    + "id INT AUTO_INCREMENT PRIMARY KEY, "
+                    + "username VARCHAR(255) NOT NULL, "
+                    + "map_state VARCHAR(1000) NOT NULL, "
+                    + // 存储地图状态的字符串
+                    "steps INT NOT NULL, "
+                    + // 已走步数
+                    "game_time BIGINT DEFAULT 0, "
+                    + // 游戏用时（毫秒）
+                    "save_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
+                    + // 保存时间
+                    "description VARCHAR(255), "
+                    + // 可选描述
+                    "data_hash VARCHAR(255) NOT NULL, "
+                    + // 数据哈希，用于验证完整性
                     "FOREIGN KEY (username) REFERENCES users(username))");
 
             // 创建user_settings表(如果不存在)
-            stmt.execute("CREATE TABLE IF NOT EXISTS user_settings (" +
-                    "username VARCHAR(255) PRIMARY KEY, " +
-                    "theme VARCHAR(50) NOT NULL DEFAULT 'Light', " +
-                    "FOREIGN KEY (username) REFERENCES users(username))");
+            stmt.execute("CREATE TABLE IF NOT EXISTS user_settings ("
+                    + "username VARCHAR(255) PRIMARY KEY, "
+                    + "theme VARCHAR(50) NOT NULL DEFAULT 'Light', "
+                    + "FOREIGN KEY (username) REFERENCES users(username))");
 
             System.out.println("Database setup successfully");
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
+
     /**
      * 获取数据库连接
+     *
      * @return 数据库连接
      * @throws SQLException 连接异常
      */
     private Connection getConnection() throws SQLException {
         return DriverManager.getConnection(DB_URL, USER, PASS);
     }
-    
+
     /**
      * 生成随机盐值
+     *
      * @return Base64编码的盐值字符串
      */
     private String generateSalt() {
@@ -97,6 +115,7 @@ public class DatabaseService {
 
     /**
      * 使用SHA-256算法和盐值对密码进行哈希处理
+     *
      * @param password 明文密码
      * @param salt 盐值
      * @return 哈希后的密码
@@ -115,6 +134,7 @@ public class DatabaseService {
 
     /**
      * 验证密码是否正确
+     *
      * @param password 输入的明文密码
      * @param storedHash 存储的密码哈希值
      * @param salt 存储的盐值
@@ -127,13 +147,14 @@ public class DatabaseService {
 
     /**
      * 检查用户名是否已经注册
+     *
      * @param username 用户名
      * @return 如果用户名已注册返回true，否则返回false
      */
     public boolean checkUserExists(String username) {
         try (Connection conn = getConnection()) {
             PreparedStatement checkStmt = conn.prepareStatement(
-                "SELECT username FROM users WHERE username = ?");
+                    "SELECT username FROM users WHERE username = ?");
             checkStmt.setString(1, username);
             ResultSet rs = checkStmt.executeQuery();
 
@@ -146,6 +167,7 @@ public class DatabaseService {
 
     /**
      * 尝试登录或注册用户
+     *
      * @param username 用户名
      * @param password 密码
      * @return 登录结果：0-登录成功，1-注册成功，2-密码错误，-1-出错
@@ -154,10 +176,10 @@ public class DatabaseService {
         try (Connection conn = getConnection()) {
             // 检查用户是否存在
             PreparedStatement checkStmt = conn.prepareStatement(
-                "SELECT password_hash, salt FROM users WHERE username = ?");
+                    "SELECT password_hash, salt FROM users WHERE username = ?");
             checkStmt.setString(1, username);
             ResultSet rs = checkStmt.executeQuery();
-            
+
             if (rs.next()) {
                 // 用户存在，检查密码
                 String storedHash = rs.getString("password_hash");
@@ -178,7 +200,7 @@ public class DatabaseService {
                 String passwordHash = hashPassword(password, salt);
 
                 PreparedStatement insertStmt = conn.prepareStatement(
-                    "INSERT INTO users (username, password_hash, salt) VALUES (?, ?, ?)");
+                        "INSERT INTO users (username, password_hash, salt) VALUES (?, ?, ?)");
                 insertStmt.setString(1, username);
                 insertStmt.setString(2, passwordHash);
                 insertStmt.setString(3, salt);
@@ -198,6 +220,7 @@ public class DatabaseService {
 
     /**
      * 获取用户对象
+     *
      * @param username 用户名
      * @return 对应的User对象，如果用户不存在则返回null
      */
@@ -208,7 +231,7 @@ public class DatabaseService {
 
         try (Connection conn = getConnection()) {
             PreparedStatement stmt = conn.prepareStatement(
-                "SELECT username FROM users WHERE username = ?");
+                    "SELECT username FROM users WHERE username = ?");
             stmt.setString(1, username);
             ResultSet rs = stmt.executeQuery();
 
@@ -224,13 +247,14 @@ public class DatabaseService {
 
     /**
      * 检查用户是否有已保存的游戏存档
+     *
      * @param username 用户名
      * @return 如果用户已有存档返回true，否则返回false
      */
     public boolean hasUserGameSave(String username) {
         try (Connection conn = getConnection()) {
             PreparedStatement stmt = conn.prepareStatement(
-                "SELECT COUNT(*) FROM game_saves WHERE username = ?");
+                    "SELECT COUNT(*) FROM game_saves WHERE username = ?");
             stmt.setString(1, username);
             ResultSet rs = stmt.executeQuery();
 
@@ -248,25 +272,28 @@ public class DatabaseService {
 
     /**
      * 更新用户现有游戏存档
+     *
      * @param username 用户名
      * @param mapState 地图状态字符串
      * @param steps 当前步数
+     * @param gameTime 游戏用时（毫秒）
      * @param description 保存描述
      * @return 是否更新成功
      */
-    public boolean updateGameSave(String username, String mapState, int steps, String description) {
+    public boolean updateGameSave(String username, String mapState, int steps, long gameTime, String description) {
         try (Connection conn = getConnection()) {
             // 计算数据哈希值
             String dataHash = generateDataHash(mapState, steps, username);
 
             PreparedStatement stmt = conn.prepareStatement(
-                "UPDATE game_saves SET map_state = ?, steps = ?, save_time = CURRENT_TIMESTAMP, " +
-                "description = ?, data_hash = ? WHERE username = ?");
+                    "UPDATE game_saves SET map_state = ?, steps = ?, game_time = ?, save_time = CURRENT_TIMESTAMP, "
+                    + "description = ?, data_hash = ? WHERE username = ?");
             stmt.setString(1, mapState);
             stmt.setInt(2, steps);
-            stmt.setString(3, description);
-            stmt.setString(4, dataHash);
-            stmt.setString(5, username);
+            stmt.setLong(3, gameTime);
+            stmt.setString(4, description);
+            stmt.setString(5, dataHash);
+            stmt.setString(6, username);
             int result = stmt.executeUpdate();
             return result > 0; // 如果更新影响了行数，则返回true
         } catch (SQLException e) {
@@ -277,19 +304,21 @@ public class DatabaseService {
 
     /**
      * 保存游戏状态
+     *
      * @param username 用户名
      * @param mapState 地图状态字符串
      * @param steps 当前步数
+     * @param gameTime 游戏用时（毫秒）
      * @param description 保存描述
      * @return 是否保存成功
      */
-    public boolean saveGameState(String username, String mapState, int steps, String description) {
+    public boolean saveGameState(String username, String mapState, int steps, long gameTime, String description) {
         // 检查用户是否已有存档
         boolean hasExistingSave = hasUserGameSave(username);
 
         if (hasExistingSave) {
             // 更新现有存档
-            return updateGameSave(username, mapState, steps, description);
+            return updateGameSave(username, mapState, steps, gameTime, description);
         } else {
             // 创建新存档
             try (Connection conn = getConnection()) {
@@ -297,12 +326,13 @@ public class DatabaseService {
                 String dataHash = generateDataHash(mapState, steps, username);
 
                 PreparedStatement stmt = conn.prepareStatement(
-                    "INSERT INTO game_saves (username, map_state, steps, description, data_hash) VALUES (?, ?, ?, ?, ?)");
+                        "INSERT INTO game_saves (username, map_state, steps, game_time, description, data_hash) VALUES (?, ?, ?, ?, ?, ?)");
                 stmt.setString(1, username);
                 stmt.setString(2, mapState);
                 stmt.setInt(3, steps);
-                stmt.setString(4, description);
-                stmt.setString(5, dataHash);
+                stmt.setLong(4, gameTime);
+                stmt.setString(5, description);
+                stmt.setString(6, dataHash);
                 int result = stmt.executeUpdate();
                 return result > 0; // 如果插入成功返回true
             } catch (SQLException e) {
@@ -316,33 +346,58 @@ public class DatabaseService {
      * 游戏存档数据类，封装游戏存档的各项信息
      */
     public static class GameSaveData {
+
         private int id;
         private String username;
         private String mapState;
         private int steps;
+        private long gameTime;
         private Timestamp saveTime;
         private String description;
 
-        public GameSaveData(int id, String username, String mapState, int steps,
-                           Timestamp saveTime, String description) {
+        public GameSaveData(int id, String username, String mapState, int steps, long gameTime,
+                Timestamp saveTime, String description) {
             this.id = id;
             this.username = username;
             this.mapState = mapState;
             this.steps = steps;
+            this.gameTime = gameTime;
             this.saveTime = saveTime;
             this.description = description;
         }
 
-        public int getId() { return id; }
-        public String getUsername() { return username; }
-        public String getMapState() { return mapState; }
-        public int getSteps() { return steps; }
-        public Timestamp getSaveTime() { return saveTime; }
-        public String getDescription() { return description; }
+        public int getId() {
+            return id;
+        }
+
+        public String getUsername() {
+            return username;
+        }
+
+        public String getMapState() {
+            return mapState;
+        }
+
+        public int getSteps() {
+            return steps;
+        }
+
+        public long getGameTime() {
+            return gameTime;
+        }
+
+        public Timestamp getSaveTime() {
+            return saveTime;
+        }
+
+        public String getDescription() {
+            return description;
+        }
     }
 
     /**
      * 为数据生成哈希值，用于验证数据完整性
+     *
      * @param mapState 地图状态
      * @param steps 步数
      * @param username 用户名
@@ -362,14 +417,15 @@ public class DatabaseService {
 
     /**
      * 加载用户的游戏存档
+     *
      * @param username 用户名
      * @return 游戏存档数据，如果不存在或数据不完整则返回null
      */
     public GameSaveData loadGameSave(String username) {
         try (Connection conn = getConnection()) {
             PreparedStatement stmt = conn.prepareStatement(
-                "SELECT id, username, map_state, steps, save_time, description, data_hash " +
-                "FROM game_saves WHERE username = ?");
+                    "SELECT id, username, map_state, steps, game_time, save_time, description, data_hash "
+                    + "FROM game_saves WHERE username = ?");
             stmt.setString(1, username);
             ResultSet rs = stmt.executeQuery();
 
@@ -377,6 +433,7 @@ public class DatabaseService {
                 int id = rs.getInt("id");
                 String mapState = rs.getString("map_state");
                 int steps = rs.getInt("steps");
+                long gameTime = rs.getLong("game_time");
                 Timestamp saveTime = rs.getTimestamp("save_time");
                 String description = rs.getString("description");
                 String storedHash = rs.getString("data_hash");
@@ -384,7 +441,7 @@ public class DatabaseService {
                 // 验证数据完整性
                 String calculatedHash = generateDataHash(mapState, steps, username);
                 if (calculatedHash.equals(storedHash)) {
-                    return new GameSaveData(id, username, mapState, steps, saveTime, description);
+                    return new GameSaveData(id, username, mapState, steps, gameTime, saveTime, description);
                 } else {
                     System.out.println("数据完整性验证失败：数据可能已被篡改");
                     return null;
@@ -400,6 +457,7 @@ public class DatabaseService {
 
     /**
      * 保存用户设置
+     *
      * @param username 用户名
      * @param settings 设置键值对
      * @return 是否保存成功
@@ -408,7 +466,7 @@ public class DatabaseService {
         try (Connection conn = getConnection()) {
             // 首先检查用户设置是否存在
             PreparedStatement checkStmt = conn.prepareStatement(
-                "SELECT username FROM user_settings WHERE username = ?");
+                    "SELECT username FROM user_settings WHERE username = ?");
             checkStmt.setString(1, username);
             ResultSet rs = checkStmt.executeQuery();
 
@@ -468,6 +526,7 @@ public class DatabaseService {
 
     /**
      * 保存单个用户设置
+     *
      * @param username 用户名
      * @param settingKey 设置键
      * @param settingValue 设置值
@@ -481,6 +540,7 @@ public class DatabaseService {
 
     /**
      * 加载用户设置
+     *
      * @param username 用户名
      * @return 包含用户设置的Map
      */
@@ -488,7 +548,7 @@ public class DatabaseService {
         Map<String, String> settings = new HashMap<>();
         try (Connection conn = getConnection()) {
             PreparedStatement stmt = conn.prepareStatement(
-                "SELECT * FROM user_settings WHERE username = ?");
+                    "SELECT * FROM user_settings WHERE username = ?");
             stmt.setString(1, username);
             ResultSet rs = stmt.executeQuery();
 
@@ -519,6 +579,7 @@ public class DatabaseService {
 
     /**
      * 加载单个用户设置
+     *
      * @param username 用户名
      * @param settingKey 设置键
      * @param defaultValue 默认值，如果设置不存在

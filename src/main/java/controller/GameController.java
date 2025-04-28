@@ -464,11 +464,28 @@ public class GameController {
                     // 停止计时器
                     stopTimer();
 
-                    // 显示胜利界面，并传递当前步数
+                    // 显示胜利界面，并传递当前步数和游戏用时
                     SwingUtilities.invokeLater(() -> {
                         if (victoryView != null) {
                             int currentSteps = historyManager.getMoveCount(); // 获取当前步数
-                            victoryView.showVictory("Victory!", currentSteps);
+
+                            // 计算总用时（毫秒）
+                            long currentTime = System.currentTimeMillis();
+                            long totalElapsed = elapsedTimeBeforeStart;
+                            if (timerRunning) {
+                                totalElapsed += (currentTime - startTime);
+                            }
+
+                            // 格式化时间字符串
+                            int minutes = (int) (totalElapsed / 60000);
+                            int seconds = (int) ((totalElapsed % 60000) / 1000);
+                            int centiseconds = (int) ((totalElapsed % 1000) / 10);
+
+                            String timeText = String.format("Time: %02d:%02d.%s",
+                                    minutes, seconds, millisFormat.format(centiseconds));
+
+                            // 显示带有时间的胜利界面
+                            victoryView.showVictory("Victory!", currentSteps, timeText);
                         } else {
                             // 如果胜利视图未设置，使用旧的对话框显示
                             JLabel messageLabel = new JLabel("Congratulations! You have completed the Klotski challenge!");
@@ -511,17 +528,61 @@ public class GameController {
                 victoryView.hideVictory();
             }
 
-            // 重置计时器
-            resetTimer();
-
             System.out.println("Game state loaded successfully");
         }
     }
 
     /**
-     * 保存当前游戏状态到数据库
+     * 保存当前游戏状态到数据库 在保存过程中暂停计时器
      */
     public void saveGameState() {
-        saveManager.saveGameState();
+        // 暂停计时器并记录之前的状态
+        boolean wasRunning = timerRunning;
+        if (wasRunning) {
+            stopTimer();
+        }
+
+        try {
+            // 保存游戏状态
+            boolean saveSuccess = saveManager.saveGameState();
+
+            // 输出保存结果到日志
+            System.out.println("Game save " + (saveSuccess ? "successful" : "cancelled or failed"));
+        } finally {
+            // 无论保存是否成功或被取消，如果之前计时器在运行，都恢复计时器
+            if (wasRunning) {
+                startTimer();
+                System.out.println("Timer resumed after save operation");
+            }
+        }
+    }
+
+    /**
+     * 获取当前游戏用时（毫秒）
+     *
+     * @return 游戏用时（毫秒）
+     */
+    public long getGameTimeInMillis() {
+        // 计算当前经过的总时间（毫秒）
+        if (timerRunning) {
+            long currentTime = System.currentTimeMillis();
+            return elapsedTimeBeforeStart + (currentTime - startTime);
+        } else {
+            return elapsedTimeBeforeStart;
+        }
+    }
+
+    /**
+     * 设置加载的游戏时间
+     *
+     * @param gameTime 游戏时间（毫秒）
+     */
+    public void setLoadedGameTime(long gameTime) {
+        // 停止计时器
+        stopTimer();
+        // 设置已经过的时间
+        elapsedTimeBeforeStart = gameTime;
+        // 更新显示
+        updateTimeDisplay(gameTime);
     }
 }

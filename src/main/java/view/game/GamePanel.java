@@ -422,4 +422,41 @@ public class GamePanel extends ListenerPanel {
         initialGame();
     }
 
+    /**
+     * 获取当前游戏用时（毫秒）
+     *
+     * @return 游戏用时
+     */
+    public long getGameTime() {
+        // 请求GameController提供当前游戏用时
+        if (controller != null) {
+            return controller.getGameTimeInMillis();
+        }
+        return 0;
+    }
+
+    /**
+     * 设置加载的游戏时间
+     *
+     * @param gameTime 游戏时间（毫秒）
+     */
+    public void setLoadedGameTime(long gameTime) {
+        // 通知GameController设置加载的游戏时间
+        if (controller != null) {
+            controller.setLoadedGameTime(gameTime);
+        }
+    }
+
+    /**
+     * 保存游戏状态，在保存前暂停计时器
+     *
+     * @return 保存是否成功
+     */
+    public boolean saveGame() {
+        if (controller != null) {
+            controller.saveGameState();  // GameController 会负责暂停和恢复计时器
+            return true;
+        }
+        return false;
+    }
 }
