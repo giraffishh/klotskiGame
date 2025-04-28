@@ -2,6 +2,7 @@ package view.game;
 
 import controller.GameController;
 import model.MapModel;
+import view.level.LevelSelectFrame;
 import view.util.FrameUtil;
 import service.UserSession;
 import view.home.HomeFrame;
@@ -193,6 +194,49 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
     }
 
     /**
+     * 加载新关卡
+     * @param mapModel 游戏地图模型
+     */
+    public void loadLevel(MapModel mapModel) {
+        // 移除旧的游戏面板
+        if (gamePanel != null) {
+            this.remove(gamePanel);
+        }
+
+        // 创建新的游戏面板
+        gamePanel = new GamePanel(mapModel);
+
+        // 调整游戏面板位置
+        int panelX = (this.getWidth() - gamePanel.getWidth()) / 2 - 60;
+        int panelY = (this.getHeight() - gamePanel.getHeight()) / 2;
+        gamePanel.setLocation(panelX, panelY);
+        this.add(gamePanel);
+
+        // 创建新的控制器
+        this.controller = new GameController(gamePanel, mapModel);
+        controller.setParentFrame(this);
+        controller.setVictoryView(victoryFrame);
+
+        // 重新设置步数标签和最短步数标签
+        gamePanel.setStepLabel(stepLabel);
+        gamePanel.setMinStepsLabel(minStepsLabel);
+
+        // 初始化游戏
+        controller.initializeGame();
+
+        // 更新按钮状态
+        updateButtonsState();
+
+        // 刷新界面
+        this.revalidate();
+        this.repaint();
+
+        // 将焦点设置到游戏面板
+        gamePanel.requestFocusInWindow();
+
+    }
+
+    /**
      * 获取游戏面板
      * @return 游戏面板
      */
@@ -242,6 +286,44 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
     }
 
     /**
+     * 用于从胜利界面返回
+     */
+    public void returnToHomeDirectly() {
+        if (homeFrame != null) {
+            // 重置游戏状态到初始状态
+            controller.restartGame();
+
+            // 显示主页面
+            homeFrame.setVisible(true);
+            // 隐藏游戏窗口
+            this.setVisible(false);
+        } else {
+            // 如果homeFrame为null，显示错误消息
+            JOptionPane.showMessageDialog(this,
+                    "Cannot return to home page. Home page reference is missing.",
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    /**
+     * 设置关卡选择界面引用
+     */
+    public void setLevelSelectFrame(LevelSelectFrame levelSelectFrame) {
+        if (controller != null) {
+            controller.setLevelSelectFrame(levelSelectFrame);
+        }
+    }
+
+    /**
+     * 获取游戏控制器
+     * @return 游戏控制器实例
+     */
+    public GameController getController() {
+        return controller;
+    }
+
+    /**
      * 实现UserSessionListener接口方法，在用户会话状态变化时调用
      */
     @Override
@@ -271,27 +353,5 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
     public void updateUndoRedoButtons(boolean canUndo, boolean canRedo) {
         undoBtn.setEnabled(canUndo);
         redoBtn.setEnabled(canRedo);
-    }
-
-    /**
-     * 直接返回主页面，不显示确认对话框
-     * 用于从胜利界面返回
-     */
-    public void returnToHomeDirectly() {
-        if (homeFrame != null) {
-            // 重置游戏状态到初始状态
-            controller.restartGame();
-
-            // 显示主页面
-            homeFrame.setVisible(true);
-            // 隐藏游戏窗口
-            this.setVisible(false);
-        } else {
-            // 如果homeFrame为null，显示错误消息
-            JOptionPane.showMessageDialog(this,
-                    "无法返回主页面。主页面引用丢失。",
-                    "错误",
-                    JOptionPane.ERROR_MESSAGE);
-        }
     }
 }

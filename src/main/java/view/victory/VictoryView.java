@@ -40,4 +40,17 @@ public interface VictoryView {
      * 设置"下一关"按钮的监听器
      */
     void setNextLevelListener(ActionListener listener);
+
+
+    /**
+     * 设置"下一关"按钮的启用状态
+     * @param enabled 是否启用
+     */
+    void setNextLevelButtonEnabled(boolean enabled);
+
+    /**
+     * 设置胜利消息文本
+     * @param message 消息内容
+     */
+    void setVictoryMessage(String message);
 }

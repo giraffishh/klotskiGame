@@ -3,6 +3,7 @@ package view.home;
 import controller.HomeController;
 import service.UserSession;
 import view.game.GameFrame;
+import view.level.LevelSelectFrame;
 import view.login.LoginFrame;
 import view.settings.SettingsFrame; // 导入 SettingsFrame
 import view.util.FontManager;
@@ -100,9 +101,17 @@ public class HomeFrame extends JFrame implements HomeView {
         logoutButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         logoutButton.setMaximumSize(new Dimension(200, 50));
         logoutButton.setPreferredSize(new Dimension(200, 50));
+
+        // 关卡选择按钮
+        JButton levelSelectButton = FrameUtil.createStyledButton("Level Selection", true);
+        levelSelectButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        levelSelectButton.setMaximumSize(new Dimension(200, 50));
+        levelSelectButton.setPreferredSize(new Dimension(200, 50));
         
         // 添加按钮到内容面板
         contentPanel.add(startGameButton);
+        contentPanel.add(Box.createVerticalStrut(20));
+        contentPanel.add(levelSelectButton);
         contentPanel.add(Box.createVerticalStrut(20));
         contentPanel.add(loadGameButton);  // 添加加载游戏按钮
         contentPanel.add(Box.createVerticalStrut(20));
@@ -118,6 +127,7 @@ public class HomeFrame extends JFrame implements HomeView {
         
         // 添加按钮事件监听器
         startGameButton.addActionListener(e -> controller.startGame());
+        levelSelectButton.addActionListener(e -> controller.openLevelSelect());
         loadGameButton.addActionListener(e -> controller.loadGame());  // 添加加载游戏按钮监听器
         settingsButton.addActionListener(e -> controller.openSettings());
         logoutButton.addActionListener(e -> controller.logout());
@@ -211,6 +221,14 @@ public class HomeFrame extends JFrame implements HomeView {
      */
     public void setSettingsFrame(SettingsFrame settingsFrame) {
         this.controller.setSettingsFrame(settingsFrame); // 将 SettingsFrame 传递给控制器
+    }
+
+    /**
+     * 设置关卡选择窗口引用
+     * @param levelSelectFrame 关卡选择窗口实例
+     */
+    public void setLevelSelectFrame(LevelSelectFrame levelSelectFrame) {
+        this.controller.setLevelSelectFrame(levelSelectFrame);
     }
 
     /**

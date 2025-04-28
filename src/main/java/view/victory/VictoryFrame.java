@@ -159,4 +159,14 @@ public class VictoryFrame extends JDialog implements VictoryView {
     public void setNextLevelListener(ActionListener listener) {
         nextLevelButton.addActionListener(listener);
     }
-  }
+
+    @Override
+    public void setNextLevelButtonEnabled(boolean enabled) {
+        nextLevelButton.setEnabled(enabled);
+    }
+
+    @Override
+    public void setVictoryMessage(String message) {
+        messageLabel.setText(message);
+    }
+}

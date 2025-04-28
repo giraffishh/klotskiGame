@@ -24,6 +24,7 @@ import javax.swing.JLabel;
 
 import java.util.List;
 import view.game.GameFrame;
+import view.level.LevelSelectFrame;
 import view.util.FontManager;
 import view.victory.VictoryView;
 
@@ -58,8 +59,14 @@ public class GameController {
     // 游戏胜利状态标志，防止重复弹出胜利提示
     private boolean victoryAchieved = false;
 
-    // 胜利界面
+    // 胜利界面引用
     private VictoryView victoryView;
+
+    // 选关界面引用
+    private LevelSelectFrame levelSelectFrame;
+
+    // 当前关卡索引
+    private int currentLevelIndex = 0;
 
     /**
      * 构造函数初始化控制器，建立视图和模型之间的连接
@@ -111,6 +118,22 @@ public class GameController {
     }
 
     /**
+     * 设置关卡选择界面
+     * @param levelSelectFrame 关卡选择界面
+     */
+    public void setLevelSelectFrame(LevelSelectFrame levelSelectFrame) {
+        this.levelSelectFrame = levelSelectFrame;
+    }
+
+    /**
+     * 设置当前关卡索引
+     * @param index 关卡索引
+     */
+    public void setCurrentLevelIndex(int index) {
+        this.currentLevelIndex = index;
+    }
+
+    /**
      * 设置胜利界面的按钮监听器
      */
     private void setupVictoryListeners() {
@@ -124,10 +147,15 @@ public class GameController {
             }
         });
 
-        // 其他按钮监听器保持不变...
+        // 设置关卡选择按钮监听器
         victoryView.setLevelSelectListener(e -> {
             victoryView.hideVictory();
-            // 此处仅关闭胜利界面，不实现实际功能
+            // 显示关卡选择界面
+            if (levelSelectFrame != null) {
+                levelSelectFrame.showLevelSelect();
+            } else {
+                System.err.println("Level selection frame reference is not set");
+            }
         });
 
         // 设置再来一次按钮监听器
@@ -139,7 +167,7 @@ public class GameController {
         // 设置下一关按钮监听器
         victoryView.setNextLevelListener(e -> {
             victoryView.hideVictory();
-            // 此处仅关闭胜利界面，不实现实际功能
+            loadNextLevel();
         });
     }
 
@@ -219,6 +247,75 @@ public class GameController {
         }
 
         System.out.println("Game restarted successfully");
+    }
+
+    /**
+     * 加载下一关
+     */
+    public void loadNextLevel() {
+        if (levelSelectFrame != null) {
+            int nextLevelIndex = currentLevelIndex + 1;
+            LevelSelectController levelController = levelSelectFrame.getController();
+            if (levelController != null) {
+                List<LevelSelectController.LevelData> levels = levelController.getLevels();
+                if (nextLevelIndex < levels.size()) {
+                    // 加载下一关
+                    levelController.selectLevel(nextLevelIndex);
+                    // 更新当前关卡索引
+                    currentLevelIndex = nextLevelIndex;
+                } else {
+                    // 已经是最后一关，返回关卡选择界面
+                    JOptionPane.showMessageDialog(
+                            parentFrame,
+                            "Congratulations! You have completed all levels!",
+                            "Game Completed",
+                            JOptionPane.INFORMATION_MESSAGE
+                    );
+
+                    // 关卡选择界面可能有更多选项
+                    levelSelectFrame.showLevelSelect();
+                }
+            } else {
+                // 用户友好的错误提示
+                if (parentFrame != null) {
+                    JOptionPane.showMessageDialog(
+                            parentFrame,
+                            "Unable to load next level. Please return to level selection and try again.",
+                            "Error",
+                            JOptionPane.ERROR_MESSAGE
+                    );
+                } else {
+                    System.err.println("Level selection controller is null");
+                }
+            }
+        } else {
+            // 用户友好的错误提示
+            if (parentFrame != null) {
+                JOptionPane.showMessageDialog(
+                        parentFrame,
+                        "Unable to load next level. Level selection interface is not initialized.",
+                        "Error",
+                        JOptionPane.ERROR_MESSAGE
+                );
+            } else {
+                System.err.println("Level selection frame reference is not set");
+            }
+        }
+    }
+
+    /**
+     * 检查当前是否为最后一关
+     * @return 如果是最后一关返回true，否则返回false
+     */
+    private boolean isLastLevel() {
+        if (levelSelectFrame != null) {
+            LevelSelectController levelController = levelSelectFrame.getController();
+            if (levelController != null) {
+                List<LevelSelectController.LevelData> levels = levelController.getLevels();
+                return currentLevelIndex >= levels.size() - 1;
+            }
+        }
+        return false; // 默认不视为最后一关
     }
 
     /**
@@ -351,17 +448,31 @@ public class GameController {
                 System.out.println("Minimum steps: " + minSteps);
 
                 // 检查是否达到胜利条件且尚未显示胜利提示
+                // 在updateMinStepsDisplay方法内部，修改胜利界面显示部分
                 if (minSteps == 0 && !victoryAchieved) {
-                    victoryAchieved = true; // 标记已经显示过胜利提示
+                    victoryAchieved = true; // 标记已显示过胜利提示
                     // 显示胜利界面，并传递当前步数
                     SwingUtilities.invokeLater(() -> {
                         if (victoryView != null) {
                             int currentSteps = historyManager.getMoveCount(); // 获取当前步数
+
+                            // 检查是否为最后一关
+                            boolean lastLevel = isLastLevel();
+
+                            // 设置胜利消息和按钮状态
+                            if (lastLevel) {
+                                victoryView.setVictoryMessage("Congratulations on completing the game!");
+                                victoryView.setNextLevelButtonEnabled(false);
+                            } else {
+                                victoryView.setVictoryMessage("Victory!");
+                                victoryView.setNextLevelButtonEnabled(true);
+                            }
+
                             victoryView.showVictory("Victory!", currentSteps);
                         } else {
                             // 如果胜利视图未设置，使用旧的对话框显示
                             JLabel messageLabel = new JLabel("Congratulations! You have completed the Klotski challenge!");
-                            messageLabel.setFont(FontManager.getTitleFont(16));
+                            messageLabel.setFont(FontManager.getRegularFont(16));
                             JOptionPane.showMessageDialog(view, messageLabel, "Victory", JOptionPane.INFORMATION_MESSAGE);
                         }
                     });

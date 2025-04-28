@@ -5,6 +5,7 @@ import service.DatabaseService;
 import service.UserSession;
 import view.game.GameFrame;
 import view.home.HomeView;
+import view.level.LevelSelectFrame;
 import view.login.LoginFrame;
 import view.settings.SettingsFrame;
 
@@ -22,7 +23,7 @@ public class HomeController {
     private LoginFrame loginFrame;
     private SettingsFrame settingsFrame;
     private SaveManager saveManager;
-
+    private LevelSelectFrame levelSelectFrame;
     /**
      * 创建HomeController
      * @param homeView Home页面视图
@@ -58,6 +59,14 @@ public class HomeController {
      */
     public void setSettingsFrame(SettingsFrame settingsFrame) {
         this.settingsFrame = settingsFrame;
+    }
+
+    /**
+     * 设置关卡选择界面引用
+     * @param levelSelectFrame 关卡选择窗口实例
+     */
+    public void setLevelSelectFrame(LevelSelectFrame levelSelectFrame) {
+        this.levelSelectFrame = levelSelectFrame;
     }
 
     /**
@@ -133,6 +142,20 @@ public class HomeController {
             settingsFrame.setVisible(true);
         } else {
             homeView.showStyledMessage("Settings window not properly initialized", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    /**
+     * 打开关卡选择界面
+     */
+    public void openLevelSelect() {
+        if (levelSelectFrame != null) {
+            levelSelectFrame.showLevelSelect();
+        } else {
+            homeView.showStyledMessage(
+                    "关卡选择窗口未正确初始化",
+                    "错误",
+                    JOptionPane.ERROR_MESSAGE);
         }
     }
 

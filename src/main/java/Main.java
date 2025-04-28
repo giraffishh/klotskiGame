@@ -1,8 +1,10 @@
+import controller.LevelSelectController;
 import controller.util.BoardSerializer;
 import model.AppSettings;
 import model.MapModel;
 import service.DatabaseService;
 import service.UserSession;
+import view.level.LevelSelectFrame;
 import view.util.FontManager;
 import view.game.GameFrame;
 import view.home.HomeFrame;
@@ -62,6 +64,11 @@ public class Main {
             HomeFrame homeFrame = new HomeFrame(500, 400);
             homeFrame.setVisible(false);
 
+            // 创建关卡选择界面
+            LevelSelectFrame levelSelectFrame = new LevelSelectFrame(500, 400);
+            LevelSelectController levelSelectController = new LevelSelectController(levelSelectFrame);
+            levelSelectFrame.setController(levelSelectController);
+
             // 创建Settings窗口
             SettingsFrame settingsFrame = new SettingsFrame(400, 300);
             settingsFrame.setVisible(false);
@@ -72,7 +79,11 @@ public class Main {
             homeFrame.setGameFrame(gameFrame);
             homeFrame.setSettingsFrame(settingsFrame);
             gameFrame.setHomeFrame(homeFrame);
+            gameFrame.setLevelSelectFrame(levelSelectFrame);
             loginFrame.setGameFrame(gameFrame);
+            homeFrame.setLevelSelectFrame(levelSelectFrame);
+            levelSelectFrame.setHomeFrame(homeFrame);
+            levelSelectFrame.setGameFrame(gameFrame);
 
             // 显示登录窗口
             loginFrame.setVisible(true);
