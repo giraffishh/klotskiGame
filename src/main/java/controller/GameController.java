@@ -21,22 +21,27 @@ import controller.save.SaveManager;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import javax.swing.JLabel;
+import javax.swing.Timer;
 
 import java.util.List;
+import java.awt.event.ActionListener;
+import java.awt.event.ActionEvent;
+import java.text.DecimalFormat;
+
 import view.game.GameFrame;
 import view.util.FontManager;
 import view.victory.VictoryView;
 
 /**
- * 该类作为GamePanel(视图)和MapMatrix(模型)之间的桥梁，实现MVC设计模式中的控制器。
- * 负责处理游戏逻辑，如移动方块、重启游戏等操作。
+ * 该类作为GamePanel(视图)和MapMatrix(模型)之间的桥梁，实现MVC设计模式中的控制器。 负责处理游戏逻辑，如移动方块、重启游戏等操作。
  */
 public class GameController {
+
     // 游戏视图组件引用
     private final GamePanel view;
     // 游戏地图模型引用
     private final MapModel model;
-    
+
     // 方块移动策略对象
     private final BlockMover singleBlockMover;
     private final BlockMover horizontalBlockMover;
@@ -61,8 +66,18 @@ public class GameController {
     // 胜利界面
     private VictoryView victoryView;
 
+    // 计时相关
+    private Timer gameTimer;                  // 游戏计时器
+    private long startTime;                   // 计时开始时间
+    private long elapsedTimeBeforeStart = 0;  // 计时器启动前已经过的时间（用于暂停/继续）
+    private boolean timerRunning = false;     // 计时器运行状态
+
+    // 用于格式化毫秒显示的格式器
+    private final DecimalFormat millisFormat = new DecimalFormat("00");
+
     /**
      * 构造函数初始化控制器，建立视图和模型之间的连接
+     *
      * @param view 游戏面板视图
      * @param model 地图数据模型
      */
@@ -70,7 +85,7 @@ public class GameController {
         this.view = view;
         this.model = model;
         view.setController(this); // 将当前控制器设置到视图中，使视图能够调用控制器方法
-        
+
         // 初始化方块移动策略
         this.singleBlockMover = new SingleBlockMover();
         this.horizontalBlockMover = new HorizontalBlockMover();
@@ -88,10 +103,89 @@ public class GameController {
 
         // 初始化历史记录管理器
         this.historyManager = new HistoryManager(view, model);
+
+        // 初始化计时器
+        initializeTimer();
+    }
+
+    /**
+     * 初始化游戏计时器
+     */
+    private void initializeTimer() {
+        gameTimer = new Timer(50, new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                // 计算当前经过的总时间（毫秒）
+                long currentTime = System.currentTimeMillis();
+                long totalElapsed = elapsedTimeBeforeStart + (currentTime - startTime);
+
+                // 更新时间显示
+                updateTimeDisplay(totalElapsed);
+            }
+        });
+    }
+
+    /**
+     * 启动游戏计时器
+     */
+    public void startTimer() {
+        if (!timerRunning) {
+            // 记录启动时间点
+            startTime = System.currentTimeMillis();
+            gameTimer.start();
+            timerRunning = true;
+        }
+    }
+
+    /**
+     * 停止游戏计时器
+     */
+    public void stopTimer() {
+        if (timerRunning) {
+            // 保存已经过的时间
+            long currentTime = System.currentTimeMillis();
+            elapsedTimeBeforeStart += (currentTime - startTime);
+            gameTimer.stop();
+            timerRunning = false;
+        }
+    }
+
+    /**
+     * 重置游戏计时器
+     */
+    public void resetTimer() {
+        // 停止计时器
+        if (gameTimer != null) {
+            gameTimer.stop();
+        }
+        // 重置计时数据
+        elapsedTimeBeforeStart = 0;
+        timerRunning = false;
+        // 更新显示为零
+        updateTimeDisplay(0);
+    }
+
+    /**
+     * 更新时间显示，格式为 mm:ss.xx（分:秒.厘秒）
+     *
+     * @param totalMillis 总毫秒数
+     */
+    private void updateTimeDisplay(long totalMillis) {
+        int minutes = (int) (totalMillis / 60000);
+        int seconds = (int) ((totalMillis % 60000) / 1000);
+        int centiseconds = (int) ((totalMillis % 1000) / 10);
+
+        String timeText = String.format("Time: %02d:%02d.%s",
+                minutes, seconds, millisFormat.format(centiseconds));
+
+        if (view != null) {
+            view.updateTimeDisplay(timeText);
+        }
     }
 
     /**
      * 设置父窗口引用，用于更新UI按钮状态
+     *
      * @param frame 父窗口
      */
     public void setParentFrame(GameFrame frame) {
@@ -102,6 +196,7 @@ public class GameController {
 
     /**
      * 设置胜利视图
+     *
      * @param victoryView 胜利界面视图
      */
     public void setVictoryView(VictoryView victoryView) {
@@ -114,7 +209,9 @@ public class GameController {
      * 设置胜利界面的按钮监听器
      */
     private void setupVictoryListeners() {
-        if (victoryView == null) return;
+        if (victoryView == null) {
+            return;
+        }
 
         // 设置回到主页按钮监听器 - 直接返回，不显示确认对话框
         victoryView.setHomeListener(e -> {
@@ -144,23 +241,24 @@ public class GameController {
     }
 
     /**
-     * 初始化游戏，在UI组件完全准备好后调用
-     * 这个方法应在GameFrame完成所有UI元素设置后调用
+     * 初始化游戏，在UI组件完全准备好后调用 这个方法应在GameFrame完成所有UI元素设置后调用
      */
     public void initializeGame() {
         // 初始化华容道求解器并计算最优解
         initializeSolver();
-        
+
         // 确保更新最短步数显示
         updateMinStepsDisplay();
 
         // 清空历史记录
         clearHistory();
+
+        // 重置计时器
+        resetTimer();
     }
 
     /**
-     * 初始化华容道求解器并预先计算最优解
-     * 将此逻辑抽取为单独方法，以便在构造函数和加载游戏后调用
+     * 初始化华容道求解器并预先计算最优解 将此逻辑抽取为单独方法，以便在构造函数和加载游戏后调用
      */
     private void initializeSolver() {
         System.out.println("=== Initializing Klotski Solver ===");
@@ -218,30 +316,37 @@ public class GameController {
             victoryView.hideVictory();
         }
 
+        // 重置计时器
+        resetTimer();
+
         System.out.println("Game restarted successfully");
     }
 
     /**
-     * 执行移动操作
-     * 根据方块所在位置和类型，调用对应的移动方法
-     * 
+     * 执行移动操作 根据方块所在位置和类型，调用对应的移动方法
+     *
      * @param row 当前方块的行索引
      * @param col 当前方块的列索引
      * @param direction 移动方向枚举(UP, DOWN, LEFT, RIGHT)
      * @return 移动是否成功执行
      */
     public boolean doMove(int row, int col, Direction direction) {
+        // 确保计时器在第一次移动时启动
+        if (!timerRunning) {
+            startTimer();
+        }
+
         // 获取当前位置方块的ID
         int blockId = model.getId(row, col);
-        
+
         // 如果不是有效的方块ID，返回false
         if (blockId <= 0) {
             return false;
         }
-        
+
         // 获取当前选中的方块组件
         BoxComponent selectedBox = view.getSelectedBox();
-        
+
         boolean moved = false;
 
         // 在移动前保存当前地图状态
@@ -257,14 +362,15 @@ public class GameController {
         // 根据不同类型的方块应用相应的移动策略
         moved = switch (blockId) {
             case 1 -> // 1x1方块
-                    singleBlockMover.move(row, col, direction, model, view, selectedBox);
+                singleBlockMover.move(row, col, direction, model, view, selectedBox);
             case 2 -> // 2x1水平方块
-                    horizontalBlockMover.move(row, col, direction, model, view, selectedBox);
+                horizontalBlockMover.move(row, col, direction, model, view, selectedBox);
             case 3 -> // 1x2垂直方块
-                    verticalBlockMover.move(row, col, direction, model, view, selectedBox);
+                verticalBlockMover.move(row, col, direction, model, view, selectedBox);
             case 4 -> // 2x2大方块
-                    bigBlockMover.move(row, col, direction, model, view, selectedBox);
-            default -> false;
+                bigBlockMover.move(row, col, direction, model, view, selectedBox);
+            default ->
+                false;
         };
 
         // 如果移动成功，记录操作并清空重做栈
@@ -281,6 +387,7 @@ public class GameController {
 
     /**
      * 撤销上一次移动
+     *
      * @return 撤销是否成功
      */
     public boolean undoMove() {
@@ -294,6 +401,7 @@ public class GameController {
 
     /**
      * 重做上一次撤销的移动
+     *
      * @return 重做是否成功
      */
     public boolean redoMove() {
@@ -322,8 +430,7 @@ public class GameController {
     }
 
     /**
-     * 更新最短步数显示
-     * 使用求解器获取当前布局到目标的最短步数
+     * 更新最短步数显示 使用求解器获取当前布局到目标的最短步数
      */
     public void updateMinStepsDisplay() {
         try {
@@ -353,6 +460,10 @@ public class GameController {
                 // 检查是否达到胜利条件且尚未显示胜利提示
                 if (minSteps == 0 && !victoryAchieved) {
                     victoryAchieved = true; // 标记已经显示过胜利提示
+
+                    // 停止计时器
+                    stopTimer();
+
                     // 显示胜利界面，并传递当前步数
                     SwingUtilities.invokeLater(() -> {
                         if (victoryView != null) {
@@ -400,8 +511,10 @@ public class GameController {
                 victoryView.hideVictory();
             }
 
-            // 注意：updateMinStepsDisplay方法现在通过回调在loadGameState内部调用，
-            // 确保在显示成功消息之前更新最短步数
+            // 重置计时器
+            resetTimer();
+
+            System.out.println("Game state loaded successfully");
         }
     }
 

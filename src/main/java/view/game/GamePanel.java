@@ -1,33 +1,43 @@
 package view.game;
 
+import java.awt.BasicStroke;
+import java.awt.GradientPaint;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.RenderingHints;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.swing.BorderFactory;
+import javax.swing.JLabel;
+import javax.swing.SwingUtilities;
+
 import controller.GameController;
 import model.Direction;
 import model.MapModel;
 import view.util.FrameUtil;
 
-import javax.swing.*;
-import java.awt.*;
-import java.util.ArrayList;
-import java.util.List;
-
 /**
- * 游戏面板类，继承自ListenerPanel，实现了键盘和鼠标事件处理。
- * 该类包含一个盒子组件列表，对应MapMatrix中的矩阵数据。
+ * 游戏面板类，继承自ListenerPanel，实现了键盘和鼠标事件处理。 该类包含一个盒子组件列表，对应MapMatrix中的矩阵数据。
  * 负责游戏界面的显示和交互。
  */
 public class GamePanel extends ListenerPanel {
+
     private List<BoxComponent> boxes;        // 存储所有盒子组件
     private MapModel model;                  // 游戏地图模型
     private GameController controller;       // 游戏控制器
     private JLabel stepLabel;                // 步数显示标签
     private JLabel minStepsLabel;            // 最短步数显示标签
+    private JLabel timeLabel;                // 用时显示标签
     private int steps;                       // 当前步数
     private final int GRID_SIZE = 70;        // 网格大小（像素），调整为更大尺寸
     private BoxComponent selectedBox;        // 当前选中的盒子
 
-
     /**
      * 构造函数，初始化游戏面板
+     *
      * @param model 游戏地图模型
      */
     public GamePanel(MapModel model) {
@@ -42,19 +52,9 @@ public class GamePanel extends ListenerPanel {
     }
 
     /**
-     * 初始化游戏，根据模型数据创建盒子组件
-     * 地图示例:
-     *                 {1, 2, 2, 1, 1},
-     *                 {3, 4, 4, 2, 2},
-     *                 {3, 4, 4, 1, 0},
-     *                 {1, 2, 2, 1, 0},
-     *                 {1, 1, 1, 1, 1}
-     * 其中:
-     * 1 - 单元格盒子 (1x1)
-     * 2 - 水平盒子 (2x1)
-     * 3 - 垂直盒子 (1x2)
-     * 4 - 大盒子 (2x2)
-     * 0 - 空白区域
+     * 初始化游戏，根据模型数据创建盒子组件 地图示例: {1, 2, 2, 1, 1}, {3, 4, 4, 2, 2}, {3, 4, 4, 1,
+     * 0}, {1, 2, 2, 1, 0}, {1, 1, 1, 1, 1} 其中: 1 - 单元格盒子 (1x1) 2 - 水平盒子 (2x1) 3
+     * - 垂直盒子 (1x2) 4 - 大盒子 (2x2) 0 - 空白区域
      */
     public void initialGame() {
         this.steps = 0;
@@ -107,6 +107,7 @@ public class GamePanel extends ListenerPanel {
 
     /**
      * 绘制组件，设置背景和边框
+     *
      * @param g 图形对象
      */
     @Override
@@ -119,8 +120,8 @@ public class GamePanel extends ListenerPanel {
 
         // 创建渐变背景 - 使用更柔和的米灰色调
         GradientPaint gradient = new GradientPaint(
-            0, 0, FrameUtil.PANEL_BACKGROUND_LIGHT,
-            getWidth(), getHeight(), FrameUtil.PANEL_BACKGROUND_DARK);
+                0, 0, FrameUtil.PANEL_BACKGROUND_LIGHT,
+                getWidth(), getHeight(), FrameUtil.PANEL_BACKGROUND_DARK);
         g2d.setPaint(gradient);
         g2d.fillRect(0, 0, getWidth(), getHeight());
 
@@ -140,14 +141,14 @@ public class GamePanel extends ListenerPanel {
 
         // 边框 - 使用柔和的深灰色边框
         this.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(FrameUtil.PANEL_BORDER_COLOR, 2),
-            BorderFactory.createEmptyBorder(1, 1, 1, 1)
+                BorderFactory.createLineBorder(FrameUtil.PANEL_BORDER_COLOR, 2),
+                BorderFactory.createEmptyBorder(1, 1, 1, 1)
         ));
     }
 
     /**
-     * 处理鼠标点击事件
-     * 如果点击到盒子组件，则选中或取消选中
+     * 处理鼠标点击事件 如果点击到盒子组件，则选中或取消选中
+     *
      * @param point 点击的坐标位置
      */
     @Override
@@ -167,7 +168,7 @@ public class GamePanel extends ListenerPanel {
         if (clickedBox != null) {
             // 点击音效反馈可以在这里添加
             // playClickSound();
-            
+
             if (selectedBox == null) {
                 // 没有选中的盒子，选中当前盒子
                 selectedBox = clickedBox;
@@ -188,8 +189,7 @@ public class GamePanel extends ListenerPanel {
     }
 
     /**
-     * 处理向右移动的事件
-     * 如果有选中的盒子，则尝试向右移动
+     * 处理向右移动的事件 如果有选中的盒子，则尝试向右移动
      */
     @Override
     public void doMoveRight() {
@@ -202,8 +202,7 @@ public class GamePanel extends ListenerPanel {
     }
 
     /**
-     * 处理向左移动的事件
-     * 如果有选中的盒子，则尝试向左移动
+     * 处理向左移动的事件 如果有选中的盒子，则尝试向左移动
      */
     @Override
     public void doMoveLeft() {
@@ -216,8 +215,7 @@ public class GamePanel extends ListenerPanel {
     }
 
     /**
-     * 处理向上移动的事件
-     * 如果有选中的盒子，则尝试向上移动
+     * 处理向上移动的事件 如果有选中的盒子，则尝试向上移动
      */
     @Override
     public void doMoveUp() {
@@ -230,8 +228,7 @@ public class GamePanel extends ListenerPanel {
     }
 
     /**
-     * 处理向下移动的事件
-     * 如果有选中的盒子，则尝试向下移动
+     * 处理向下移动的事件 如果有选中的盒子，则尝试向下移动
      */
     @Override
     public void doMoveDown() {
@@ -244,8 +241,7 @@ public class GamePanel extends ListenerPanel {
     }
 
     /**
-     * 处理撤销操作
-     * 调用控制器的撤销方法
+     * 处理撤销操作 调用控制器的撤销方法
      */
     @Override
     public void doUndo() {
@@ -255,8 +251,7 @@ public class GamePanel extends ListenerPanel {
     }
 
     /**
-     * 处理重做操作
-     * 调用控制器的重做方法
+     * 处理重做操作 调用控制器的重做方法
      */
     @Override
     public void doRedo() {
@@ -277,6 +272,7 @@ public class GamePanel extends ListenerPanel {
 
     /**
      * 设置步数标签
+     *
      * @param stepLabel 步数显示标签
      */
     public void setStepLabel(JLabel stepLabel) {
@@ -288,6 +284,7 @@ public class GamePanel extends ListenerPanel {
 
     /**
      * 获取当前步数
+     *
      * @return 当前步数
      */
     public int getSteps() {
@@ -295,8 +292,7 @@ public class GamePanel extends ListenerPanel {
     }
 
     /**
-     * 设置当前步数
-     * 用于从存档加载步数或撤销/重做操作后更新步数
+     * 设置当前步数 用于从存档加载步数或撤销/重做操作后更新步数
      *
      * @param steps 要设置的步数
      */
@@ -309,6 +305,7 @@ public class GamePanel extends ListenerPanel {
 
     /**
      * 设置最短步数标签
+     *
      * @param minStepsLabel 最短步数显示标签
      */
     public void setMinStepsLabel(JLabel minStepsLabel) {
@@ -317,6 +314,7 @@ public class GamePanel extends ListenerPanel {
 
     /**
      * 设置目标最短步数
+     *
      * @param minSteps 最短步数值
      */
     public void setMinSteps(int minSteps) {
@@ -330,7 +328,32 @@ public class GamePanel extends ListenerPanel {
     }
 
     /**
+     * 设置时间标签
+     *
+     * @param timeLabel 时间显示标签
+     */
+    public void setTimeLabel(JLabel timeLabel) {
+        this.timeLabel = timeLabel;
+        if (this.timeLabel != null) {
+            this.timeLabel.setText("Time: 00:00.00"); // 初始显示包含厘秒
+        }
+    }
+
+    /**
+     * 更新时间显示
+     *
+     * @param timeText 要显示的时间文本
+     */
+    public void updateTimeDisplay(String timeText) {
+        if (this.timeLabel != null) {
+            // 使用 SwingUtilities.invokeLater 确保在事件调度线程中更新UI
+            SwingUtilities.invokeLater(() -> this.timeLabel.setText(timeText));
+        }
+    }
+
+    /**
      * 设置游戏控制器
+     *
      * @param controller 游戏控制器
      */
     public void setController(GameController controller) {
@@ -339,6 +362,7 @@ public class GamePanel extends ListenerPanel {
 
     /**
      * 获取当前选中的盒子
+     *
      * @return 选中的盒子组件
      */
     public BoxComponent getSelectedBox() {
@@ -347,6 +371,7 @@ public class GamePanel extends ListenerPanel {
 
     /**
      * 获取网格大小
+     *
      * @return 网格大小（像素）
      */
     public int getGRID_SIZE() {
@@ -355,6 +380,7 @@ public class GamePanel extends ListenerPanel {
 
     /**
      * 获取所有盒子组件
+     *
      * @return 盒子组件列表
      */
     public List<BoxComponent> getBoxes() {
@@ -363,6 +389,7 @@ public class GamePanel extends ListenerPanel {
 
     /**
      * 获取游戏地图模型
+     *
      * @return 游戏地图模型
      */
     public MapModel getModel() {
@@ -370,8 +397,7 @@ public class GamePanel extends ListenerPanel {
     }
 
     /**
-     * 重置游戏面板
-     * 清除所有方块组件并重新初始化
+     * 重置游戏面板 清除所有方块组件并重新初始化
      */
     public void resetGame() {
         // 清除选中状态
@@ -395,5 +421,5 @@ public class GamePanel extends ListenerPanel {
         // 重新初始化游戏
         initialGame();
     }
-}
 
+}
