@@ -11,8 +11,6 @@ import view.settings.SettingsFrame;
 import model.MapModel;
 
 import javax.swing.*;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 
 /**
  * Home页面控制器

@@ -669,44 +669,6 @@ public class GameController {
         }
     }
 
-    /**
-     * 加载游戏存档 HomeController直接调用的入口方法
-     *
-     * @return 加载是否成功
-     */
-    public boolean loadGameState() {
-        // 确保saveManager已初始化
-        if (saveManager == null) {
-            System.err.println("SaveManager is not initialized");
-            return false;
-        }
-
-        // 加载游戏状态，跳过确认对话框（已在HomeController中确认）
-        boolean loadSuccess = saveManager.loadGameState(true);
-
-        if (loadSuccess) {
-            // 加载新布局后重新初始化求解器
-            this.solver = new KlotskiSolver();
-            initializeSolver();
-
-            // 清空历史记录
-            if (historyManager != null) {
-                historyManager.clearHistory();
-            }
-
-            // 重置胜利状态，因为加载了新布局
-            victoryAchieved = false;
-
-            // 隐藏胜利界面
-            if (victoryView != null) {
-                victoryView.hideVictory();
-            }
-
-            System.out.println("Game state loaded successfully");
-        }
-
-        return loadSuccess;
-    }
 
     /**
      * 保存当前游戏状态到数据库 在保存过程中暂停计时器
