@@ -7,15 +7,6 @@ import java.awt.event.ActionListener;
  */
 public interface VictoryView {
 
-    /**
-     * 显示胜利界面
-     */
-    void showVictory(String victoryMessage);
-
-    /**
-     * 显示胜利界面，包含步数信息
-     */
-    void showVictory(String victoryMessage, int steps);
 
     /**
      * 显示胜利界面，包含步数和用时信息

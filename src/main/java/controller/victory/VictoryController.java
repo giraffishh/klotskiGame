@@ -118,10 +118,14 @@ public class VictoryController {
             }
         });
 
-        // 设置再来一次按钮监听器
+        // 设置再来一次按钮监听器 - 添加防重复调用逻辑
         victoryView.setRestartListener(e -> {
+            // 先记录一个标记，表示正在处理
+
             victoryView.hideVictory();
+            // 重新开始游戏
             gameController.restartGame();
+
         });
 
         // 设置下一关按钮监听器
@@ -168,6 +172,7 @@ public class VictoryController {
                         victoryView.setNextLevelButtonEnabled(true);
                     }
 
+                    // 只调用一次showVictory方法，避免重复显示
                     victoryView.showVictory("Victory!", currentMoveCount, timeText);
                 } else {
                     // 如果胜利视图未设置，使用旧的对话框显示

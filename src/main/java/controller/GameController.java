@@ -17,6 +17,7 @@ import controller.mover.BigBlockMover;
 
 // 导入格子布局序列化工具类和存档管理器
 import controller.save.SaveManager;
+import controller.victory.VictoryController;
 
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
@@ -61,11 +62,8 @@ public class GameController {
     // 父窗口引用，用于更新按钮状态
     private GameFrame parentFrame;
 
-    // 游戏胜利状态标志，防止重复弹出胜利提示
-    private boolean victoryAchieved = false;
-
-    // 胜利界面引用
-    private VictoryView victoryView;
+    // 胜利控制器
+    private VictoryController victoryController;
 
     // 选关界面引用
     private LevelSelectFrame levelSelectFrame;
@@ -110,6 +108,9 @@ public class GameController {
 
         // 初始化历史记录管理器
         this.historyManager = new HistoryManager(view, model);
+
+        // 初始化胜利控制器
+        this.victoryController = new VictoryController(this);
 
         // 初始化计时器
         initializeTimer();
@@ -201,9 +202,12 @@ public class GameController {
         // 安全地更新按钮状态
         if (frame != null) {
             try {
-                // 将父窗口引用也传递给历史管理器
+                // 将父窗口引用也传递给历史管理器和胜利控制器
                 if (historyManager != null) {
                     historyManager.setParentFrame(frame);
+                }
+                if (victoryController != null) {
+                    victoryController.setParentFrame(frame);
                 }
             } catch (Exception e) {
                 // 捕获可能的异常，防止初始化时出错
@@ -219,9 +223,9 @@ public class GameController {
      * @param victoryView 胜利界面视图
      */
     public void setVictoryView(VictoryView victoryView) {
-        this.victoryView = victoryView;
-        // 为胜利界面设置按钮监听器
-        setupVictoryListeners();
+        if (victoryController != null) {
+            victoryController.setVictoryView(victoryView);
+        }
     }
 
     /**
@@ -231,6 +235,9 @@ public class GameController {
      */
     public void setLevelSelectFrame(LevelSelectFrame levelSelectFrame) {
         this.levelSelectFrame = levelSelectFrame;
+        if (victoryController != null) {
+            victoryController.setLevelSelectFrame(levelSelectFrame);
+        }
     }
 
     /**
@@ -240,50 +247,9 @@ public class GameController {
      */
     public void setCurrentLevelIndex(int index) {
         this.currentLevelIndex = index;
-    }
-
-    /**
-     * 设置胜利界面的按钮监听器
-     */
-    private void setupVictoryListeners() {
-        if (victoryView == null) {
-            return;
+        if (victoryController != null) {
+            victoryController.setCurrentLevelIndex(index);
         }
-
-        // 设置回到主页按钮监听器 - 直接返回，不显示确认对话框
-        victoryView.setHomeListener(e -> {
-            if (parentFrame != null) {
-                victoryView.hideVictory();
-                parentFrame.returnToHomeDirectly(); // 使用直接返回方法，不显示确认对话框
-            }
-        });
-
-        // 设置关卡选择按钮监听器
-        victoryView.setLevelSelectListener(e -> {
-            victoryView.hideVictory();
-            // 显示关卡选择界面
-            if (levelSelectFrame != null) {
-                levelSelectFrame.showLevelSelect();
-            } else {
-                System.err.println("Level selection frame reference is not set");
-            }
-        });
-
-        // 设置再来一次按钮监听器
-        victoryView.setRestartListener(e -> {
-            victoryView.hideVictory();
-            restartGame();
-        });
-
-        // 设置下一关按钮监听器
-        victoryView.setNextLevelListener(e -> {
-            // 增加检查：如果当前是最后一关，不执行任何操作
-            if (!isLastLevel()) {
-                // 先隐藏胜利界面，再加载下一关
-                victoryView.hideVictory();
-                SwingUtilities.invokeLater(this::loadNextLevel); // 使用invokeLater确保UI更新完成后再加载
-            }
-        });
     }
 
     /**
@@ -301,6 +267,11 @@ public class GameController {
 
         // 重置计时器
         resetTimer();
+
+        // 重置胜利控制器状态
+        if (victoryController != null) {
+            victoryController.resetVictoryState();
+        }
     }
 
     /**
@@ -340,136 +311,44 @@ public class GameController {
     public void restartGame() {
         System.out.println("Restarting game...");
 
-        // 重置地图模型到初始状态
-        model.resetToInitialState();
-
-        // 重置游戏面板
-        view.resetGame();
-
-        // 重置后更新最短步数显示
-        // 只有在游戏实际显示时才需要重新求解
-        if (view.isShowing()) {
-            this.solver = new KlotskiSolver();
-            initializeSolver();
-        }
-        updateMinStepsDisplay();
-
-        // 清空历史记录
-        historyManager.clearHistory();
-
-        // 重置胜利状态
-        victoryAchieved = false;
-
-        // 隐藏胜利界面
-        if (victoryView != null) {
-            victoryView.hideVictory();
-        }
-
-        // 重置计时器
-        resetTimer();
-
-        System.out.println("Game restarted successfully");
-    }
-
-    /**
-     * 加载下一关
-     */
-    public void loadNextLevel() {
-        // 添加前置检查：如果当前已经是最后一关，直接显示提示
-        if (isLastLevel()) {
-            // 只显示一个"确定"按钮，点击后直接返回主页
-            JLabel messageLabel = new JLabel("Congratulations! You have completed all levels!");
-            messageLabel.setFont(FontManager.getRegularFont(16));
-
-            JOptionPane.showMessageDialog(
-                    parentFrame,
-                    messageLabel,
-                    "Game Complete",
-                    JOptionPane.INFORMATION_MESSAGE
-            );
-
-            // 直接返回主页，不需要用户选择
-            if (parentFrame != null) {
-                parentFrame.returnToHomeDirectly();
+        try {
+            // 检查model是否为null
+            if (model == null) {
+                return;
             }
-            return; // 直接返回，不执行后续加载逻辑
-        }
 
-        // 原有的加载下一关逻辑
-        if (levelSelectFrame != null) {
-            LevelSelectController levelController = levelSelectFrame.getController();
-            if (levelController != null) {
-                // 首先隐藏胜利界面（确保界面关闭后再加载新关卡）
-                if (victoryView != null) {
-                    victoryView.hideVictory();
-                }
+            // 重置地图模型到初始状态
+            model.resetToInitialState();
 
-                // 使用我们新增的方法尝试加载下一关
-                boolean success = levelController.loadNextLevel(currentLevelIndex);
-
-                if (success) {
-                    // 更新当前关卡索引
-                    currentLevelIndex = levelController.getNextLevelIndex(currentLevelIndex);
-                } else {
-                    // 这部分逻辑理论上不会执行到，因为前面的isLastLevel()检查已经处理了
-                    // 但为了代码健壮性，显示确认提示并直接返回主页
-                    JLabel messageLabel = new JLabel("Congratulations! You have completed all levels!");
-                    messageLabel.setFont(FontManager.getRegularFont(16));
-
-                    JOptionPane.showMessageDialog(
-                            parentFrame,
-                            messageLabel,
-                            "Game Complete",
-                            JOptionPane.INFORMATION_MESSAGE
-                    );
-
-                    // 直接返回主页
-                    if (parentFrame != null) {
-                        parentFrame.returnToHomeDirectly();
-                    }
-                }
-            } else {
-                // 用户友好的错误提示
-                if (parentFrame != null) {
-                    JOptionPane.showMessageDialog(
-                            parentFrame,
-                            "Unable to load next level. Please return to level selection.",
-                            "Error",
-                            JOptionPane.ERROR_MESSAGE
-                    );
-                } else {
-                    System.err.println("Level selection controller is null");
-                }
+            // 重置游戏面板
+            if (view != null) {
+                view.resetGame();
             }
-        } else {
-            // 用户友好的错误提示
-            if (parentFrame != null) {
-                JOptionPane.showMessageDialog(
-                        parentFrame,
-                        "Unable to load next level. Level selection frame not initialized.",
-                        "Error",
-                        JOptionPane.ERROR_MESSAGE
-                );
-            } else {
-                System.err.println("Level selection frame reference is not set");
-            }
-        }
-    }
 
-    /**
-     * 检查当前是否为最后一关
-     *
-     * @return 如果是最后一关返回true，否则返回false
-     */
-    private boolean isLastLevel() {
-        if (levelSelectFrame != null) {
-            LevelSelectController levelController = levelSelectFrame.getController();
-            if (levelController != null) {
-                return !levelController.hasNextLevel(currentLevelIndex);
+            // 重置后更新最短步数显示
+            // 只有在游戏实际显示时才需要重新求解
+            if (view != null && view.isShowing()) {
+                this.solver = new KlotskiSolver();
+                initializeSolver();
             }
+            updateMinStepsDisplay();
+
+            // 清空历史记录
+            historyManager.clearHistory();
+
+            // 重置胜利控制器状态
+            if (victoryController != null) {
+                victoryController.resetVictoryState();
+            }
+
+            // 重置计时器
+            resetTimer();
+
+            System.out.println("Game restarted successfully");
+        } catch (Exception e) {
+            System.err.println("Error during game restart: " + e.getMessage());
+            e.printStackTrace();
         }
-        // 如果无法确定，为安全起见，假设是最后一关
-        return true;
     }
 
     /**
@@ -607,56 +486,14 @@ public class GameController {
                 System.out.println("A* nodes explored: " + solver.getNodesExploredAStar());
                 System.out.println("Minimum steps: " + minSteps);
 
-                // 检查是否达到胜利条件且尚未显示胜利提示
-                if (minSteps == 0 && !victoryAchieved) {
-                    victoryAchieved = true; // 标记已经显示过胜利提示
-
-                    // 停止计时器
-                    stopTimer();
-
-                    // 显示胜利界面，并传递当前步数和游戏用时
-                    SwingUtilities.invokeLater(() -> {
-                        if (victoryView != null) {
-                            int currentSteps = historyManager.getMoveCount(); // 获取当前步数
-
-                            // 计算总用时（毫秒）
-                            long currentTime = System.currentTimeMillis();
-                            long totalElapsed = elapsedTimeBeforeStart;
-                            if (timerRunning) {
-                                totalElapsed += (currentTime - startTime);
-                            }
-
-                            // 格式化时间字符串
-                            int minutes = (int) (totalElapsed / 60000);
-                            int seconds = (int) ((totalElapsed % 60000) / 1000);
-                            int centiseconds = (int) ((totalElapsed % 1000) / 10);
-
-                            String timeText = String.format("Time: %02d:%02d.%s",
-                                    minutes, seconds, millisFormat.format(centiseconds));
-
-                            // 显示带有时间的胜利界面
-                            victoryView.showVictory("Victory!", currentSteps, timeText);
-
-                            // 检查是否为最后一关
-                            boolean lastLevel = isLastLevel();
-
-                            // 设置胜利消息和按钮状态
-                            if (lastLevel) {
-                                victoryView.setVictoryMessage("Congratulations on completing the game!");
-                                victoryView.setNextLevelButtonEnabled(false);
-                            } else {
-                                victoryView.setVictoryMessage("Victory!");
-                                victoryView.setNextLevelButtonEnabled(true);
-                            }
-
-                            victoryView.showVictory("Victory!", currentSteps);
-                        } else {
-                            // 如果胜利视图未设置，使用旧的对话框显示
-                            JLabel messageLabel = new JLabel("Congratulations! You have completed the Klotski challenge!");
-                            messageLabel.setFont(FontManager.getTitleFont(16));
-                            JOptionPane.showMessageDialog(view, messageLabel, "Victory", JOptionPane.INFORMATION_MESSAGE);
-                        }
-                    });
+                // 使用胜利控制器检查胜利条件
+                if (victoryController != null) {
+                    // 传递当前的最小步数、游戏用时和当前步数
+                    victoryController.checkVictory(
+                            minSteps,
+                            getGameTimeInMillis(),
+                            historyManager.getMoveCount()
+                    );
                 }
             } else {
                 // 如果找不到路径，显示默认值
@@ -668,7 +505,6 @@ public class GameController {
             view.setMinSteps(-1);
         }
     }
-
 
     /**
      * 保存当前游戏状态到数据库 在保存过程中暂停计时器
@@ -724,4 +560,3 @@ public class GameController {
         updateTimeDisplay(gameTime);
     }
 }
-
