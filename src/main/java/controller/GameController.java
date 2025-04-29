@@ -235,8 +235,11 @@ public class GameController {
         view.resetGame();
 
         // 重置后更新最短步数显示
-        this.solver = new KlotskiSolver();
-        initializeSolver();
+        // 只有在游戏实际显示时才需要重新求解
+        if (view.isShowing()) {
+            this.solver = new KlotskiSolver();
+            initializeSolver();
+        }
         updateMinStepsDisplay();
 
         // 清空历史记录
@@ -483,7 +486,6 @@ public class GameController {
                 System.out.println("Minimum steps: " + minSteps);
 
                 // 检查是否达到胜利条件且尚未显示胜利提示
-                // 在updateMinStepsDisplay方法内部，修改胜利界面显示部分
                 if (minSteps == 0 && !victoryAchieved) {
                     victoryAchieved = true; // 标记已显示过胜利提示
                     // 显示胜利界面，并传递当前步数

@@ -170,6 +170,10 @@ public class LevelSelectController {
             // 设置当前关卡索引
             if (gameFrame.getController() != null) {
                 gameFrame.getController().setCurrentLevelIndex(levelIndex);
+                
+                // 在这里添加重置游戏状态的调用
+                // 确保在新关卡开始时游戏状态是初始的
+                gameFrame.getController().restartGame();
             }
 
             // 显示游戏窗口，隐藏关卡选择窗口

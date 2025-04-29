@@ -261,10 +261,10 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE);
 
-            // 如果用户确认，则重置游戏状态并返回主界面
+            // 如果用户确认，则返回主界面，但不重置游戏状态
             if (result == JOptionPane.YES_OPTION) {
-                // 重置游戏状态到初始状态
-                controller.restartGame();
+                // 不再调用controller.restartGame()，防止不必要地重新初始化求解器
+                // 只需在下次进入游戏时再重置状态就可以了
 
                 // 显示主页面
                 homeFrame.setVisible(true);
@@ -286,9 +286,8 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
      */
     public void returnToHomeDirectly() {
         if (homeFrame != null) {
-            // 重置游戏状态到初始状态
-            controller.restartGame();
-
+            // 不再调用controller.restartGame()，防止不必要地重新初始化求解器
+            
             // 显示主页面
             homeFrame.setVisible(true);
             // 隐藏游戏窗口
@@ -299,6 +298,24 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
                     "Cannot return to home page. Home page reference is missing.",
                     "Error",
                     JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    /**
+     * 返回关卡选择界面
+     */
+    public void returnToLevelSelect() {
+        if (controller != null && controller.getLevelSelectFrame() != null) {
+            // 隐藏游戏窗口
+            this.setVisible(false);
+            // 显示关卡选择界面
+            controller.getLevelSelectFrame().showLevelSelect();
+        } else {
+            // 如果关卡选择界面引用缺失，显示错误消息
+            JOptionPane.showMessageDialog(this,
+                "Cannot return to level selection. Level selection reference is missing.",
+                "Error",
+                JOptionPane.ERROR_MESSAGE);
         }
     }
 
