@@ -112,6 +112,10 @@ public class VictoryController {
             victoryView.hideVictory();
             // 显示关卡选择界面
             if (levelSelectFrame != null) {
+                // 先关闭游戏界面，再显示关卡选择界面
+                if (parentFrame != null) {
+                    parentFrame.dispose(); // 关闭游戏窗口
+                }
                 levelSelectFrame.showLevelSelect();
             } else {
                 System.err.println("Level selection frame reference is not set");
