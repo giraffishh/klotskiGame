@@ -1,18 +1,18 @@
 package controller.history;
 
+import java.util.Stack;
+
 import model.Direction;
 import model.MapModel;
 import view.game.BoxComponent;
 import view.game.GameFrame;
 import view.game.GamePanel;
 
-import java.util.Stack;
-
 /**
- * 历史记录管理器
- * 负责处理游戏中的撤销/重做操作
+ * 历史记录管理器 负责处理游戏中的撤销/重做操作
  */
 public class HistoryManager {
+
     private final Stack<MoveRecord> undoStack; // 撤销栈，存储已执行的移动
     private final Stack<MoveRecord> redoStack; // 重做栈，存储被撤销的移动
 
@@ -28,18 +28,28 @@ public class HistoryManager {
     }
 
     /**
-     * 设置父窗口引用，用于更新UI按钮状态
+     * 设置父窗口引用
+     *
+     * @param frame 游戏窗口
      */
     public void setParentFrame(GameFrame frame) {
         this.parentFrame = frame;
-        updateUndoRedoButtons();
+        // 添加异常处理和空指针检查
+        if (frame != null) {
+            try {
+                updateUndoRedoButtons();
+            } catch (Exception e) {
+                // 捕获可能的空指针异常等
+                System.err.println("Error updating buttons in HistoryManager: " + e.getMessage());
+            }
+        }
     }
 
     /**
      * 记录移动操作
      */
     public void recordMove(int[][] beforeState, int originalRow, int originalCol,
-                           BoxComponent selectedBox, int blockId, Direction direction) {
+            BoxComponent selectedBox, int blockId, Direction direction) {
         // 记录移动操作
         MoveRecord record = new MoveRecord(
                 beforeState,
@@ -64,6 +74,7 @@ public class HistoryManager {
 
     /**
      * 撤销上一次移动
+     *
      * @return 撤销是否成功
      */
     public boolean undoMove() {
@@ -96,6 +107,7 @@ public class HistoryManager {
 
     /**
      * 重做上一次撤销的移动
+     *
      * @return 重做是否成功
      */
     public boolean redoMove() {
@@ -139,8 +151,9 @@ public class HistoryManager {
      * 更新撤销和重做按钮状态
      */
     private void updateUndoRedoButtons() {
+        // 添加空指针检查
         if (parentFrame != null) {
-            parentFrame.updateUndoRedoButtons(!undoStack.isEmpty(), !redoStack.isEmpty());
+            parentFrame.updateUndoRedoButtons(canUndo(), canRedo());
         }
     }
 
@@ -183,10 +196,10 @@ public class HistoryManager {
             // 重绘方块
             targetBlock.repaint();
         } else {
-            System.err.println("无法找到要撤销/重做的方块，位置: " +
-                    (isUndo ? record.getNewRow() : record.getOriginalRow()) + "," +
-                    (isUndo ? record.getNewCol() : record.getOriginalCol()) +
-                    " ID: " + record.getBlockId());
+            System.err.println("无法找到要撤销/重做的方块，位置: "
+                    + (isUndo ? record.getNewRow() : record.getOriginalRow()) + ","
+                    + (isUndo ? record.getNewCol() : record.getOriginalCol())
+                    + " ID: " + record.getBlockId());
         }
 
         // 重绘整个面板
@@ -203,15 +216,13 @@ public class HistoryManager {
                 // 对于2x2大方块和2x1水平方块，只检查左上角位置
                 if ((blockId == 4 || blockId == 2) && box.getWidth() > view.getGRID_SIZE()) {
                     return box;
-                }
-                // 对于1x2垂直方块，只检查左上角位置
+                } // 对于1x2垂直方块，只检查左上角位置
                 else if (blockId == 3 && box.getHeight() > view.getGRID_SIZE()) {
                     return box;
-                }
-                // 对于1x1小方块，检查精确位置
-                else if (blockId == 1 &&
-                        box.getWidth() == view.getGRID_SIZE() &&
-                        box.getHeight() == view.getGRID_SIZE()) {
+                } // 对于1x1小方块，检查精确位置
+                else if (blockId == 1
+                        && box.getWidth() == view.getGRID_SIZE()
+                        && box.getHeight() == view.getGRID_SIZE()) {
                     return box;
                 }
             }
@@ -235,6 +246,7 @@ public class HistoryManager {
 
     /**
      * 获取当前移动次数
+     *
      * @return 玩家已执行的移动次数
      */
     public int getMoveCount() {

@@ -1,19 +1,19 @@
 package controller;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import controller.util.BoardSerializer;
 import model.MapModel;
 import view.game.GameFrame;
 import view.home.HomeFrame;
 import view.level.LevelSelectView;
-import controller.util.BoardSerializer;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
- * 关卡选择控制器
- * 管理华容道游戏的预设关卡，提供选择和加载功能
+ * 关卡选择控制器 管理华容道游戏的预设关卡，提供选择和加载功能
  */
 public class LevelSelectController {
+
     // 视图引用
     private final LevelSelectView levelSelectView;
 
@@ -26,6 +26,7 @@ public class LevelSelectController {
 
     /**
      * 创建关卡选择控制器
+     *
      * @param levelSelectView 关卡选择视图
      */
     public LevelSelectController(LevelSelectView levelSelectView) {
@@ -35,23 +36,23 @@ public class LevelSelectController {
 
     /**
      * 初始化预设关卡
+     *
      * @return 关卡数据列表
      */
     private List<LevelData> initializeLevels() {
         List<LevelData> levelList = new ArrayList<>();
 
         // 添加预设关卡
-
         // 经典横刀立马布局
         levelList.add(new LevelData(
                 "Level 1",
                 "Classic Layout",
                 new int[][]{
-                        {BoardSerializer.VERTICAL, BoardSerializer.SOLDIER, BoardSerializer.SOLDIER, BoardSerializer.VERTICAL},
-                        {BoardSerializer.VERTICAL, BoardSerializer.SOLDIER, BoardSerializer.SOLDIER, BoardSerializer.VERTICAL},
-                        {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL},
-                        {BoardSerializer.SOLDIER, BoardSerializer.EMPTY, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO},
-                        {BoardSerializer.SOLDIER, BoardSerializer.EMPTY, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO}
+                    {BoardSerializer.VERTICAL, BoardSerializer.SOLDIER, BoardSerializer.SOLDIER, BoardSerializer.VERTICAL},
+                    {BoardSerializer.VERTICAL, BoardSerializer.SOLDIER, BoardSerializer.SOLDIER, BoardSerializer.VERTICAL},
+                    {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL},
+                    {BoardSerializer.SOLDIER, BoardSerializer.EMPTY, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO},
+                    {BoardSerializer.SOLDIER, BoardSerializer.EMPTY, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO}
                 }
         ));
 
@@ -60,11 +61,11 @@ public class LevelSelectController {
                 "Level 2",
                 "Medium Difficulty",
                 new int[][]{
-                        {BoardSerializer.SOLDIER, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.SOLDIER},
-                        {BoardSerializer.SOLDIER, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.SOLDIER},
-                        {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL},
-                        {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL},
-                        {BoardSerializer.EMPTY, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.EMPTY}
+                    {BoardSerializer.SOLDIER, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.SOLDIER},
+                    {BoardSerializer.SOLDIER, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.SOLDIER},
+                    {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL},
+                    {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL},
+                    {BoardSerializer.EMPTY, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.EMPTY}
                 }
         ));
 
@@ -73,11 +74,11 @@ public class LevelSelectController {
                 "Level 3",
                 "Medium Difficulty",
                 new int[][]{
-                        {BoardSerializer.VERTICAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.VERTICAL},
-                        {BoardSerializer.VERTICAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.VERTICAL},
-                        {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL},
-                        {BoardSerializer.SOLDIER, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.SOLDIER},
-                        {BoardSerializer.SOLDIER, BoardSerializer.EMPTY, BoardSerializer.EMPTY, BoardSerializer.SOLDIER}
+                    {BoardSerializer.VERTICAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.VERTICAL},
+                    {BoardSerializer.VERTICAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.VERTICAL},
+                    {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL},
+                    {BoardSerializer.SOLDIER, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.SOLDIER},
+                    {BoardSerializer.SOLDIER, BoardSerializer.EMPTY, BoardSerializer.EMPTY, BoardSerializer.SOLDIER}
                 }
         ));
 
@@ -86,11 +87,11 @@ public class LevelSelectController {
                 "Level 4",
                 "Hard Layout",
                 new int[][]{
-                        {BoardSerializer.EMPTY, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.EMPTY},
-                        {BoardSerializer.SOLDIER, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.SOLDIER},
-                        {BoardSerializer.VERTICAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.VERTICAL},
-                        {BoardSerializer.VERTICAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.VERTICAL},
-                        {BoardSerializer.SOLDIER, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.SOLDIER}
+                    {BoardSerializer.EMPTY, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.EMPTY},
+                    {BoardSerializer.SOLDIER, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.SOLDIER},
+                    {BoardSerializer.VERTICAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.VERTICAL},
+                    {BoardSerializer.VERTICAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.VERTICAL},
+                    {BoardSerializer.SOLDIER, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.SOLDIER}
                 }
         ));
 
@@ -99,11 +100,11 @@ public class LevelSelectController {
                 "Level 5",
                 "Hard Layout",
                 new int[][]{
-                        {BoardSerializer.SOLDIER, BoardSerializer.VERTICAL, BoardSerializer.VERTICAL, BoardSerializer.VERTICAL},
-                        {BoardSerializer.SOLDIER, BoardSerializer.VERTICAL, BoardSerializer.VERTICAL, BoardSerializer.VERTICAL},
-                        {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.SOLDIER, BoardSerializer.SOLDIER},
-                        {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO},
-                        {BoardSerializer.EMPTY, BoardSerializer.EMPTY, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO}
+                    {BoardSerializer.SOLDIER, BoardSerializer.VERTICAL, BoardSerializer.VERTICAL, BoardSerializer.VERTICAL},
+                    {BoardSerializer.SOLDIER, BoardSerializer.VERTICAL, BoardSerializer.VERTICAL, BoardSerializer.VERTICAL},
+                    {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.SOLDIER, BoardSerializer.SOLDIER},
+                    {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO},
+                    {BoardSerializer.EMPTY, BoardSerializer.EMPTY, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO}
                 }
         ));
 
@@ -112,11 +113,11 @@ public class LevelSelectController {
                 "Level 6",
                 "Hard Layout",
                 new int[][]{
-                        {BoardSerializer.VERTICAL, BoardSerializer.SOLDIER, BoardSerializer.SOLDIER, BoardSerializer.VERTICAL},
-                        {BoardSerializer.VERTICAL, BoardSerializer.SOLDIER, BoardSerializer.SOLDIER, BoardSerializer.VERTICAL},
-                        {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL},
-                        {BoardSerializer.SOLDIER, BoardSerializer.EMPTY, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO},
-                        {BoardSerializer.SOLDIER, BoardSerializer.EMPTY, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO}
+                    {BoardSerializer.VERTICAL, BoardSerializer.SOLDIER, BoardSerializer.SOLDIER, BoardSerializer.VERTICAL},
+                    {BoardSerializer.VERTICAL, BoardSerializer.SOLDIER, BoardSerializer.SOLDIER, BoardSerializer.VERTICAL},
+                    {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL},
+                    {BoardSerializer.SOLDIER, BoardSerializer.EMPTY, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO},
+                    {BoardSerializer.SOLDIER, BoardSerializer.EMPTY, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO}
                 }
         ));
 
@@ -125,6 +126,7 @@ public class LevelSelectController {
 
     /**
      * 设置游戏窗口引用
+     *
      * @param gameFrame 游戏窗口实例
      */
     public void setGameFrame(GameFrame gameFrame) {
@@ -133,6 +135,7 @@ public class LevelSelectController {
 
     /**
      * 设置主页窗口引用
+     *
      * @param homeFrame 主页窗口实例
      */
     public void setHomeFrame(HomeFrame homeFrame) {
@@ -141,6 +144,7 @@ public class LevelSelectController {
 
     /**
      * 获取所有关卡数据
+     *
      * @return 关卡数据列表
      */
     public List<LevelData> getLevels() {
@@ -149,44 +153,74 @@ public class LevelSelectController {
 
     /**
      * 选择并加载关卡
+     *
      * @param levelIndex 关卡索引
      */
     public void selectLevel(int levelIndex) {
+        // 检查索引有效性
         if (levelIndex < 0 || levelIndex >= levels.size()) {
             levelSelectView.showStyledMessage("Invalid level selection", "Error", javax.swing.JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        if (gameFrame != null) {
+        if (gameFrame == null) {
+            levelSelectView.showStyledMessage("Game window not properly initialized", "Error", javax.swing.JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        try {
             // 获取选中的关卡数据
             LevelData selected = levels.get(levelIndex);
+            if (selected == null || selected.getLayout() == null) {
+                levelSelectView.showStyledMessage("Invalid level data", "Error", javax.swing.JOptionPane.ERROR_MESSAGE);
+                return;
+            }
 
             // 创建新的地图模型
-            MapModel mapModel = new MapModel(selected.layout);
+            MapModel mapModel = new MapModel(selected.getLayout());
+
+            // 停止任何可能运行的计时器
+            if (gameFrame.getController() != null) {
+                gameFrame.getController().stopTimer();
+            }
 
             // 加载关卡到游戏窗口
             gameFrame.loadLevel(mapModel);
 
-            // 设置当前关卡索引
-            if (gameFrame.getController() != null) {
-                gameFrame.getController().setCurrentLevelIndex(levelIndex);
-                
-                // 在这里添加重置游戏状态的调用
-                // 确保在新关卡开始时游戏状态是初始的
-                gameFrame.getController().restartGame();
+            // 验证控制器是否已正确初始化
+            GameController controller = gameFrame.getController();
+            if (controller != null) {
+                // 设置当前关卡索引
+                controller.setCurrentLevelIndex(levelIndex);
+
+                // 确保游戏状态被完全重置
+                controller.resetTimer();
+
+                // 关卡已经在loadLevel中重置，不需要再次调用restartGame
+                // 因为GameFrame.loadLevel方法中会创建新的控制器并调用initializeGame
             }
 
             // 显示游戏窗口，隐藏关卡选择窗口
             gameFrame.setVisible(true);
             levelSelectView.hideLevelSelect();
-        } else {
-            levelSelectView.showStyledMessage("Game window not properly initialized", "Error", javax.swing.JOptionPane.ERROR_MESSAGE);
+
+            // 确保游戏面板获得焦点以接收键盘事件
+            if (gameFrame.getGamePanel() != null) {
+                gameFrame.getGamePanel().requestFocusInWindow();
+            }
+        } catch (Exception e) {
+            // 捕获所有可能的异常
+            e.printStackTrace();
+            levelSelectView.showStyledMessage(
+                    "Failed to load level: " + e.getMessage(),
+                    "Error",
+                    javax.swing.JOptionPane.ERROR_MESSAGE
+            );
         }
     }
 
     /**
-     * 重置所有关卡数据
-     * 当从具体关卡返回时调用，确保再次进入时为初始状态
+     * 重置所有关卡数据 当从具体关卡返回时调用，确保再次进入时为初始状态
      */
     public void resetAllLevels() {
         // 重新初始化所有关卡数据
@@ -195,8 +229,7 @@ public class LevelSelectController {
     }
 
     /**
-     * 直接选择第一关
-     * 供Home界面的New Game按钮调用
+     * 直接选择第一关 供Home界面的New Game按钮调用
      */
     public void selectFirstLevel() {
         // 始终加载索引为0的第一关
@@ -205,6 +238,7 @@ public class LevelSelectController {
 
     /**
      * 获取指定关卡的索引的下一关索引
+     *
      * @param currentIndex 当前关卡索引
      * @return 下一关索引，如果没有下一关则返回-1
      */
@@ -218,6 +252,7 @@ public class LevelSelectController {
 
     /**
      * 检查指定关卡是否有下一关
+     *
      * @param currentIndex 当前关卡索引
      * @return 是否有下一关
      */
@@ -227,14 +262,24 @@ public class LevelSelectController {
 
     /**
      * 直接加载下一关
+     *
      * @param currentIndex 当前关卡索引
      * @return 是否成功加载下一关
      */
     public boolean loadNextLevel(int currentIndex) {
         int nextLevelIndex = getNextLevelIndex(currentIndex);
         if (nextLevelIndex != -1) {
-            selectLevel(nextLevelIndex);
-            return true;
+            try {
+                selectLevel(nextLevelIndex);
+                return true;
+            } catch (Exception e) {
+                e.printStackTrace();
+                levelSelectView.showStyledMessage(
+                        "Failed to load next level: " + e.getMessage(),
+                        "Error",
+                        javax.swing.JOptionPane.ERROR_MESSAGE
+                );
+            }
         }
         return false;
     }
@@ -255,6 +300,7 @@ public class LevelSelectController {
      * 关卡数据内部类
      */
     public static class LevelData {
+
         private final String name;
         private final String description;
         private final int[][] layout;

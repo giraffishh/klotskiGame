@@ -197,8 +197,20 @@ public class GameController {
      */
     public void setParentFrame(GameFrame frame) {
         this.parentFrame = frame;
-        // 将父窗口引用也传递给历史管理器
-        historyManager.setParentFrame(frame);
+
+        // 安全地更新按钮状态
+        if (frame != null) {
+            try {
+                // 将父窗口引用也传递给历史管理器
+                if (historyManager != null) {
+                    historyManager.setParentFrame(frame);
+                }
+            } catch (Exception e) {
+                // 捕获可能的异常，防止初始化时出错
+                System.err.println("Error setting parent frame: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
     }
 
     /**
@@ -214,6 +226,7 @@ public class GameController {
 
     /**
      * 设置关卡选择界面
+     *
      * @param levelSelectFrame 关卡选择界面
      */
     public void setLevelSelectFrame(LevelSelectFrame levelSelectFrame) {
@@ -222,6 +235,7 @@ public class GameController {
 
     /**
      * 设置当前关卡索引
+     *
      * @param index 关卡索引
      */
     public void setCurrentLevelIndex(int index) {
@@ -444,6 +458,7 @@ public class GameController {
 
     /**
      * 检查当前是否为最后一关
+     *
      * @return 如果是最后一关返回true，否则返回false
      */
     private boolean isLastLevel() {
@@ -655,11 +670,19 @@ public class GameController {
     }
 
     /**
-     * 加载游戏存档
+     * 加载游戏存档 HomeController直接调用的入口方法
+     *
+     * @return 加载是否成功
      */
-    public void loadGameState() {
-        // 加载游戏状态
-        boolean loadSuccess = saveManager.loadGameState();
+    public boolean loadGameState() {
+        // 确保saveManager已初始化
+        if (saveManager == null) {
+            System.err.println("SaveManager is not initialized");
+            return false;
+        }
+
+        // 加载游戏状态，跳过确认对话框（已在HomeController中确认）
+        boolean loadSuccess = saveManager.loadGameState(true);
 
         if (loadSuccess) {
             // 加载新布局后重新初始化求解器
@@ -667,7 +690,9 @@ public class GameController {
             initializeSolver();
 
             // 清空历史记录
-            clearHistory();
+            if (historyManager != null) {
+                historyManager.clearHistory();
+            }
 
             // 重置胜利状态，因为加载了新布局
             victoryAchieved = false;
@@ -679,6 +704,8 @@ public class GameController {
 
             System.out.println("Game state loaded successfully");
         }
+
+        return loadSuccess;
     }
 
     /**
@@ -735,3 +762,4 @@ public class GameController {
         updateTimeDisplay(gameTime);
     }
 }
+

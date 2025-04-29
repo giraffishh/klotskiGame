@@ -8,6 +8,7 @@ import view.home.HomeView;
 import view.level.LevelSelectFrame;
 import view.login.LoginFrame;
 import view.settings.SettingsFrame;
+import model.MapModel;
 
 import javax.swing.*;
 import java.text.SimpleDateFormat;
@@ -106,16 +107,44 @@ public class HomeController {
         
         // 只有在用户确认后才进入游戏页面
         if (shouldLoad) {
-            gameFrame.setVisible(true);
-            homeView.closeHome();
-            
-            // 直接使用SaveManager加载游戏状态，跳过确认对话框
-            boolean loadSuccess = saveManager.loadGameState(true); // true表示跳过确认
-            
-            // 如果加载失败，返回主页
-            if (!loadSuccess) {
-                gameFrame.setVisible(false);
-                homeView.showHome();
+            // 获取存档数据
+            DatabaseService.GameSaveData saveData = saveManager.getLoadedGameData(true);
+
+            if (saveData != null) {
+                // 从存档数据创建地图模型
+                MapModel mapModel = saveManager.createMapModelFromSave(saveData);
+
+                if (mapModel != null) {
+                    // 显示游戏窗口并隐藏主页面
+                    gameFrame.setVisible(true);
+                    homeView.closeHome();
+
+                    // 使用loadLevel方法加载游戏（与levelSelect使用相同的方法）
+                    gameFrame.loadLevel(mapModel);
+
+                    // 设置已保存的步数
+                    if (gameFrame.getGamePanel() != null) {
+                        gameFrame.getGamePanel().setSteps(saveData.getSteps());
+                    }
+
+                    // 设置已保存的游戏时间
+                    if (gameFrame.getController() != null) {
+                        gameFrame.getController().setLoadedGameTime(saveData.getGameTime());
+                    }
+
+                    // 确保游戏面板获得焦点以接收键盘事件
+                    gameFrame.getGamePanel().requestFocusInWindow();
+                } else {
+                    homeView.showStyledMessage(
+                        "Failed to create map model from save data",
+                        "Error",
+                        JOptionPane.ERROR_MESSAGE);
+                }
+            } else {
+                homeView.showStyledMessage(
+                    "Failed to load save data",
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
             }
         }
     }

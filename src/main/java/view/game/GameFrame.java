@@ -8,14 +8,12 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
-import javax.swing.WindowConstants;
 
 import controller.GameController;
 import model.MapModel;
-import view.level.LevelSelectFrame;
-import view.util.FrameUtil;
 import service.UserSession;
 import view.home.HomeFrame;
+import view.level.LevelSelectFrame;
 import view.util.FrameUtil;
 import view.victory.VictoryFrame;
 
@@ -48,6 +46,8 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
     private HomeFrame homeFrame;
     // 胜利界面
     private VictoryFrame victoryFrame;
+    // 添加关卡选择界面引用
+    private LevelSelectFrame levelSelectFrame;
 
     /**
      * 创建游戏窗口
@@ -67,28 +67,35 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         homeBtn.setBounds(10, 10, 80, 35); // 位置在左上角，大小为80x35
         this.add(homeBtn);
 
-        // 创建游戏面板
+        // 创建游戏面板（可以传入null模型，稍后再设置）
         gamePanel = new GamePanel(mapModel);
 
-        // 调整窗口大小以适应更大的棋盘
-        int windowWidth = Math.max(width, gamePanel.getWidth() + 250);
-        int windowHeight = Math.max(height, gamePanel.getHeight() + 80);
+        // 使用默认大小计算窗口尺寸
+        int panelWidth = gamePanel.getWidth();
+        int panelHeight = gamePanel.getHeight();
+        // 增加窗口宽度，给右侧控制区域留出更多空间
+        int windowWidth = Math.max(width, panelWidth + 350); // 从300增加到350
+        int windowHeight = Math.max(height, panelHeight + 80);
         this.setSize(windowWidth, windowHeight);
 
+        // 设置窗口居中显示
+        this.setLocationRelativeTo(null);
+
         // 将游戏面板居中放置
-        int panelX = (windowWidth - gamePanel.getWidth()) / 2 - 60; // 左移一点给右侧控制区留空间
-        int panelY = (windowHeight - gamePanel.getHeight()) / 2;
+        int panelX = (windowWidth - panelWidth) / 2 - 100; // 从-80增加到-100，给右侧更多空间
+        int panelY = (windowHeight - panelHeight) / 2;
         gamePanel.setLocation(panelX, panelY);
         this.add(gamePanel);
 
         // 创建游戏控制器，关联面板和模型
         this.controller = new GameController(gamePanel, mapModel);
+        controller.setParentFrame(this);
 
         // 计算右侧控制区域的起始位置和尺寸
-        int controlX = panelX + gamePanel.getWidth() + 20;
+        int controlX = panelX + panelWidth + 20;
         int controlY = panelY + 20;
-        int controlWidth = windowWidth - controlX - 20;
-        int buttonWidth = (controlWidth - 20) / 2; // 两列按钮，中间留20px间距
+        int controlWidth = windowWidth - controlX - 50; // 右边距从40增加到50
+        int buttonWidth = Math.min((controlWidth - 20) / 2, 110); // 限制按钮最大宽度
 
         // 步数显示标签 - 放在顶部中央
         this.stepLabel = FrameUtil.createTitleLabel("Start", JLabel.CENTER);
@@ -136,6 +143,7 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
 
         // 初始化胜利界面
         this.victoryFrame = new VictoryFrame(this);
+        controller.setVictoryView(victoryFrame);
 
         // 添加按钮事件监听器
         addButtonListeners();
@@ -200,6 +208,7 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
 
     /**
      * 初始化游戏面板
+     *
      * @param mapModel 游戏地图模型
      */
     private void initializeGamePanel(MapModel mapModel) {
@@ -207,7 +216,7 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         gamePanel = new GamePanel(mapModel);
 
         // 调整游戏面板位置
-        int panelX = (this.getWidth() - gamePanel.getWidth()) / 2 - 60;
+        int panelX = (this.getWidth() - gamePanel.getWidth()) / 2 - 100; // 从-80改为-100
         int panelY = (this.getHeight() - gamePanel.getHeight()) / 2;
         gamePanel.setLocation(panelX, panelY);
         this.add(gamePanel);
@@ -237,16 +246,85 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
 
     /**
      * 加载新关卡
+     *
      * @param mapModel 游戏地图模型
      */
     public void loadLevel(MapModel mapModel) {
-        // 如果已有游戏面板，先移除它
-        if (gamePanel != null) {
-            this.remove(gamePanel);
+        if (mapModel == null) {
+            System.err.println("Error: Cannot load null MapModel");
+            return;
         }
 
-        // 初始化新的游戏面板
-        initializeGamePanel(mapModel);
+        try {
+            // 停止现有计时器
+            if (controller != null) {
+                controller.stopTimer();
+            }
+
+            // 如果已有游戏面板，先从布局中移除
+            if (gamePanel != null) {
+                this.remove(gamePanel);
+            }
+
+            // 创建新的游戏面板
+            gamePanel = new GamePanel(mapModel);
+
+            // 计算面板位置，确保居中显示
+            int panelX = (this.getWidth() - gamePanel.getWidth()) / 2 - 100; // 从-80改为-100
+            int panelY = (this.getHeight() - gamePanel.getHeight()) / 2;
+            gamePanel.setLocation(panelX, panelY);
+
+            // 将面板添加到窗口
+            this.add(gamePanel);
+
+            // 更新面板的标签引用
+            if (stepLabel != null) {
+                gamePanel.setStepLabel(stepLabel);
+            }
+            if (minStepsLabel != null) {
+                gamePanel.setMinStepsLabel(minStepsLabel);
+            }
+            if (timeLabel != null) {
+                gamePanel.setTimeLabel(timeLabel);
+            }
+
+            // 创建新的游戏控制器
+            controller = new GameController(gamePanel, mapModel);
+            controller.setParentFrame(this);
+
+            // 设置必要的引用
+            if (victoryFrame != null) {
+                controller.setVictoryView(victoryFrame);
+            }
+            if (levelSelectFrame != null) {
+                controller.setLevelSelectFrame(levelSelectFrame);
+            }
+
+            // 初始化游戏
+            controller.initializeGame();
+
+            // 更新按钮状态
+            updateButtonsState();
+            updateUndoRedoButtons(false, false);
+
+            // 重新设置窗口居中显示
+            this.setLocationRelativeTo(null);
+
+            // 刷新窗口布局
+            revalidate();
+            repaint();
+
+            // 将焦点设置到游戏面板
+            gamePanel.requestFocusInWindow();
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Failed to load level: " + e.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE
+            );
+        }
     }
 
     /**
@@ -329,27 +407,10 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
     }
 
     /**
-     * 返回关卡选择界面
-     */
-    public void returnToLevelSelect() {
-        if (controller != null && controller.getLevelSelectFrame() != null) {
-            // 隐藏游戏窗口
-            this.setVisible(false);
-            // 显示关卡选择界面
-            controller.getLevelSelectFrame().showLevelSelect();
-        } else {
-            // 如果关卡选择界面引用缺失，显示错误消息
-            JOptionPane.showMessageDialog(this,
-                "Cannot return to level selection. Level selection reference is missing.",
-                "Error",
-                JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
-    /**
      * 设置关卡选择界面引用
      */
     public void setLevelSelectFrame(LevelSelectFrame levelSelectFrame) {
+        this.levelSelectFrame = levelSelectFrame;
         if (controller != null) {
             controller.setLevelSelectFrame(levelSelectFrame);
         }
@@ -357,6 +418,7 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
 
     /**
      * 获取游戏控制器
+     *
      * @return 游戏控制器实例
      */
     public GameController getController() {
@@ -390,8 +452,13 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
      * @param canRedo 是否可以重做
      */
     public void updateUndoRedoButtons(boolean canUndo, boolean canRedo) {
-        undoBtn.setEnabled(canUndo);
-        redoBtn.setEnabled(canRedo);
+        // 添加空指针检查，确保按钮已经初始化
+        if (undoBtn != null) {
+            undoBtn.setEnabled(canUndo);
+        }
+        if (redoBtn != null) {
+            redoBtn.setEnabled(canRedo);
+        }
     }
 
     /**
