@@ -195,9 +195,6 @@ public class LevelSelectController {
 
                 // 确保游戏状态被完全重置
                 controller.resetTimer();
-
-                // 关卡已经在loadLevel中重置，不需要再次调用restartGame
-                // 因为GameFrame.loadLevel方法中会创建新的控制器并调用initializeGame
             }
 
             // 显示游戏窗口，隐藏关卡选择窗口

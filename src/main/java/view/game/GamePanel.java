@@ -296,6 +296,18 @@ public class GamePanel extends ListenerPanel {
     }
 
     /**
+     * 处理胜利快捷键
+     * 当按下 'Ctrl+Shift+V' 键时直接触发胜利
+     */
+    @Override
+    public void doVictoryShortcut() {
+        System.out.println("Victory shortcut pressed");
+        if (controller != null) {
+            controller.forceVictory();
+        }
+    }
+
+    /**
      * 移动后的处理，更新步数显示
      */
     public void afterMove() {

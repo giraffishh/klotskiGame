@@ -559,4 +559,24 @@ public class GameController {
         // 更新显示
         updateTimeDisplay(gameTime);
     }
+
+    /**
+     * 强制游戏进入胜利状态（用于调试或演示）
+     * 通过快捷键触发
+     */
+    public void forceVictory() {
+        if (victoryController != null) {
+            // 停止计时器
+            stopTimer();
+
+            // 获取当前游戏状态参数
+            long gameTime = getGameTimeInMillis();
+            int moveCount = view.getSteps();
+
+            // 直接调用胜利检查，传入0作为最小步数（确保触发胜利条件）
+            victoryController.checkVictory(0, gameTime, moveCount);
+
+            System.out.println("Victory forced by shortcut key");
+        }
+    }
 }

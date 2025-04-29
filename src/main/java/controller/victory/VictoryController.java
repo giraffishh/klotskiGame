@@ -118,9 +118,8 @@ public class VictoryController {
             }
         });
 
-        // 设置再来一次按钮监听器 - 添加防重复调用逻辑
+        // 设置再来一次按钮监听器
         victoryView.setRestartListener(e -> {
-            // 先记录一个标记，表示正在处理
 
             victoryView.hideVictory();
             // 重新开始游戏
@@ -130,7 +129,6 @@ public class VictoryController {
 
         // 设置下一关按钮监听器
         victoryView.setNextLevelListener(e -> {
-            // 增加检查：如果当前是最后一关，不执行任何操作
             if (!isLastLevel()) {
                 // 先隐藏胜利界面，再加载下一关
                 victoryView.hideVictory();
