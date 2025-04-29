@@ -1,13 +1,21 @@
 package view.victory;
 
-import view.util.FontManager;
-import view.util.FrameUtil;
-
-import javax.swing.*;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.GridLayout;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JRootPane;
+
+import view.util.FontManager;
+import view.util.FrameUtil;
 
 /**
  * 游戏胜利界面，显示胜利消息和提供不同的后续操作按钮
@@ -16,6 +24,7 @@ public class VictoryFrame extends JDialog implements VictoryView {
 
     private final JLabel messageLabel;
     private final JLabel stepsLabel;
+    private final JLabel timeLabel;
     private final JButton homeButton;
     private final JButton levelSelectButton;
     private final JButton restartButton;
@@ -29,13 +38,14 @@ public class VictoryFrame extends JDialog implements VictoryView {
 
     /**
      * 构造方法，初始化胜利界面的UI组件
+     *
      * @param parent 父窗口引用
      */
     public VictoryFrame(JFrame parent) {
         super(parent, "Victory!", true); // 创建模态对话框
 
         // 设置对话框基本属性
-        setSize(450, 350);
+        setSize(450, 380); // 增加高度以适应时间标签
         setLocationRelativeTo(parent); // 居中显示
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setResizable(false);
@@ -47,9 +57,9 @@ public class VictoryFrame extends JDialog implements VictoryView {
                 if (homeListener != null) {
                     // 创建一个ActionEvent并传递给homeListener
                     homeListener.actionPerformed(
-                        new java.awt.event.ActionEvent(homeButton,
-                                                      java.awt.event.ActionEvent.ACTION_PERFORMED,
-                                                      "windowClosing")
+                            new java.awt.event.ActionEvent(homeButton,
+                                    java.awt.event.ActionEvent.ACTION_PERFORMED,
+                                    "windowClosing")
                     );
                 }
             }
@@ -77,17 +87,28 @@ public class VictoryFrame extends JDialog implements VictoryView {
 
         mainPanel.add(headerPanel, BorderLayout.NORTH);
 
-        // 创建中央步数显示面板
-        JPanel stepsPanel = FrameUtil.createPaddedPanel(new BorderLayout(), 10, 0, 20, 0);
-        stepsPanel.setOpaque(true);
+        // 创建中央信息面板（步数和用时）
+        JPanel infoPanel = FrameUtil.createPaddedPanel(new BorderLayout(), 10, 0, 10, 0);
+        infoPanel.setOpaque(true);
+
+        // 子面板用于步数和时间
+        JPanel statsPanel = new JPanel(new GridLayout(2, 1, 0, 10));
+        statsPanel.setOpaque(false);
+
+        // 创建用时标签
+        timeLabel = FrameUtil.createTitleLabel("Time: 00:00.00", JLabel.CENTER);
+        timeLabel.setFont(FontManager.getTitleFont(22));
+        timeLabel.setForeground(FrameUtil.PRIMARY_COLOR);
+        statsPanel.add(timeLabel);
 
         // 创建步数标签
         stepsLabel = FrameUtil.createTitleLabel("Steps: 0", JLabel.CENTER);
         stepsLabel.setFont(FontManager.getTitleFont(22));
         stepsLabel.setForeground(FrameUtil.PRIMARY_COLOR);
-        stepsPanel.add(stepsLabel, BorderLayout.CENTER);
+        statsPanel.add(stepsLabel);
 
-        mainPanel.add(stepsPanel, BorderLayout.CENTER);
+        infoPanel.add(statsPanel, BorderLayout.CENTER);
+        mainPanel.add(infoPanel, BorderLayout.CENTER);
 
         // 创建按钮
         homeButton = FrameUtil.createStyledButton("Back to Home", true);
@@ -119,6 +140,8 @@ public class VictoryFrame extends JDialog implements VictoryView {
     @Override
     public void showVictory(String victoryMessage) {
         messageLabel.setText(victoryMessage);
+        stepsLabel.setText("Steps: 0");  // 重置步数显示
+        timeLabel.setText("Time: 00:00.00");  // 重置时间显示
         confettiPanel.startAnimation();
         setVisible(true);
     }
@@ -127,6 +150,16 @@ public class VictoryFrame extends JDialog implements VictoryView {
     public void showVictory(String victoryMessage, int steps) {
         messageLabel.setText(victoryMessage);
         stepsLabel.setText("Steps: " + steps);
+        timeLabel.setText("Time: 00:00.00");  // 使用默认时间
+        confettiPanel.startAnimation();
+        setVisible(true);
+    }
+
+    @Override
+    public void showVictory(String victoryMessage, int steps, String timeElapsed) {
+        messageLabel.setText(victoryMessage);
+        stepsLabel.setText("Steps: " + steps);
+        timeLabel.setText(timeElapsed);
         confettiPanel.startAnimation();
         setVisible(true);
     }
