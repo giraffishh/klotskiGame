@@ -29,3 +29,4 @@ replay_pid*
 .idea/
 game.iml
 /gamedb.mv.db
+.vscode/

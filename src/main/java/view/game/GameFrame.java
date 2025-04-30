@@ -8,12 +8,14 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
-import javax.swing.WindowConstants;
 
 import controller.GameController;
+import controller.history.HistoryManager; // 添加导入
+import controller.save.SaveManager;       // 添加导入
 import model.MapModel;
 import service.UserSession;
 import view.home.HomeFrame;
+import view.level.LevelSelectFrame;
 import view.util.FrameUtil;
 import view.victory.VictoryFrame;
 
@@ -46,13 +48,15 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
     private HomeFrame homeFrame;
     // 胜利界面
     private VictoryFrame victoryFrame;
+    // 添加关卡选择界面引用
+    private LevelSelectFrame levelSelectFrame;
 
     /**
      * 创建游戏窗口
      *
      * @param width 窗口宽度
      * @param height 窗口高度
-     * @param mapModel 游戏地图模型
+     * @param mapModel 游戏地图模型，可以为null（此时将在选择关卡时初始化）
      */
     public GameFrame(int width, int height, MapModel mapModel) {
         // 设置窗口标题
@@ -65,28 +69,35 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         homeBtn.setBounds(10, 10, 80, 35); // 位置在左上角，大小为80x35
         this.add(homeBtn);
 
-        // 创建游戏面板
+        // 创建游戏面板（可以传入null模型，稍后再设置）
         gamePanel = new GamePanel(mapModel);
 
-        // 调整窗口大小以适应更大的棋盘
-        int windowWidth = Math.max(width, gamePanel.getWidth() + 250);
-        int windowHeight = Math.max(height, gamePanel.getHeight() + 80);
+        // 使用默认大小计算窗口尺寸
+        int panelWidth = gamePanel.getWidth();
+        int panelHeight = gamePanel.getHeight();
+        // 增加窗口宽度，给右侧控制区域留出更多空间
+        int windowWidth = Math.max(width, panelWidth + 350); // 从300增加到350
+        int windowHeight = Math.max(height, panelHeight + 80);
         this.setSize(windowWidth, windowHeight);
 
+        // 设置窗口居中显示
+        this.setLocationRelativeTo(null);
+
         // 将游戏面板居中放置
-        int panelX = (windowWidth - gamePanel.getWidth()) / 2 - 60; // 左移一点给右侧控制区留空间
-        int panelY = (windowHeight - gamePanel.getHeight()) / 2;
+        int panelX = (windowWidth - panelWidth) / 2 - 100; // 从-80增加到-100，给右侧更多空间
+        int panelY = (windowHeight - panelHeight) / 2;
         gamePanel.setLocation(panelX, panelY);
         this.add(gamePanel);
 
         // 创建游戏控制器，关联面板和模型
         this.controller = new GameController(gamePanel, mapModel);
+        controller.setParentFrame(this);
 
         // 计算右侧控制区域的起始位置和尺寸
-        int controlX = panelX + gamePanel.getWidth() + 20;
+        int controlX = panelX + panelWidth + 20;
         int controlY = panelY + 20;
-        int controlWidth = windowWidth - controlX - 20;
-        int buttonWidth = (controlWidth - 20) / 2; // 两列按钮，中间留20px间距
+        int controlWidth = windowWidth - controlX - 50; // 右边距从40增加到50
+        int buttonWidth = Math.min((controlWidth - 20) / 2, 110); // 限制按钮最大宽度
 
         // 步数显示标签 - 放在顶部中央
         this.stepLabel = FrameUtil.createTitleLabel("Start", JLabel.CENTER);
@@ -132,9 +143,29 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         redoBtn.setEnabled(false); // 初始时禁用
         this.add(redoBtn);
 
-        // 设置GameController对GameFrame的引用，用于更新按钮状态
-        controller.setParentFrame(this);
+        // 初始化胜利界面
+        this.victoryFrame = new VictoryFrame(this);
+        controller.setVictoryView(victoryFrame);
 
+        // 添加按钮事件监听器
+        addButtonListeners();
+
+        // 将此窗口注册为用户会话监听器
+        UserSession.getInstance().addListener(this);
+
+        // 窗口关闭时取消注册监听器
+        this.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                UserSession.getInstance().removeListener(GameFrame.this);
+            }
+        });
+    }
+
+    /**
+     * 添加按钮事件监听器
+     */
+    private void addButtonListeners() {
         // 为重新开始按钮添加点击事件监听器
         this.restartBtn.addActionListener(e -> {
             // 重新开始游戏
@@ -175,34 +206,96 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
             // 将焦点设置回游戏面板以便接收键盘事件
             gamePanel.requestFocusInWindow();
         });
+    }
 
-        // 更新按钮状态
-        updateButtonsState();
+    /**
+     * 加载新关卡
+     *
+     * @param mapModel 游戏地图模型
+     */
+    public void initializeGamePanel(MapModel mapModel) {
+        if (mapModel == null) {
+            System.err.println("Error: Cannot load null MapModel");
+            return;
+        }
 
-        // 将此窗口注册为用户会话监听器
-        UserSession.getInstance().addListener(this);
-
-        // 窗口关闭时取消注册监听器
-        this.addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowClosing(WindowEvent e) {
-                UserSession.getInstance().removeListener(GameFrame.this);
+        try {
+            // 停止现有计时器
+            if (controller != null) {
+                controller.stopTimer();
             }
-        });
 
-        // 在UI组件完全初始化后，调用控制器初始化游戏
-        // 这将计算并显示初始的最短步数
-        controller.initializeGame();
+            // 如果已有游戏面板，先从布局中移除
+            if (gamePanel != null) {
+                this.remove(gamePanel);
+            }
 
-        // 初始化胜利界面
-        this.victoryFrame = new VictoryFrame(this);
-        // 将胜利界面设置到控制器
-        controller.setVictoryView(victoryFrame);
+            // 创建新的游戏面板
+            gamePanel = new GamePanel(mapModel);
 
-        // 窗口居中显示
-        this.setLocationRelativeTo(null);
-        // 设置关闭窗口时退出程序
-        this.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+            // 计算面板位置，确保居中显示
+            int panelX = (this.getWidth() - gamePanel.getWidth()) / 2 - 100; // 从-80改为-100
+            int panelY = (this.getHeight() - gamePanel.getHeight()) / 2;
+            gamePanel.setLocation(panelX, panelY);
+
+            // 将面板添加到窗口
+            this.add(gamePanel);
+
+            // 更新面板的标签引用
+            if (stepLabel != null) {
+                gamePanel.setStepLabel(stepLabel);
+            }
+            if (minStepsLabel != null) {
+                gamePanel.setMinStepsLabel(minStepsLabel);
+            }
+            if (timeLabel != null) {
+                gamePanel.setTimeLabel(timeLabel);
+            }
+
+            // 复用或创建游戏控制器
+            if (controller == null) {
+                // 首次创建控制器
+                controller = new GameController(gamePanel, mapModel);
+                controller.setParentFrame(this);
+                // 设置必要的引用
+                if (victoryFrame != null) {
+                    controller.setVictoryView(victoryFrame);
+                }
+                if (levelSelectFrame != null) {
+                    controller.setLevelSelectFrame(levelSelectFrame);
+                }
+            } else {
+                // 复用现有控制器，更新模型和视图引用
+                controller.resetWithNewModel(mapModel, gamePanel);
+                // 确保 gamePanel 的 controller 引用是最新的
+                gamePanel.setController(controller);
+            }
+
+            // 初始化游戏（重置求解器、历史、计时器等）
+            controller.initializeGame();
+
+            // 更新按钮状态
+            updateButtonsState();
+            updateUndoRedoButtons(false, false); // 确保按钮状态在加载新关卡时重置
+
+            // 重新设置窗口居中显示
+            this.setLocationRelativeTo(null);
+
+            // 刷新窗口布局
+            revalidate();
+            repaint();
+
+            // 将焦点设置到游戏面板
+            gamePanel.requestFocusInWindow();
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Failed to load level: " + e.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE
+            );
+        }
     }
 
     /**
@@ -239,12 +332,10 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
                     JOptionPane.YES_NO_OPTION,
                     JOptionPane.WARNING_MESSAGE);
 
-            // 根据用户选择进行不同处理
+            // 如果用户确认，则返回主界面，但不重置游戏状态
             if (result == JOptionPane.YES_OPTION) {
-                // 用户确认返回主界面，计时器已经停止，不需要再次停止
-
-                // 重置游戏状态到初始状态
-                controller.restartGame();
+                // 不再调用controller.restartGame()，防止不必要地重新初始化求解器
+                // 只需在下次进入游戏时再重置状态就可以了
 
                 // 显示主页面
                 homeFrame.setVisible(true);
@@ -254,6 +345,7 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
                 // 用户选择继续游戏，恢复计时器
                 controller.startTimer();
             }
+            // 如果用户选择否，则什么都不做，继续游戏
         } else {
             // 如果homeFrame为null，显示错误消息
             JOptionPane.showMessageDialog(this,
@@ -264,15 +356,13 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
     }
 
     /**
-     * 直接返回主页面，不显示确认对话框 用于从胜利界面返回
+     * 用于从胜利界面返回
      */
     public void returnToHomeDirectly() {
         if (homeFrame != null) {
-            // 停止计时器
-            controller.stopTimer();
+            // 不再调用controller.restartGame()，防止不必要地重新初始化求解器
 
-            // 重置游戏状态到初始状态
-            controller.restartGame();
+            controller.stopTimer();
 
             // 显示主页面
             homeFrame.setVisible(true);
@@ -281,10 +371,29 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         } else {
             // 如果homeFrame为null，显示错误消息
             JOptionPane.showMessageDialog(this,
-                    "Unable to return to the main page. The main page reference is missing.",
+                    "Cannot return to home page. Home page reference is missing.",
                     "Error",
                     JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    /**
+     * 设置关卡选择界面引用
+     */
+    public void setLevelSelectFrame(LevelSelectFrame levelSelectFrame) {
+        this.levelSelectFrame = levelSelectFrame;
+        if (controller != null) {
+            controller.setLevelSelectFrame(levelSelectFrame);
+        }
+    }
+
+    /**
+     * 获取游戏控制器
+     *
+     * @return 游戏控制器实例
+     */
+    public GameController getController() {
+        return controller;
     }
 
     /**
@@ -314,8 +423,13 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
      * @param canRedo 是否可以重做
      */
     public void updateUndoRedoButtons(boolean canUndo, boolean canRedo) {
-        undoBtn.setEnabled(canUndo);
-        redoBtn.setEnabled(canRedo);
+        // 添加空指针检查，确保按钮已经初始化
+        if (undoBtn != null) {
+            undoBtn.setEnabled(canUndo);
+        }
+        if (redoBtn != null) {
+            redoBtn.setEnabled(canRedo);
+        }
     }
 
     /**

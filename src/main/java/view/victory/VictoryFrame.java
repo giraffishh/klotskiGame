@@ -5,6 +5,7 @@ import java.awt.GridLayout;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -138,24 +139,6 @@ public class VictoryFrame extends JDialog implements VictoryView {
     }
 
     @Override
-    public void showVictory(String victoryMessage) {
-        messageLabel.setText(victoryMessage);
-        stepsLabel.setText("Steps: 0");  // 重置步数显示
-        timeLabel.setText("Time: 00:00.00");  // 重置时间显示
-        confettiPanel.startAnimation();
-        setVisible(true);
-    }
-
-    @Override
-    public void showVictory(String victoryMessage, int steps) {
-        messageLabel.setText(victoryMessage);
-        stepsLabel.setText("Steps: " + steps);
-        timeLabel.setText("Time: 00:00.00");  // 使用默认时间
-        confettiPanel.startAnimation();
-        setVisible(true);
-    }
-
-    @Override
     public void showVictory(String victoryMessage, int steps, String timeElapsed) {
         messageLabel.setText(victoryMessage);
         stepsLabel.setText("Steps: " + steps);
@@ -167,8 +150,16 @@ public class VictoryFrame extends JDialog implements VictoryView {
     @Override
     public void hideVictory() {
         confettiPanel.stopAnimation();
-        setVisible(false);
-        dispose();
+
+        // 使用标志变量追踪窗口关闭状态，避免重复触发事件
+        if (isVisible()) {
+            setVisible(false);
+            // 移除所有窗口监听器，防止窗口关闭时触发额外的操作
+            for (WindowListener listener : getWindowListeners()) {
+                removeWindowListener(listener);
+            }
+            dispose();
+        }
     }
 
     @Override
@@ -191,5 +182,15 @@ public class VictoryFrame extends JDialog implements VictoryView {
     @Override
     public void setNextLevelListener(ActionListener listener) {
         nextLevelButton.addActionListener(listener);
+    }
+
+    @Override
+    public void setNextLevelButtonEnabled(boolean enabled) {
+        nextLevelButton.setEnabled(enabled);
+    }
+
+    @Override
+    public void setVictoryMessage(String message) {
+        messageLabel.setText(message);
     }
 }

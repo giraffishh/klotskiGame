@@ -31,6 +31,7 @@ public abstract class ListenerPanel extends JPanel {
      * 处理键盘事件
      * 当方向键被按下时，调用相应的移动方法
      * 支持Ctrl+Z撤销和Ctrl+Y/Ctrl+Shift+Z重做
+     * 支持Ctrl+Shift+V触发胜利条件
      * @param e 键盘事件对象
      */
     @Override
@@ -58,6 +59,14 @@ public abstract class ListenerPanel extends JPanel {
                     // Ctrl+Y: 重做
                     if ((e.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0) {
                         doRedo();
+                    }
+                }
+                case KeyEvent.VK_V -> {
+                    // Ctrl+Shift+V: 触发胜利条件
+                    if ((e.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0 &&
+                        (e.getModifiersEx() & KeyEvent.SHIFT_DOWN_MASK) != 0) {
+                        doVictoryShortcut();
+                        System.out.println("Victory shortcut key combination pressed: Ctrl+Shift+V");
                     }
                 }
             }
@@ -99,4 +108,10 @@ public abstract class ListenerPanel extends JPanel {
      * 处理重做操作的抽象方法
      */
     public abstract void doRedo();
+
+    /**
+     * 处理胜利快捷键
+     * 触发直接胜利的功能
+     */
+    public abstract void doVictoryShortcut();
 }

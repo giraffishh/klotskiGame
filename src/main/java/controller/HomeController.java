@@ -5,12 +5,12 @@ import service.DatabaseService;
 import service.UserSession;
 import view.game.GameFrame;
 import view.home.HomeView;
+import view.level.LevelSelectFrame;
 import view.login.LoginFrame;
 import view.settings.SettingsFrame;
+import model.MapModel;
 
 import javax.swing.*;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 
 /**
  * Home页面控制器
@@ -22,7 +22,7 @@ public class HomeController {
     private LoginFrame loginFrame;
     private SettingsFrame settingsFrame;
     private SaveManager saveManager;
-
+    private LevelSelectFrame levelSelectFrame;
     /**
      * 创建HomeController
      * @param homeView Home页面视图
@@ -61,18 +61,13 @@ public class HomeController {
     }
 
     /**
-     * 开始游戏
-     * 显示游戏窗口并隐藏Home窗口
+     * 设置关卡选择界面引用
+     * @param levelSelectFrame 关卡选择窗口实例
      */
-    public void startGame() {
-        if (gameFrame != null) {
-            gameFrame.setVisible(true);
-            homeView.closeHome();
-        } else {
-            homeView.showStyledMessage("Game window not properly initialized", "Error", JOptionPane.ERROR_MESSAGE);
-        }
+    public void setLevelSelectFrame(LevelSelectFrame levelSelectFrame) {
+        this.levelSelectFrame = levelSelectFrame;
     }
-    
+
     /**
      * 加载保存的游戏
      * 先检查并确认存档，确认后才显示游戏界面
@@ -110,16 +105,44 @@ public class HomeController {
         
         // 只有在用户确认后才进入游戏页面
         if (shouldLoad) {
-            gameFrame.setVisible(true);
-            homeView.closeHome();
-            
-            // 直接使用SaveManager加载游戏状态，跳过确认对话框
-            boolean loadSuccess = saveManager.loadGameState(true); // true表示跳过确认
-            
-            // 如果加载失败，返回主页
-            if (!loadSuccess) {
-                gameFrame.setVisible(false);
-                homeView.showHome();
+            // 获取存档数据
+            DatabaseService.GameSaveData saveData = saveManager.getLoadedGameData(true);
+
+            if (saveData != null) {
+                // 从存档数据创建地图模型
+                MapModel mapModel = saveManager.createMapModelFromSave(saveData);
+
+                if (mapModel != null) {
+                    // 显示游戏窗口并隐藏主页面
+                    gameFrame.setVisible(true);
+                    homeView.closeHome();
+
+                    // 使用loadLevel方法加载游戏（与levelSelect使用相同的方法）
+                    gameFrame.initializeGamePanel(mapModel);
+
+                    // 设置已保存的步数
+                    if (gameFrame.getGamePanel() != null) {
+                        gameFrame.getGamePanel().setSteps(saveData.getSteps());
+                    }
+
+                    // 设置已保存的游戏时间
+                    if (gameFrame.getController() != null) {
+                        gameFrame.getController().setLoadedGameTime(saveData.getGameTime());
+                    }
+
+                    // 确保游戏面板获得焦点以接收键盘事件
+                    gameFrame.getGamePanel().requestFocusInWindow();
+                } else {
+                    homeView.showStyledMessage(
+                        "Failed to create map model from save data",
+                        "Error",
+                        JOptionPane.ERROR_MESSAGE);
+                }
+            } else {
+                homeView.showStyledMessage(
+                    "Failed to load save data",
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
             }
         }
     }
@@ -133,6 +156,21 @@ public class HomeController {
             settingsFrame.setVisible(true);
         } else {
             homeView.showStyledMessage("Settings window not properly initialized", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    /**
+     * 打开关卡选择界面
+     */
+    public void openLevelSelect() {
+        if (levelSelectFrame != null) {
+            levelSelectFrame.showLevelSelect();
+            homeView.closeHome();
+        } else {
+            homeView.showStyledMessage(
+                    "The level selection window is not initialized correctly",
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
         }
     }
 

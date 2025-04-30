@@ -8,28 +8,38 @@ import javax.swing.JOptionPane;
 import controller.util.BoardSerializer;
 import model.MapModel;
 import service.DatabaseService;
-import service.UserSession;
-import view.game.GamePanel;
+import service.UserSession; // 添加导入
+import view.game.GamePanel;    // 添加导入
 
 /**
- * 游戏状态管理类，负责游戏的保存、加载和存档检测功能
+ * 存档管理器，负责保存和加载游戏状态
  */
 public class SaveManager {
 
-    private final GamePanel view;
-    private final MapModel model;
-    // 添加一个回调接口，用于通知加载完成后需要更新最短步数
-    private Runnable onLoadCompleteCallback;
+    private GamePanel view; // 移除 final
+    private MapModel model; // 移除 final
+    private Runnable onLoadCompleteCallback; // 用于加载完成后通知 Controller 更新最短步数
 
     /**
      * 构造函数
      *
-     * @param view 游戏面板视图
-     * @param model 地图数据模型
+     * @param view 游戏面板
+     * @param model 地图模型
      */
     public SaveManager(GamePanel view, MapModel model) {
         this.view = view;
         this.model = model;
+    }
+
+    /**
+     * 更新内部的视图和模型引用。 当 GameController 复用并加载新关卡时调用。
+     *
+     * @param newView 新的游戏面板实例
+     * @param newModel 新的地图模型实例
+     */
+    public void updateReferences(GamePanel newView, MapModel newModel) {
+        this.view = newView;
+        this.model = newModel;
     }
 
     /**
@@ -121,28 +131,19 @@ public class SaveManager {
     }
 
     /**
-     * 加载游戏存档 从数据库中读取存档并验证完整性
-     *
-     * @return 加载是否成功
-     */
-    public boolean loadGameState() {
-        return loadGameState(false);
-    }
-
-    /**
-     * 加载游戏存档 从数据库中读取存档并验证完整性
+     * 从存档数据创建地图模型
      *
      * @param skipConfirmation 是否跳过确认对话框
-     * @return 加载是否成功
+     * @return 加载成功则返回MapModel，失败则返回null
      */
-    public boolean loadGameState(boolean skipConfirmation) {
+    public DatabaseService.GameSaveData getLoadedGameData(boolean skipConfirmation) {
         // 检查用户是否为访客
         if (UserSession.getInstance().isGuest()) {
             JOptionPane.showMessageDialog(view,
                     "Unable to load game: Please login first",
                     "Load Failed",
                     JOptionPane.ERROR_MESSAGE);
-            return false;
+            return null;
         }
 
         // 检查用户是否已登录
@@ -152,7 +153,7 @@ public class SaveManager {
                     "Unable to load game: You are not logged in",
                     "Load Failed",
                     JOptionPane.ERROR_MESSAGE);
-            return false;
+            return null;
         }
 
         // 获取当前登录用户名
@@ -166,55 +167,55 @@ public class SaveManager {
                     "No valid save found or save data is corrupted",
                     "Load Failed",
                     JOptionPane.WARNING_MESSAGE);
-            return false;
+            return null;
         }
 
         try {
             // 仅当需要确认时才显示确认对话框
             if (!skipConfirmation) {
                 if (!showLoadConfirmation()) {
-                    return false;
+                    return null;
                 }
             }
 
-            // 用户确认加载或跳过确认，继续处理存档数据
-            String mapState = saveData.getMapState();
-            int steps = saveData.getSteps();
-            long gameTime = saveData.getGameTime();
-
-            // 将字符串类型的地图状态转换为长整型
-            long mapStateLong = Long.parseLong(mapState);
-
-            // 使用序列化工具将长整型转为矩阵
-            int[][] newMatrix = BoardSerializer.deserialize(mapStateLong);
-
-            // 更新模型数据
-            model.setMatrix(newMatrix);
-
-            // 重置游戏面板显示新地图
-            view.resetGame();
-
-            // 设置已加载的步数
-            view.setSteps(steps);
-
-            // 通知GameController加载了游戏时间
-            view.setLoadedGameTime(gameTime);
-
-            javax.swing.SwingUtilities.invokeLater(() -> {
-
-                // 在显示成功消息之前调用回调函数更新最短步数
-                if (onLoadCompleteCallback != null) {
-                    onLoadCompleteCallback.run();
-                }
-            });
-            return true;
+            return saveData;
         } catch (Exception e) {
             e.printStackTrace();
             JOptionPane.showMessageDialog(view,
                     "Error parsing saved game data: " + e.getMessage(),
                     "Load Error",
                     JOptionPane.ERROR_MESSAGE);
-            return false;
+            return null;
+        }
+    }
+
+    /**
+     * 从存档数据创建地图模型
+     *
+     * @param saveData 存档数据
+     * @return 创建的地图模型，如果创建失败返回null
+     */
+    public MapModel createMapModelFromSave(DatabaseService.GameSaveData saveData) {
+        if (saveData == null) {
+            return null;
+        }
+
+        try {
+            // 将字符串类型的地图状态转换为长整型
+            long mapStateLong = Long.parseLong(saveData.getMapState());
+
+            // 使用序列化工具将长整型转为矩阵
+            int[][] newMatrix = BoardSerializer.deserialize(mapStateLong);
+
+            // 创建并返回新的地图模型
+            return new MapModel(newMatrix);
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(view,
+                    "Error creating map model from save data: " + e.getMessage(),
+                    "Load Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return null;
         }
     }
 

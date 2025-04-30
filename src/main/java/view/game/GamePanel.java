@@ -45,10 +45,30 @@ public class GamePanel extends ListenerPanel {
         this.setVisible(true);
         this.setFocusable(true);
         this.setLayout(null);
-        this.setSize(model.getWidth() * GRID_SIZE + 4, model.getHeight() * GRID_SIZE + 4);
         this.model = model;
         this.selectedBox = null;
-        initialGame();
+
+        // 如果模型为null，设置默认大小并等待后续setModel调用
+        if (model != null) {
+            this.setSize(model.getWidth() * GRID_SIZE + 4, model.getHeight() * GRID_SIZE + 4);
+            initialGame();
+        } else {
+            // 设置默认大小
+            this.setSize(5 * GRID_SIZE + 4, 5 * GRID_SIZE + 4);
+        }
+    }
+
+    /**
+     * 设置或更新游戏地图模型
+     *
+     * @param model 新的游戏地图模型
+     */
+    public void setModel(MapModel model) {
+        this.model = model;
+        if (model != null) {
+            this.setSize(model.getWidth() * GRID_SIZE + 4, model.getHeight() * GRID_SIZE + 4);
+            resetGame(); // 重置并初始化游戏
+        }
     }
 
     /**
@@ -57,6 +77,11 @@ public class GamePanel extends ListenerPanel {
      * - 垂直盒子 (1x2) 4 - 大盒子 (2x2) 0 - 空白区域
      */
     public void initialGame() {
+        // 确保模型不为null
+        if (model == null) {
+            return;
+        }
+
         this.steps = 0;
         //复制地图数据
         int[][] map = new int[model.getHeight()][model.getWidth()];
@@ -124,6 +149,16 @@ public class GamePanel extends ListenerPanel {
                 getWidth(), getHeight(), FrameUtil.PANEL_BACKGROUND_DARK);
         g2d.setPaint(gradient);
         g2d.fillRect(0, 0, getWidth(), getHeight());
+
+        // 如果model为null，只绘制背景和边框
+        if (model == null) {
+            // 边框 - 使用柔和的深灰色边框
+            this.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(FrameUtil.PANEL_BORDER_COLOR, 2),
+                    BorderFactory.createEmptyBorder(1, 1, 1, 1)
+            ));
+            return;
+        }
 
         // 绘制网格线 - 使用更柔和的淡灰色线条
         g2d.setColor(FrameUtil.GRID_LINE_COLOR);
@@ -261,6 +296,18 @@ public class GamePanel extends ListenerPanel {
     }
 
     /**
+     * 处理胜利快捷键
+     * 当按下 'Ctrl+Shift+V' 键时直接触发胜利
+     */
+    @Override
+    public void doVictoryShortcut() {
+        System.out.println("Victory shortcut pressed");
+        if (controller != null) {
+            controller.forceVictory();
+        }
+    }
+
+    /**
      * 移动后的处理，更新步数显示
      */
     public void afterMove() {
@@ -361,6 +408,15 @@ public class GamePanel extends ListenerPanel {
     }
 
     /**
+     * 获取游戏控制器
+     *
+     * @return 游戏控制器
+     */
+    public GameController getController() {
+        return controller;
+    }
+
+    /**
      * 获取当前选中的盒子
      *
      * @return 选中的盒子组件
@@ -400,6 +456,11 @@ public class GamePanel extends ListenerPanel {
      * 重置游戏面板 清除所有方块组件并重新初始化
      */
     public void resetGame() {
+        // 确保模型不为null
+        if (model == null) {
+            return;
+        }
+
         // 清除选中状态
         if (selectedBox != null) {
             selectedBox.setSelected(false);

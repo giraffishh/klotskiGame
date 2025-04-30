@@ -18,9 +18,6 @@ import controller.mover.BigBlockMover;
 // 导入格子布局序列化工具类和存档管理器
 import controller.save.SaveManager;
 
-import javax.swing.JOptionPane;
-import javax.swing.SwingUtilities;
-import javax.swing.JLabel;
 import javax.swing.Timer;
 
 import java.util.List;
@@ -29,7 +26,7 @@ import java.awt.event.ActionEvent;
 import java.text.DecimalFormat;
 
 import view.game.GameFrame;
-import view.util.FontManager;
+import view.level.LevelSelectFrame;
 import view.victory.VictoryView;
 
 /**
@@ -38,9 +35,9 @@ import view.victory.VictoryView;
 public class GameController {
 
     // 游戏视图组件引用
-    private final GamePanel view;
+    private GamePanel view; // 移除 final
     // 游戏地图模型引用
-    private final MapModel model;
+    private MapModel model; // 移除 final
 
     // 方块移动策略对象
     private final BlockMover singleBlockMover;
@@ -60,11 +57,14 @@ public class GameController {
     // 父窗口引用，用于更新按钮状态
     private GameFrame parentFrame;
 
-    // 游戏胜利状态标志，防止重复弹出胜利提示
-    private boolean victoryAchieved = false;
+    // 胜利控制器
+    private VictoryController victoryController;
 
-    // 胜利界面
-    private VictoryView victoryView;
+    // 选关界面引用
+    private LevelSelectFrame levelSelectFrame;
+
+    // 当前关卡索引
+    private int currentLevelIndex = 0;
 
     // 计时相关
     private Timer gameTimer;                  // 游戏计时器
@@ -103,6 +103,9 @@ public class GameController {
 
         // 初始化历史记录管理器
         this.historyManager = new HistoryManager(view, model);
+
+        // 初始化胜利控制器
+        this.victoryController = new VictoryController(this);
 
         // 初始化计时器
         initializeTimer();
@@ -190,8 +193,23 @@ public class GameController {
      */
     public void setParentFrame(GameFrame frame) {
         this.parentFrame = frame;
-        // 将父窗口引用也传递给历史管理器
-        historyManager.setParentFrame(frame);
+
+        // 安全地更新按钮状态
+        if (frame != null) {
+            try {
+                // 将父窗口引用也传递给历史管理器和胜利控制器
+                if (historyManager != null) {
+                    historyManager.setParentFrame(frame);
+                }
+                if (victoryController != null) {
+                    victoryController.setParentFrame(frame);
+                }
+            } catch (Exception e) {
+                // 捕获可能的异常，防止初始化时出错
+                System.err.println("Error setting parent frame: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
     }
 
     /**
@@ -200,48 +218,39 @@ public class GameController {
      * @param victoryView 胜利界面视图
      */
     public void setVictoryView(VictoryView victoryView) {
-        this.victoryView = victoryView;
-        // 为胜利界面设置按钮监听器
-        setupVictoryListeners();
-    }
-
-    /**
-     * 设置胜利界面的按钮监听器
-     */
-    private void setupVictoryListeners() {
-        if (victoryView == null) {
-            return;
+        if (victoryController != null) {
+            victoryController.setVictoryView(victoryView);
         }
-
-        // 设置回到主页按钮监听器 - 直接返回，不显示确认对话框
-        victoryView.setHomeListener(e -> {
-            if (parentFrame != null) {
-                victoryView.hideVictory();
-                parentFrame.returnToHomeDirectly(); // 使用直接返回方法，不显示确认对话框
-            }
-        });
-
-        // 其他按钮监听器保持不变...
-        victoryView.setLevelSelectListener(e -> {
-            victoryView.hideVictory();
-            // 此处仅关闭胜利界面，不实现实际功能
-        });
-
-        // 设置再来一次按钮监听器
-        victoryView.setRestartListener(e -> {
-            victoryView.hideVictory();
-            restartGame();
-        });
-
-        // 设置下一关按钮监听器
-        victoryView.setNextLevelListener(e -> {
-            victoryView.hideVictory();
-            // 此处仅关闭胜利界面，不实现实际功能
-        });
     }
 
     /**
-     * 初始化游戏，在UI组件完全准备好后调用 这个方法应在GameFrame完成所有UI元素设置后调用
+     * 设置关卡选择界面
+     *
+     * @param levelSelectFrame 关卡选择界面
+     */
+    public void setLevelSelectFrame(LevelSelectFrame levelSelectFrame) {
+        this.levelSelectFrame = levelSelectFrame;
+        if (victoryController != null) {
+            victoryController.setLevelSelectFrame(levelSelectFrame);
+        }
+    }
+
+    /**
+     * 设置当前关卡索引
+     *
+     * @param index 关卡索引
+     */
+    public void setCurrentLevelIndex(int index) {
+        System.out.println("Current level index: " + index);
+        this.currentLevelIndex = index;
+        if (victoryController != null) {
+            victoryController.setCurrentLevelIndex(index);
+        }
+    }
+
+    /**
+     * 初始化游戏，在UI组件完全准备好后调用 这个方法应在GameFrame完成所有UI元素设置后调用 主要负责初始化求解器和更新显示。其他重置操作移至
+     * resetWithNewModel 或 restartGame。
      */
     public void initializeGame() {
         // 初始化华容道求解器并计算最优解
@@ -250,21 +259,65 @@ public class GameController {
         // 确保更新最短步数显示
         updateMinStepsDisplay();
 
-        // 清空历史记录
-        clearHistory();
+        // 注意：历史记录、计时器、胜利状态的重置现在由 resetWithNewModel 或 restartGame 处理
+    }
+
+    /**
+     * 使用新的模型和视图重置控制器状态。 用于加载新关卡时复用控制器实例。
+     *
+     * @param newModel 新的游戏地图模型
+     * @param newView 新的游戏面板视图
+     */
+    public void resetWithNewModel(MapModel newModel, GamePanel newView) {
+        System.out.println("Resetting controller with new model and view...");
+        this.model = newModel;
+        this.view = newView;
+        this.view.setController(this); // 确保新视图持有正确的控制器引用
+
+        // 更新依赖组件的引用
+        if (saveManager != null) {
+            saveManager.updateReferences(newView, newModel);
+        }
+        if (historyManager != null) {
+            historyManager.updateReferences(newView, newModel); // HistoryManager 内部会清空历史
+        }
 
         // 重置计时器
         resetTimer();
+
+        // 重置胜利控制器状态
+        if (victoryController != null) {
+            victoryController.resetVictoryState();
+        }
+
+        // 确保新视图的步数显示为0
+        if (this.view != null) {
+            this.view.setSteps(0);
+        }
+
+        System.out.println("Controller reset complete.");
     }
 
     /**
      * 初始化华容道求解器并预先计算最优解 将此逻辑抽取为单独方法，以便在构造函数和加载游戏后调用
      */
     private void initializeSolver() {
+        // 检查模型是否有效
+        if (model == null || model.getWidth() <= 0 || model.getHeight() <= 0) {
+            System.err.println("Cannot initialize solver: Invalid model.");
+            if (view != null) {
+                view.setMinSteps(-1); // 显示无效状态
+            }
+            return;
+        }
+
         System.out.println("=== Initializing Klotski Solver ===");
 
         // 获取当前布局并预先计算最优解
         BoardState initialState = new BoardState(model.getSerializedLayout());
+
+        // 重置或创建求解器实例
+        this.solver = new KlotskiSolver();
 
         // 记录求解开始时间
         long startTime = System.currentTimeMillis();
@@ -276,8 +329,8 @@ public class GameController {
         long endTime = System.currentTimeMillis();
 
         // 输出求解统计信息
-        System.out.println("Solving time: " + (endTime - startTime) + " ms");
-        System.out.println("BFS nodes explored: " + solver.getNodesExploredBFS());
+        System.out.println("[initialSolve] Solving time: " + (endTime - startTime) + " ms");
+        System.out.println("[initialSolve] BFS nodes explored: " + solver.getNodesExploredBFS());
 
         // 输出求解结果
         if (solution != null && !solution.isEmpty()) {
@@ -292,34 +345,43 @@ public class GameController {
      * 重新开始游戏的方法
      */
     public void restartGame() {
-        System.out.println("Restarting game...");
+        System.out.println("\nRestarting game...");
 
-        // 重置地图模型到初始状态
-        model.resetToInitialState();
+        try {
+            // 检查model是否为null
+            if (model == null) {
+                System.err.println("Cannot restart game: Model is null.");
+                return;
+            }
 
-        // 重置游戏面板
-        view.resetGame();
+            // 重置地图模型到初始状态
+            model.resetToInitialState();
 
-        // 重置后更新最短步数显示
-        this.solver = new KlotskiSolver();
-        initializeSolver();
-        updateMinStepsDisplay();
+            // 重置游戏面板
+            if (view != null) {
+                view.resetGame(); // resetGame 会重置步数显示并重新绘制方块
+            }
 
-        // 清空历史记录
-        historyManager.clearHistory();
+            // 重新初始化求解器并更新显示
+            initializeSolver();
+            updateMinStepsDisplay();
 
-        // 重置胜利状态
-        victoryAchieved = false;
+            // 清空历史记录
+            clearHistory(); // historyManager.clearHistory() 内部会更新按钮
 
-        // 隐藏胜利界面
-        if (victoryView != null) {
-            victoryView.hideVictory();
+            // 重置胜利控制器状态
+            if (victoryController != null) {
+                victoryController.resetVictoryState();
+            }
+
+            // 重置计时器
+            resetTimer();
+
+            System.out.println("Game restarted successfully");
+        } catch (Exception e) {
+            System.err.println("Error during game restart: " + e.getMessage());
+            e.printStackTrace();
         }
-
-        // 重置计时器
-        resetTimer();
-
-        System.out.println("Game restarted successfully");
     }
 
     /**
@@ -426,7 +488,9 @@ public class GameController {
      * 清空移动历史
      */
     private void clearHistory() {
-        historyManager.clearHistory();
+        if (historyManager != null) {
+            historyManager.clearHistory();
+        }
     }
 
     /**
@@ -453,46 +517,18 @@ public class GameController {
                 view.setMinSteps(minSteps);
 
                 // 输出当前求解信息
-                System.out.println("Current layout solved in: " + (endTime - startTime) + " ms");
-                System.out.println("A* nodes explored: " + solver.getNodesExploredAStar());
-                System.out.println("Minimum steps: " + minSteps);
+                System.out.println("[findPathFrom] Current layout solved in: " + (endTime - startTime) + " ms");
+                System.out.println("[findPathFrom] A* nodes explored: " + solver.getNodesExploredAStar());
+                System.out.println("[findPathFrom] Minimum steps: " + minSteps);
 
-                // 检查是否达到胜利条件且尚未显示胜利提示
-                if (minSteps == 0 && !victoryAchieved) {
-                    victoryAchieved = true; // 标记已经显示过胜利提示
-
-                    // 停止计时器
-                    stopTimer();
-
-                    // 显示胜利界面，并传递当前步数和游戏用时
-                    SwingUtilities.invokeLater(() -> {
-                        if (victoryView != null) {
-                            int currentSteps = historyManager.getMoveCount(); // 获取当前步数
-
-                            // 计算总用时（毫秒）
-                            long currentTime = System.currentTimeMillis();
-                            long totalElapsed = elapsedTimeBeforeStart;
-                            if (timerRunning) {
-                                totalElapsed += (currentTime - startTime);
-                            }
-
-                            // 格式化时间字符串
-                            int minutes = (int) (totalElapsed / 60000);
-                            int seconds = (int) ((totalElapsed % 60000) / 1000);
-                            int centiseconds = (int) ((totalElapsed % 1000) / 10);
-
-                            String timeText = String.format("Time: %02d:%02d.%s",
-                                    minutes, seconds, millisFormat.format(centiseconds));
-
-                            // 显示带有时间的胜利界面
-                            victoryView.showVictory("Victory!", currentSteps, timeText);
-                        } else {
-                            // 如果胜利视图未设置，使用旧的对话框显示
-                            JLabel messageLabel = new JLabel("Congratulations! You have completed the Klotski challenge!");
-                            messageLabel.setFont(FontManager.getTitleFont(16));
-                            JOptionPane.showMessageDialog(view, messageLabel, "Victory", JOptionPane.INFORMATION_MESSAGE);
-                        }
-                    });
+                // 使用胜利控制器检查胜利条件
+                if (victoryController != null) {
+                    // 传递当前的最小步数、游戏用时和当前步数
+                    victoryController.checkVictory(
+                            minSteps,
+                            getGameTimeInMillis(),
+                            historyManager.getMoveCount()
+                    );
                 }
             } else {
                 // 如果找不到路径，显示默认值
@@ -502,33 +538,6 @@ public class GameController {
         } catch (Exception e) {
             System.err.println("Error calculating minimum steps: " + e.getMessage());
             view.setMinSteps(-1);
-        }
-    }
-
-    /**
-     * 加载游戏存档
-     */
-    public void loadGameState() {
-        // 加载游戏状态
-        boolean loadSuccess = saveManager.loadGameState();
-
-        if (loadSuccess) {
-            // 加载新布局后重新初始化求解器
-            this.solver = new KlotskiSolver();
-            initializeSolver();
-
-            // 清空历史记录
-            clearHistory();
-
-            // 重置胜利状态，因为加载了新布局
-            victoryAchieved = false;
-
-            // 隐藏胜利界面
-            if (victoryView != null) {
-                victoryView.hideVictory();
-            }
-
-            System.out.println("Game state loaded successfully");
         }
     }
 
@@ -584,5 +593,24 @@ public class GameController {
         elapsedTimeBeforeStart = gameTime;
         // 更新显示
         updateTimeDisplay(gameTime);
+    }
+
+    /**
+     * 强制游戏进入胜利状态（用于调试或演示） 通过快捷键触发
+     */
+    public void forceVictory() {
+        if (victoryController != null) {
+            // 停止计时器
+            stopTimer();
+
+            // 获取当前游戏状态参数
+            long gameTime = getGameTimeInMillis();
+            int moveCount = view.getSteps();
+
+            // 直接调用胜利检查，传入0作为最小步数（确保触发胜利条件）
+            victoryController.checkVictory(0, gameTime, moveCount);
+
+            System.out.println("Victory forced by shortcut key");
+        }
     }
 }

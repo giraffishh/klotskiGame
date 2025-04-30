@@ -1,22 +1,22 @@
-import controller.util.BoardSerializer;
+
+import javax.swing.SwingUtilities;
+
+import controller.LevelSelectController;
 import model.AppSettings;
-import model.MapModel;
 import service.DatabaseService;
 import service.UserSession;
-import view.util.FontManager;
 import view.game.GameFrame;
 import view.home.HomeFrame;
+import view.level.LevelSelectFrame;
 import view.login.LoginFrame;
 import view.settings.SettingsFrame;
+import view.util.FontManager;
 import view.util.FrameUtil;
 
-import javax.swing.*;
-
 public class Main {
+
     /**
-     * 程序入口方法
-     * 初始化并显示登录窗口、主页窗口和游戏窗口
-     * 使用SwingUtilities.invokeLater确保UI组件在事件分发线程中创建
+     * 程序入口方法 初始化并显示登录窗口、主页窗口和游戏窗口 使用SwingUtilities.invokeLater确保UI组件在事件分发线程中创建
      *
      * @param args 命令行参数
      */
@@ -37,7 +37,7 @@ public class Main {
 
         // 初始化用户会话服务
         UserSession.getInstance();
-        
+
         // 初始化应用程序设置管理器
         AppSettings.getInstance();
 
@@ -45,22 +45,18 @@ public class Main {
             // 创建登录窗口并显示
             LoginFrame loginFrame = new LoginFrame(460, 370);
 
-            // 创建地图模型
-            MapModel mapModel = new MapModel(new int[][]{
-                    {BoardSerializer.VERTICAL, BoardSerializer.SOLDIER, BoardSerializer.SOLDIER, BoardSerializer.VERTICAL},
-                    {BoardSerializer.VERTICAL, BoardSerializer.SOLDIER, BoardSerializer.SOLDIER, BoardSerializer.VERTICAL},
-                    {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL},
-                    {BoardSerializer.SOLDIER, BoardSerializer.EMPTY, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO},
-                    {BoardSerializer.SOLDIER, BoardSerializer.EMPTY, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO}
-            });
-
-            // 创建游戏窗口
-            GameFrame gameFrame = new GameFrame(700, 550, mapModel);
+            // 创建游戏窗口（不再直接传入地图模型）
+            GameFrame gameFrame = new GameFrame(700, 550, null);
             gameFrame.setVisible(false);
 
             // 创建Home窗口
             HomeFrame homeFrame = new HomeFrame(500, 400);
             homeFrame.setVisible(false);
+
+            // 创建关卡选择界面
+            LevelSelectFrame levelSelectFrame = new LevelSelectFrame(700, 550);
+            LevelSelectController levelSelectController = new LevelSelectController(levelSelectFrame);
+            levelSelectFrame.setController(levelSelectController);
 
             // 创建Settings窗口
             SettingsFrame settingsFrame = new SettingsFrame(400, 300);
@@ -72,7 +68,11 @@ public class Main {
             homeFrame.setGameFrame(gameFrame);
             homeFrame.setSettingsFrame(settingsFrame);
             gameFrame.setHomeFrame(homeFrame);
+            gameFrame.setLevelSelectFrame(levelSelectFrame);
             loginFrame.setGameFrame(gameFrame);
+            homeFrame.setLevelSelectFrame(levelSelectFrame);
+            levelSelectFrame.setHomeFrame(homeFrame);
+            levelSelectFrame.setGameFrame(gameFrame);
 
             // 显示登录窗口
             loginFrame.setVisible(true);
