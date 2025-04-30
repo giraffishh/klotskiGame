@@ -35,9 +35,9 @@ import view.victory.VictoryView;
 public class GameController {
 
     // 游戏视图组件引用
-    private final GamePanel view;
+    private GamePanel view; // 移除 final
     // 游戏地图模型引用
-    private final MapModel model;
+    private MapModel model; // 移除 final
 
     // 方块移动策略对象
     private final BlockMover singleBlockMover;
@@ -241,14 +241,16 @@ public class GameController {
      * @param index 关卡索引
      */
     public void setCurrentLevelIndex(int index) {
-           this.currentLevelIndex = index;
+        System.out.println("Current level index: " + index);
+        this.currentLevelIndex = index;
         if (victoryController != null) {
             victoryController.setCurrentLevelIndex(index);
         }
     }
 
     /**
-     * 初始化游戏，在UI组件完全准备好后调用 这个方法应在GameFrame完成所有UI元素设置后调用
+     * 初始化游戏，在UI组件完全准备好后调用 这个方法应在GameFrame完成所有UI元素设置后调用 主要负责初始化求解器和更新显示。其他重置操作移至
+     * resetWithNewModel 或 restartGame。
      */
     public void initializeGame() {
         // 初始化华容道求解器并计算最优解
@@ -257,8 +259,28 @@ public class GameController {
         // 确保更新最短步数显示
         updateMinStepsDisplay();
 
-        // 清空历史记录
-        clearHistory();
+        // 注意：历史记录、计时器、胜利状态的重置现在由 resetWithNewModel 或 restartGame 处理
+    }
+
+    /**
+     * 使用新的模型和视图重置控制器状态。 用于加载新关卡时复用控制器实例。
+     *
+     * @param newModel 新的游戏地图模型
+     * @param newView 新的游戏面板视图
+     */
+    public void resetWithNewModel(MapModel newModel, GamePanel newView) {
+        System.out.println("Resetting controller with new model and view...");
+        this.model = newModel;
+        this.view = newView;
+        this.view.setController(this); // 确保新视图持有正确的控制器引用
+
+        // 更新依赖组件的引用
+        if (saveManager != null) {
+            saveManager.updateReferences(newView, newModel);
+        }
+        if (historyManager != null) {
+            historyManager.updateReferences(newView, newModel); // HistoryManager 内部会清空历史
+        }
 
         // 重置计时器
         resetTimer();
@@ -267,16 +289,35 @@ public class GameController {
         if (victoryController != null) {
             victoryController.resetVictoryState();
         }
+
+        // 确保新视图的步数显示为0
+        if (this.view != null) {
+            this.view.setSteps(0);
+        }
+
+        System.out.println("Controller reset complete.");
     }
 
     /**
      * 初始化华容道求解器并预先计算最优解 将此逻辑抽取为单独方法，以便在构造函数和加载游戏后调用
      */
     private void initializeSolver() {
+        // 检查模型是否有效
+        if (model == null || model.getWidth() <= 0 || model.getHeight() <= 0) {
+            System.err.println("Cannot initialize solver: Invalid model.");
+            if (view != null) {
+                view.setMinSteps(-1); // 显示无效状态
+            }
+            return;
+        }
+
         System.out.println("=== Initializing Klotski Solver ===");
 
         // 获取当前布局并预先计算最优解
         BoardState initialState = new BoardState(model.getSerializedLayout());
+
+        // 重置或创建求解器实例
+        this.solver = new KlotskiSolver();
 
         // 记录求解开始时间
         long startTime = System.currentTimeMillis();
@@ -304,11 +345,12 @@ public class GameController {
      * 重新开始游戏的方法
      */
     public void restartGame() {
-        System.out.println("Restarting game...");
+        System.out.println("\nRestarting game...");
 
         try {
             // 检查model是否为null
             if (model == null) {
+                System.err.println("Cannot restart game: Model is null.");
                 return;
             }
 
@@ -317,19 +359,15 @@ public class GameController {
 
             // 重置游戏面板
             if (view != null) {
-                view.resetGame();
+                view.resetGame(); // resetGame 会重置步数显示并重新绘制方块
             }
 
-            // 重置后更新最短步数显示
-            // 只有在游戏实际显示时才需要重新求解
-            if (view != null && view.isShowing()) {
-                this.solver = new KlotskiSolver();
-                initializeSolver();
-            }
+            // 重新初始化求解器并更新显示
+            initializeSolver();
             updateMinStepsDisplay();
 
             // 清空历史记录
-            historyManager.clearHistory();
+            clearHistory(); // historyManager.clearHistory() 内部会更新按钮
 
             // 重置胜利控制器状态
             if (victoryController != null) {
@@ -450,7 +488,9 @@ public class GameController {
      * 清空移动历史
      */
     private void clearHistory() {
-        historyManager.clearHistory();
+        if (historyManager != null) {
+            historyManager.clearHistory();
+        }
     }
 
     /**
@@ -556,8 +596,7 @@ public class GameController {
     }
 
     /**
-     * 强制游戏进入胜利状态（用于调试或演示）
-     * 通过快捷键触发
+     * 强制游戏进入胜利状态（用于调试或演示） 通过快捷键触发
      */
     public void forceVictory() {
         if (victoryController != null) {

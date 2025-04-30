@@ -8,28 +8,38 @@ import javax.swing.JOptionPane;
 import controller.util.BoardSerializer;
 import model.MapModel;
 import service.DatabaseService;
-import service.UserSession;
-import view.game.GamePanel;
+import service.UserSession; // 添加导入
+import view.game.GamePanel;    // 添加导入
 
 /**
- * 游戏状态管理类，负责游戏的保存、加载和存档检测功能
+ * 存档管理器，负责保存和加载游戏状态
  */
 public class SaveManager {
 
-    private final GamePanel view;
-    private final MapModel model;
-    // 添加一个回调接口，用于通知加载完成后需要更新最短步数
-    private Runnable onLoadCompleteCallback;
+    private GamePanel view; // 移除 final
+    private MapModel model; // 移除 final
+    private Runnable onLoadCompleteCallback; // 用于加载完成后通知 Controller 更新最短步数
 
     /**
      * 构造函数
      *
-     * @param view 游戏面板视图
-     * @param model 地图数据模型
+     * @param view 游戏面板
+     * @param model 地图模型
      */
     public SaveManager(GamePanel view, MapModel model) {
         this.view = view;
         this.model = model;
+    }
+
+    /**
+     * 更新内部的视图和模型引用。 当 GameController 复用并加载新关卡时调用。
+     *
+     * @param newView 新的游戏面板实例
+     * @param newModel 新的地图模型实例
+     */
+    public void updateReferences(GamePanel newView, MapModel newModel) {
+        this.view = newView;
+        this.model = newModel;
     }
 
     /**

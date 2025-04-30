@@ -10,6 +10,8 @@ import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
 import controller.GameController;
+import controller.history.HistoryManager; // 添加导入
+import controller.save.SaveManager;       // 添加导入
 import model.MapModel;
 import service.UserSession;
 import view.home.HomeFrame;
@@ -250,24 +252,31 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
                 gamePanel.setTimeLabel(timeLabel);
             }
 
-            // 创建新的游戏控制器
-            controller = new GameController(gamePanel, mapModel);
-            controller.setParentFrame(this);
-
-            // 设置必要的引用
-            if (victoryFrame != null) {
-                controller.setVictoryView(victoryFrame);
+            // 复用或创建游戏控制器
+            if (controller == null) {
+                // 首次创建控制器
+                controller = new GameController(gamePanel, mapModel);
+                controller.setParentFrame(this);
+                // 设置必要的引用
+                if (victoryFrame != null) {
+                    controller.setVictoryView(victoryFrame);
+                }
+                if (levelSelectFrame != null) {
+                    controller.setLevelSelectFrame(levelSelectFrame);
+                }
+            } else {
+                // 复用现有控制器，更新模型和视图引用
+                controller.resetWithNewModel(mapModel, gamePanel);
+                // 确保 gamePanel 的 controller 引用是最新的
+                gamePanel.setController(controller);
             }
-            if (levelSelectFrame != null) {
-                controller.setLevelSelectFrame(levelSelectFrame);
-            }
 
-            // 初始化游戏
+            // 初始化游戏（重置求解器、历史、计时器等）
             controller.initializeGame();
 
             // 更新按钮状态
             updateButtonsState();
-            updateUndoRedoButtons(false, false);
+            updateUndoRedoButtons(false, false); // 确保按钮状态在加载新关卡时重置
 
             // 重新设置窗口居中显示
             this.setLocationRelativeTo(null);

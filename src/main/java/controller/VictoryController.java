@@ -135,6 +135,7 @@ public class VictoryController {
             if (!isLastLevel()) {
                 // 先隐藏胜利界面，再加载下一关
                 victoryView.hideVictory();
+                System.out.println("\nLoading next level...");
                 SwingUtilities.invokeLater(this::loadNextLevel); // 使用invokeLater确保UI更新完成后再加载
             }
         });
