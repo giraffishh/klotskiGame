@@ -207,49 +207,11 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
     }
 
     /**
-     * 初始化游戏面板
-     *
-     * @param mapModel 游戏地图模型
-     */
-    private void initializeGamePanel(MapModel mapModel) {
-        // 创建游戏面板
-        gamePanel = new GamePanel(mapModel);
-
-        // 调整游戏面板位置
-        int panelX = (this.getWidth() - gamePanel.getWidth()) / 2 - 100; // 从-80改为-100
-        int panelY = (this.getHeight() - gamePanel.getHeight()) / 2;
-        gamePanel.setLocation(panelX, panelY);
-        this.add(gamePanel);
-
-        // 创建游戏控制器，关联面板和模型
-        this.controller = new GameController(gamePanel, mapModel);
-        controller.setParentFrame(this);
-        controller.setVictoryView(victoryFrame);
-
-        // 设置步数标签和最短步数标签
-        gamePanel.setStepLabel(stepLabel);
-        gamePanel.setMinStepsLabel(minStepsLabel);
-
-        // 初始化游戏
-        controller.initializeGame();
-
-        // 更新按钮状态
-        updateButtonsState();
-
-        // 刷新界面
-        this.revalidate();
-        this.repaint();
-
-        // 将焦点设置到游戏面板
-        gamePanel.requestFocusInWindow();
-    }
-
-    /**
      * 加载新关卡
      *
      * @param mapModel 游戏地图模型
      */
-    public void loadLevel(MapModel mapModel) {
+    public void initializeGamePanel(MapModel mapModel) {
         if (mapModel == null) {
             System.err.println("Error: Cannot load null MapModel");
             return;

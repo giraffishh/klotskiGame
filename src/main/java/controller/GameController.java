@@ -17,11 +17,7 @@ import controller.mover.BigBlockMover;
 
 // 导入格子布局序列化工具类和存档管理器
 import controller.save.SaveManager;
-import controller.victory.VictoryController;
 
-import javax.swing.JOptionPane;
-import javax.swing.SwingUtilities;
-import javax.swing.JLabel;
 import javax.swing.Timer;
 
 import java.util.List;
@@ -31,7 +27,6 @@ import java.text.DecimalFormat;
 
 import view.game.GameFrame;
 import view.level.LevelSelectFrame;
-import view.util.FontManager;
 import view.victory.VictoryView;
 
 /**
@@ -246,7 +241,7 @@ public class GameController {
      * @param index 关卡索引
      */
     public void setCurrentLevelIndex(int index) {
-        this.currentLevelIndex = index;
+           this.currentLevelIndex = index;
         if (victoryController != null) {
             victoryController.setCurrentLevelIndex(index);
         }

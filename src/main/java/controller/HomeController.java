@@ -118,7 +118,7 @@ public class HomeController {
                     homeView.closeHome();
 
                     // 使用loadLevel方法加载游戏（与levelSelect使用相同的方法）
-                    gameFrame.loadLevel(mapModel);
+                    gameFrame.initializeGamePanel(mapModel);
 
                     // 设置已保存的步数
                     if (gameFrame.getGamePanel() != null) {

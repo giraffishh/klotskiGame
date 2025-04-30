@@ -1,4 +1,4 @@
-package controller.victory;
+package controller;
 
 import java.text.DecimalFormat;
 
@@ -6,8 +6,7 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
-import controller.GameController;
-import controller.LevelSelectController;
+import model.MapModel;
 import view.game.GameFrame;
 import view.level.LevelSelectFrame;
 import view.victory.VictoryView;
@@ -227,65 +226,87 @@ public class VictoryController {
             return; // 直接返回，不执行后续加载逻辑
         }
 
-        // 原有的加载下一关逻辑
+        try {
+            // 获取下一关索引
+            int nextLevelIndex = getNextLevelIndex();
+
+            if (nextLevelIndex == -1) {
+                // 理论上这里不会执行到，因为前面的isLastLevel()已经处理了这种情况
+                return;
+            }
+
+            // 获取关卡选择控制器
+            LevelSelectController levelController = levelSelectFrame.getController();
+            if (levelController == null) {
+                showErrorMessage("Level selection controller is null");
+                return;
+            }
+
+            // 获取关卡数据
+            java.util.List<LevelSelectController.LevelData> levels = levelController.getLevels();
+            if (nextLevelIndex >= levels.size()) {
+                showErrorMessage("Invalid next level index");
+                return;
+            }
+
+            LevelSelectController.LevelData nextLevel = levels.get(nextLevelIndex);
+            if (nextLevel == null || nextLevel.getLayout() == null) {
+                showErrorMessage("Invalid level data");
+                return;
+            }
+
+            // 创建新的地图模型
+            MapModel mapModel = new MapModel(nextLevel.getLayout());
+
+            // 停止当前游戏的计时器
+            if (gameController != null) {
+                gameController.stopTimer();
+            }
+
+            // 加载关卡到游戏窗口
+            if (parentFrame != null) {
+                parentFrame.initializeGamePanel(mapModel);
+
+                // 设置新的关卡索引
+                GameController controller = parentFrame.getController();
+                if (controller != null) {
+                    controller.setCurrentLevelIndex(nextLevelIndex);
+                    controller.resetTimer();
+
+                    // 更新当前关卡索引
+                    this.currentLevelIndex = nextLevelIndex;
+                }
+
+                // 确保游戏面板获得焦点以接收键盘事件
+                if (parentFrame.getGamePanel() != null) {
+                    parentFrame.getGamePanel().requestFocusInWindow();
+                }
+            } else {
+                showErrorMessage("Game window is not available");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            showErrorMessage("Failed to load next level: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取下一关索引
+     *
+     * @return 下一关索引，如果没有下一关则返回-1
+     */
+    private int getNextLevelIndex() {
         if (levelSelectFrame != null) {
             LevelSelectController levelController = levelSelectFrame.getController();
             if (levelController != null) {
-                // 首先隐藏胜利界面（确保界面关闭后再加载新关卡）
-                if (victoryView != null) {
-                    victoryView.hideVictory();
+                java.util.List<LevelSelectController.LevelData> levels = levelController.getLevels();
+                int nextIndex = currentLevelIndex + 1;
+                if (nextIndex < levels.size()) {
+                    return nextIndex;
                 }
-
-                // 尝试加载下一关
-                boolean success = levelController.loadNextLevel(currentLevelIndex);
-
-                if (success) {
-                    // 更新当前关卡索引
-                    currentLevelIndex = levelController.getNextLevelIndex(currentLevelIndex);
-                } else {
-                    // 这部分逻辑理论上不会执行到，因为前面的isLastLevel()检查已经处理了
-                    // 但为了代码健壮性，显示确认提示并直接返回主页
-                    JLabel messageLabel = new JLabel("Congratulations! You have completed all levels!");
-                    messageLabel.setFont(view.util.FontManager.getRegularFont(16));
-
-                    JOptionPane.showMessageDialog(
-                            parentFrame,
-                            messageLabel,
-                            "Game Complete",
-                            JOptionPane.INFORMATION_MESSAGE
-                    );
-
-                    // 直接返回主页
-                    if (parentFrame != null) {
-                        parentFrame.returnToHomeDirectly();
-                    }
-                }
-            } else {
-                // 用户友好的错误提示
-                if (parentFrame != null) {
-                    JOptionPane.showMessageDialog(
-                            parentFrame,
-                            "Unable to load next level. Please return to level selection.",
-                            "Error",
-                            JOptionPane.ERROR_MESSAGE
-                    );
-                } else {
-                    System.err.println("Level selection controller is null");
-                }
-            }
-        } else {
-            // 用户友好的错误提示
-            if (parentFrame != null) {
-                JOptionPane.showMessageDialog(
-                        parentFrame,
-                        "Unable to load next level. Level selection frame not initialized.",
-                        "Error",
-                        JOptionPane.ERROR_MESSAGE
-                );
-            } else {
-                System.err.println("Level selection frame reference is not set");
             }
         }
+        return -1;  // 表示没有下一关
     }
 
     /**
@@ -294,13 +315,24 @@ public class VictoryController {
      * @return 如果是最后一关返回true，否则返回false
      */
     private boolean isLastLevel() {
-        if (levelSelectFrame != null) {
-            LevelSelectController levelController = levelSelectFrame.getController();
-            if (levelController != null) {
-                return !levelController.hasNextLevel(currentLevelIndex);
-            }
+        return getNextLevelIndex() == -1;
+    }
+
+    /**
+     * 显示错误信息
+     *
+     * @param message 错误信息
+     */
+    private void showErrorMessage(String message) {
+        if (parentFrame != null) {
+            JOptionPane.showMessageDialog(
+                    parentFrame,
+                    message,
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE
+            );
+        } else {
+            System.err.println(message);
         }
-        // 如果无法确定，为安全起见，假设是最后一关
-        return true;
     }
 }
