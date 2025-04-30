@@ -1,24 +1,22 @@
+
+import javax.swing.SwingUtilities;
+
 import controller.LevelSelectController;
-import controller.util.BoardSerializer;
 import model.AppSettings;
-import model.MapModel;
 import service.DatabaseService;
 import service.UserSession;
-import view.level.LevelSelectFrame;
-import view.util.FontManager;
 import view.game.GameFrame;
 import view.home.HomeFrame;
+import view.level.LevelSelectFrame;
 import view.login.LoginFrame;
 import view.settings.SettingsFrame;
+import view.util.FontManager;
 import view.util.FrameUtil;
 
-import javax.swing.*;
-
 public class Main {
+
     /**
-     * 程序入口方法
-     * 初始化并显示登录窗口、主页窗口和游戏窗口
-     * 使用SwingUtilities.invokeLater确保UI组件在事件分发线程中创建
+     * 程序入口方法 初始化并显示登录窗口、主页窗口和游戏窗口 使用SwingUtilities.invokeLater确保UI组件在事件分发线程中创建
      *
      * @param args 命令行参数
      */
@@ -39,7 +37,7 @@ public class Main {
 
         // 初始化用户会话服务
         UserSession.getInstance();
-        
+
         // 初始化应用程序设置管理器
         AppSettings.getInstance();
 
@@ -56,7 +54,7 @@ public class Main {
             homeFrame.setVisible(false);
 
             // 创建关卡选择界面
-            LevelSelectFrame levelSelectFrame = new LevelSelectFrame(500, 400);
+            LevelSelectFrame levelSelectFrame = new LevelSelectFrame(700, 550);
             LevelSelectController levelSelectController = new LevelSelectController(levelSelectFrame);
             levelSelectFrame.setController(levelSelectController);
 

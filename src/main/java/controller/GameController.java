@@ -329,8 +329,8 @@ public class GameController {
         long endTime = System.currentTimeMillis();
 
         // 输出求解统计信息
-        System.out.println("Solving time: " + (endTime - startTime) + " ms");
-        System.out.println("BFS nodes explored: " + solver.getNodesExploredBFS());
+        System.out.println("[initialSolve] Solving time: " + (endTime - startTime) + " ms");
+        System.out.println("[initialSolve] BFS nodes explored: " + solver.getNodesExploredBFS());
 
         // 输出求解结果
         if (solution != null && !solution.isEmpty()) {
@@ -517,9 +517,9 @@ public class GameController {
                 view.setMinSteps(minSteps);
 
                 // 输出当前求解信息
-                System.out.println("Current layout solved in: " + (endTime - startTime) + " ms");
-                System.out.println("A* nodes explored: " + solver.getNodesExploredAStar());
-                System.out.println("Minimum steps: " + minSteps);
+                System.out.println("[findPathFrom] Current layout solved in: " + (endTime - startTime) + " ms");
+                System.out.println("[findPathFrom] A* nodes explored: " + solver.getNodesExploredAStar());
+                System.out.println("[findPathFrom] Minimum steps: " + minSteps);
 
                 // 使用胜利控制器检查胜利条件
                 if (victoryController != null) {

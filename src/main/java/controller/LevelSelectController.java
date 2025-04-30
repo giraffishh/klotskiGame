@@ -2,8 +2,10 @@ package controller;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.io.InputStream;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
 
-import controller.util.BoardSerializer;
 import model.MapModel;
 import view.game.GameFrame;
 import view.home.HomeFrame;
@@ -31,95 +33,35 @@ public class LevelSelectController {
      */
     public LevelSelectController(LevelSelectView levelSelectView) {
         this.levelSelectView = levelSelectView;
-        this.levels = initializeLevels();
+        this.levels = loadLevelsFromJson();
     }
 
     /**
-     * 初始化预设关卡
+     * 从JSON文件加载关卡数据
      *
      * @return 关卡数据列表
      */
-    private List<LevelData> initializeLevels() {
+    private List<LevelData> loadLevelsFromJson() {
         List<LevelData> levelList = new ArrayList<>();
 
-        // 添加预设关卡
-        // 经典横刀立马布局
-        levelList.add(new LevelData(
-                "Level 1",
-                "Classic Layout",
-                new int[][]{
-                    {BoardSerializer.VERTICAL, BoardSerializer.SOLDIER, BoardSerializer.SOLDIER, BoardSerializer.VERTICAL},
-                    {BoardSerializer.VERTICAL, BoardSerializer.SOLDIER, BoardSerializer.SOLDIER, BoardSerializer.VERTICAL},
-                    {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL},
-                    {BoardSerializer.SOLDIER, BoardSerializer.EMPTY, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO},
-                    {BoardSerializer.SOLDIER, BoardSerializer.EMPTY, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO}
-                }
-        ));
+        try {
+            InputStream inputStream = getClass().getClassLoader().getResourceAsStream("layouts.json");
+            if (inputStream == null) {
+                System.err.println("Could not find layouts.json file");
+                throw new RuntimeException("Failed to load layouts.json");
+            }
 
-        // 兵临城下布局
-        levelList.add(new LevelData(
-                "Level 2",
-                "Medium Difficulty",
-                new int[][]{
-                    {BoardSerializer.SOLDIER, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.SOLDIER},
-                    {BoardSerializer.SOLDIER, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.SOLDIER},
-                    {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL},
-                    {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL},
-                    {BoardSerializer.EMPTY, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.EMPTY}
-                }
-        ));
+            ObjectMapper mapper = new ObjectMapper();
+            levelList = mapper.readValue(inputStream, new TypeReference<List<LevelData>>() {
+            });
+            inputStream.close();
 
-        // 峰回路转
-        levelList.add(new LevelData(
-                "Level 3",
-                "Medium Difficulty",
-                new int[][]{
-                    {BoardSerializer.VERTICAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.VERTICAL},
-                    {BoardSerializer.VERTICAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.VERTICAL},
-                    {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL},
-                    {BoardSerializer.SOLDIER, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.SOLDIER},
-                    {BoardSerializer.SOLDIER, BoardSerializer.EMPTY, BoardSerializer.EMPTY, BoardSerializer.SOLDIER}
-                }
-        ));
-
-        // Layout 4
-        levelList.add(new LevelData(
-                "Level 4",
-                "Hard Layout",
-                new int[][]{
-                    {BoardSerializer.EMPTY, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.EMPTY},
-                    {BoardSerializer.SOLDIER, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO, BoardSerializer.SOLDIER},
-                    {BoardSerializer.VERTICAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.VERTICAL},
-                    {BoardSerializer.VERTICAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.VERTICAL},
-                    {BoardSerializer.SOLDIER, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.SOLDIER}
-                }
-        ));
-
-        // Layout 5
-        levelList.add(new LevelData(
-                "Level 5",
-                "Hard Layout",
-                new int[][]{
-                    {BoardSerializer.SOLDIER, BoardSerializer.VERTICAL, BoardSerializer.VERTICAL, BoardSerializer.VERTICAL},
-                    {BoardSerializer.SOLDIER, BoardSerializer.VERTICAL, BoardSerializer.VERTICAL, BoardSerializer.VERTICAL},
-                    {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.SOLDIER, BoardSerializer.SOLDIER},
-                    {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO},
-                    {BoardSerializer.EMPTY, BoardSerializer.EMPTY, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO}
-                }
-        ));
-
-        // Layout 6
-        levelList.add(new LevelData(
-                "Level 6",
-                "Hard Layout",
-                new int[][]{
-                    {BoardSerializer.VERTICAL, BoardSerializer.SOLDIER, BoardSerializer.SOLDIER, BoardSerializer.VERTICAL},
-                    {BoardSerializer.VERTICAL, BoardSerializer.SOLDIER, BoardSerializer.SOLDIER, BoardSerializer.VERTICAL},
-                    {BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL, BoardSerializer.HORIZONTAL},
-                    {BoardSerializer.SOLDIER, BoardSerializer.EMPTY, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO},
-                    {BoardSerializer.SOLDIER, BoardSerializer.EMPTY, BoardSerializer.CAO_CAO, BoardSerializer.CAO_CAO}
-                }
-        ));
+            System.out.println("Successfully loaded " + levelList.size() + " levels from JSON");
+        } catch (Exception e) {
+            System.err.println("Error loading levels from JSON: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Failed to load levels: " + e.getMessage());
+        }
 
         return levelList;
     }
@@ -221,9 +163,9 @@ public class LevelSelectController {
      * 重置所有关卡数据 当从具体关卡返回时调用，确保再次进入时为初始状态
      */
     public void resetAllLevels() {
-        // 重新初始化所有关卡数据
+        // 重新从JSON加载所有关卡数据
         this.levels.clear();
-        this.levels.addAll(initializeLevels());
+        this.levels.addAll(loadLevelsFromJson());
     }
 
     /**
@@ -243,9 +185,13 @@ public class LevelSelectController {
      */
     public static class LevelData {
 
-        private final String name;
-        private final String description;
-        private final int[][] layout;
+        private String name;
+        private String description;
+        private int[][] layout;
+
+        // 无参构造函数，用于Jackson反序列化
+        public LevelData() {
+        }
 
         public LevelData(String name, String description, int[][] layout) {
             this.name = name;
@@ -257,12 +203,24 @@ public class LevelSelectController {
             return name;
         }
 
+        public void setName(String name) {
+            this.name = name;
+        }
+
         public String getDescription() {
             return description;
         }
 
+        public void setDescription(String description) {
+            this.description = description;
+        }
+
         public int[][] getLayout() {
             return layout;
+        }
+
+        public void setLayout(int[][] layout) {
+            this.layout = layout;
         }
     }
 }

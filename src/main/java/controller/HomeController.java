@@ -165,10 +165,11 @@ public class HomeController {
     public void openLevelSelect() {
         if (levelSelectFrame != null) {
             levelSelectFrame.showLevelSelect();
+            homeView.closeHome();
         } else {
             homeView.showStyledMessage(
-                    "关卡选择窗口未正确初始化",
-                    "错误",
+                    "The level selection window is not initialized correctly",
+                    "Error",
                     JOptionPane.ERROR_MESSAGE);
         }
     }

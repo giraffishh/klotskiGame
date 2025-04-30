@@ -1,18 +1,30 @@
 package view.level;
 
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.GridLayout;
+import java.util.List;
+
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.UIManager;
+import javax.swing.WindowConstants;
+
 import controller.LevelSelectController;
 import view.game.GameFrame;
 import view.home.HomeFrame;
 import view.util.FontManager;
 import view.util.FrameUtil;
 
-import javax.swing.*;
-import java.awt.*;
-import java.util.List;
-
 /**
- * 关卡选择界面
- * 显示所有可用的华容道关卡布局供玩家选择
+ * 关卡选择界面 显示所有可用的华容道关卡布局供玩家选择
  */
 public class LevelSelectFrame extends JFrame implements LevelSelectView {
 
@@ -21,6 +33,7 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
 
     /**
      * 创建关卡选择窗口
+     *
      * @param width 窗口宽度
      * @param height 窗口高度
      */
@@ -41,13 +54,15 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
         // 使用BorderLayout作为主布局
         this.setLayout(new BorderLayout());
 
-        // 创建主面板，使用BorderLayout
-        JPanel mainPanel = FrameUtil.createPaddedPanel(new BorderLayout(), 30, 40, 30, 40);
+        // 创建主面板，使用BorderLayout，增大内边距
+        JPanel mainPanel = FrameUtil.createPaddedPanel(new BorderLayout(), 10, 50, 10, 50);
 
         // 创建顶部标题面板
         JPanel titlePanel = new JPanel(new BorderLayout());
         JLabel titleLabel = new JLabel("Select Level", JLabel.CENTER);
-        titleLabel.setFont(FontManager.getTitleFont(24));
+        titleLabel.setFont(FontManager.getTitleFont(24)); // 增大标题字体
+        // 减小标题上下边距，特别是上边距
+        titlePanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
         titlePanel.add(titleLabel, BorderLayout.CENTER);
 
         // 添加标题面板到主面板顶部
@@ -55,19 +70,29 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
 
         // 创建中央内容面板 - 将使用GridLayout显示关卡
         levelPanel = new JPanel();
-        levelPanel.setLayout(new GridLayout(0, 2, 20, 20)); // 每行两个关卡，行数自动计算
+        levelPanel.setLayout(new GridLayout(0, 2, 30, 30)); // 增大关卡之间的间距
 
         // 将关卡面板放入滚动面板
         JScrollPane scrollPane = new JScrollPane(levelPanel);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
-        scrollPane.getVerticalScrollBar().setUnitIncrement(16); // 设置滚动速度
+        scrollPane.getVerticalScrollBar().setUnitIncrement(20); // 增大滚动速度
 
-        // 添加滚动面板到主面板中央
-        mainPanel.add(scrollPane, BorderLayout.CENTER);
+        // 为滚动面板创建包装面板，减小上下边距
+        JPanel scrollPaneWrapper = new JPanel(new BorderLayout());
+        scrollPaneWrapper.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0)); // 减小为15像素间距
+        scrollPaneWrapper.add(scrollPane, BorderLayout.CENTER);
 
-        // 创建底部按钮面板
+        // 添加包装后的滚动面板到主面板中央
+        mainPanel.add(scrollPaneWrapper, BorderLayout.CENTER);
+
+        // 创建底部按钮面板，减小与中间内容的距离
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 0));
-        JButton backButton = FrameUtil.createStyledButton("Back to Home", false);
+        // 减小按钮面板上边距
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
+        JButton backButton = FrameUtil.createStyledButton("Home", false);
+        // 增大按钮尺寸
+        backButton.setPreferredSize(new Dimension(120, 40));
+        backButton.setFont(FontManager.getButtonFont().deriveFont(16f));
 
         // 添加按钮到按钮面板
         buttonPanel.add(backButton);
@@ -90,7 +115,9 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
      * 填充关卡列表
      */
     private void populateLevelList() {
-        if (controller == null) return;
+        if (controller == null) {
+            return;
+        }
 
         // 清空当前面板
         levelPanel.removeAll();
@@ -114,6 +141,7 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
 
     /**
      * 创建单个关卡卡片
+     *
      * @param level 关卡数据
      * @param index 关卡索引
      * @return 关卡卡片面板
@@ -121,21 +149,22 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
     private JPanel createLevelCard(LevelSelectController.LevelData level, int index) {
         JPanel card = new JPanel();
         card.setLayout(new BorderLayout());
-        card.setBorder(BorderFactory.createLineBorder(FrameUtil.PRIMARY_COLOR, 2));
+        card.setBorder(BorderFactory.createLineBorder(FrameUtil.PRIMARY_COLOR, 3)); // 加粗边框
 
         // 创建关卡标题
         JLabel nameLabel = new JLabel(level.getName(), JLabel.CENTER);
-        nameLabel.setFont(FontManager.getTitleFont(18));
-        nameLabel.setBorder(BorderFactory.createEmptyBorder(15, 10, 5, 10));
+        nameLabel.setFont(FontManager.getTitleFont(20)); // 增大标题字体
+        nameLabel.setBorder(BorderFactory.createEmptyBorder(20, 10, 10, 10)); // 增大内边距
 
         // 创建关卡描述
         JLabel descLabel = new JLabel(level.getDescription(), JLabel.CENTER);
-        descLabel.setFont(FontManager.getRegularFont(14));
-        descLabel.setBorder(BorderFactory.createEmptyBorder(0, 10, 15, 10));
+        descLabel.setFont(FontManager.getRegularFont(16)); // 增大描述字体
+        descLabel.setBorder(BorderFactory.createEmptyBorder(0, 10, 20, 10)); // 增大内边距
 
         // 创建选择按钮
         JButton selectButton = FrameUtil.createStyledButton("Select", true);
-        selectButton.setPreferredSize(new Dimension(100, 40));
+        selectButton.setPreferredSize(new Dimension(120, 45)); // 增大按钮尺寸
+        selectButton.setFont(FontManager.getButtonFont().deriveFont(16f)); // 增大按钮字体
         selectButton.addActionListener(e -> {
             if (controller != null) {
                 controller.selectLevel(index);
@@ -148,7 +177,7 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
         topPanel.add(descLabel, BorderLayout.SOUTH);
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        buttonPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 15, 0));
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0)); // 增大内边距
         buttonPanel.add(selectButton);
 
         card.add(topPanel, BorderLayout.CENTER);
@@ -206,6 +235,7 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
 
     /**
      * 设置游戏窗口引用
+     *
      * @param gameFrame 游戏窗口
      */
     public void setGameFrame(GameFrame gameFrame) {
@@ -216,6 +246,7 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
 
     /**
      * 设置主页窗口引用
+     *
      * @param homeFrame 主页窗口
      */
     public void setHomeFrame(HomeFrame homeFrame) {
@@ -226,6 +257,7 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
 
     /**
      * 获取关卡选择控制器
+     *
      * @return 关卡选择控制器
      */
     public LevelSelectController getController() {
