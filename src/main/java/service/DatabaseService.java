@@ -62,6 +62,7 @@ public class DatabaseService {
 
             // 创建游戏保存记录表(如果不存在)，增加data_hash列用于数据完整性验证
             // 增加game_time列用于存储游戏用时（毫秒）
+            // 增加level_index列用于存储当前关卡索引
             stmt.execute("CREATE TABLE IF NOT EXISTS game_saves ("
                     + "id INT AUTO_INCREMENT PRIMARY KEY, "
                     + "username VARCHAR(255) NOT NULL, "
@@ -71,6 +72,8 @@ public class DatabaseService {
                     + // 已走步数
                     "game_time BIGINT DEFAULT 0, "
                     + // 游戏用时（毫秒）
+                    "level_index INT DEFAULT 0, "
+                    + // 当前关卡索引
                     "save_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
                     + // 保存时间
                     "description VARCHAR(255), "
@@ -271,29 +274,52 @@ public class DatabaseService {
     }
 
     /**
+     * 为数据生成哈希值，用于验证数据完整性
+     *
+     * @param mapState 地图状态
+     * @param steps 步数
+     * @param levelIndex 关卡索引
+     * @param username 用户名
+     * @return 数据哈希值
+     */
+    private String generateDataHash(String mapState, int steps, int levelIndex, String username) {
+        try {
+            String dataString = mapState + steps + levelIndex + username;
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] hashBytes = md.digest(dataString.getBytes());
+            return Base64.getEncoder().encodeToString(hashBytes);
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+            return "";
+        }
+    }
+
+    /**
      * 更新用户现有游戏存档
      *
      * @param username 用户名
      * @param mapState 地图状态字符串
      * @param steps 当前步数
      * @param gameTime 游戏用时（毫秒）
+     * @param levelIndex 当前关卡索引
      * @param description 保存描述
      * @return 是否更新成功
      */
-    public boolean updateGameSave(String username, String mapState, int steps, long gameTime, String description) {
+    public boolean updateGameSave(String username, String mapState, int steps, long gameTime, int levelIndex, String description) {
         try (Connection conn = getConnection()) {
-            // 计算数据哈希值
-            String dataHash = generateDataHash(mapState, steps, username);
+            // 计算数据哈希值，包含levelIndex
+            String dataHash = generateDataHash(mapState, steps, levelIndex, username);
 
             PreparedStatement stmt = conn.prepareStatement(
-                    "UPDATE game_saves SET map_state = ?, steps = ?, game_time = ?, save_time = CURRENT_TIMESTAMP, "
+                    "UPDATE game_saves SET map_state = ?, steps = ?, game_time = ?, level_index = ?, save_time = CURRENT_TIMESTAMP, "
                     + "description = ?, data_hash = ? WHERE username = ?");
             stmt.setString(1, mapState);
             stmt.setInt(2, steps);
             stmt.setLong(3, gameTime);
-            stmt.setString(4, description);
-            stmt.setString(5, dataHash);
-            stmt.setString(6, username);
+            stmt.setInt(4, levelIndex);
+            stmt.setString(5, description);
+            stmt.setString(6, dataHash);
+            stmt.setString(7, username);
             int result = stmt.executeUpdate();
             return result > 0; // 如果更新影响了行数，则返回true
         } catch (SQLException e) {
@@ -309,30 +335,32 @@ public class DatabaseService {
      * @param mapState 地图状态字符串
      * @param steps 当前步数
      * @param gameTime 游戏用时（毫秒）
+     * @param levelIndex 当前关卡索引
      * @param description 保存描述
      * @return 是否保存成功
      */
-    public boolean saveGameState(String username, String mapState, int steps, long gameTime, String description) {
+    public boolean saveGameState(String username, String mapState, int steps, long gameTime, int levelIndex, String description) {
         // 检查用户是否已有存档
         boolean hasExistingSave = hasUserGameSave(username);
 
         if (hasExistingSave) {
             // 更新现有存档
-            return updateGameSave(username, mapState, steps, gameTime, description);
+            return updateGameSave(username, mapState, steps, gameTime, levelIndex, description);
         } else {
             // 创建新存档
             try (Connection conn = getConnection()) {
-                // 计算数据哈希值
-                String dataHash = generateDataHash(mapState, steps, username);
+                // 计算数据哈希值，包含levelIndex
+                String dataHash = generateDataHash(mapState, steps, levelIndex, username);
 
                 PreparedStatement stmt = conn.prepareStatement(
-                        "INSERT INTO game_saves (username, map_state, steps, game_time, description, data_hash) VALUES (?, ?, ?, ?, ?, ?)");
+                        "INSERT INTO game_saves (username, map_state, steps, game_time, level_index, description, data_hash) VALUES (?, ?, ?, ?, ?, ?, ?)");
                 stmt.setString(1, username);
                 stmt.setString(2, mapState);
                 stmt.setInt(3, steps);
                 stmt.setLong(4, gameTime);
-                stmt.setString(5, description);
-                stmt.setString(6, dataHash);
+                stmt.setInt(5, levelIndex);
+                stmt.setString(6, description);
+                stmt.setString(7, dataHash);
                 int result = stmt.executeUpdate();
                 return result > 0; // 如果插入成功返回true
             } catch (SQLException e) {
@@ -352,16 +380,18 @@ public class DatabaseService {
         private String mapState;
         private int steps;
         private long gameTime;
+        private int levelIndex;
         private Timestamp saveTime;
         private String description;
 
-        public GameSaveData(int id, String username, String mapState, int steps, long gameTime,
+        public GameSaveData(int id, String username, String mapState, int steps, long gameTime, int levelIndex,
                 Timestamp saveTime, String description) {
             this.id = id;
             this.username = username;
             this.mapState = mapState;
             this.steps = steps;
             this.gameTime = gameTime;
+            this.levelIndex = levelIndex;
             this.saveTime = saveTime;
             this.description = description;
         }
@@ -386,32 +416,16 @@ public class DatabaseService {
             return gameTime;
         }
 
+        public int getLevelIndex() {
+            return levelIndex;
+        }
+
         public Timestamp getSaveTime() {
             return saveTime;
         }
 
         public String getDescription() {
             return description;
-        }
-    }
-
-    /**
-     * 为数据生成哈希值，用于验证数据完整性
-     *
-     * @param mapState 地图状态
-     * @param steps 步数
-     * @param username 用户名
-     * @return 数据哈希值
-     */
-    private String generateDataHash(String mapState, int steps, String username) {
-        try {
-            String dataString = mapState + steps + username;
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] hashBytes = md.digest(dataString.getBytes());
-            return Base64.getEncoder().encodeToString(hashBytes);
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-            return "";
         }
     }
 
@@ -424,7 +438,7 @@ public class DatabaseService {
     public GameSaveData loadGameSave(String username) {
         try (Connection conn = getConnection()) {
             PreparedStatement stmt = conn.prepareStatement(
-                    "SELECT id, username, map_state, steps, game_time, save_time, description, data_hash "
+                    "SELECT id, username, map_state, steps, game_time, level_index, save_time, description, data_hash "
                     + "FROM game_saves WHERE username = ?");
             stmt.setString(1, username);
             ResultSet rs = stmt.executeQuery();
@@ -434,14 +448,15 @@ public class DatabaseService {
                 String mapState = rs.getString("map_state");
                 int steps = rs.getInt("steps");
                 long gameTime = rs.getLong("game_time");
+                int levelIndex = rs.getInt("level_index");
                 Timestamp saveTime = rs.getTimestamp("save_time");
                 String description = rs.getString("description");
                 String storedHash = rs.getString("data_hash");
 
-                // 验证数据完整性
-                String calculatedHash = generateDataHash(mapState, steps, username);
+                // 验证数据完整性，包含levelIndex
+                String calculatedHash = generateDataHash(mapState, steps, levelIndex, username);
                 if (calculatedHash.equals(storedHash)) {
-                    return new GameSaveData(id, username, mapState, steps, gameTime, saveTime, description);
+                    return new GameSaveData(id, username, mapState, steps, gameTime, levelIndex, saveTime, description);
                 } else {
                     System.out.println("数据完整性验证失败：数据可能已被篡改");
                     return null;

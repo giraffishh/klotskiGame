@@ -103,11 +103,12 @@ public class SaveManager {
             String gameTimeStr = String.format("%02d:%02d.%02d", minutes, seconds, centiseconds);
 
             String message = String.format("Save Information:\n"
+                    + " Level: %d\n"
                     + " Steps: %d\n"
                     + " Game Time: %s\n"
                     + " Save Time: %s\n\n"
                     + "Are you sure you want to load this save?\nCurrent progress will be lost.",
-                    saveData.getSteps(), gameTimeStr, saveTimeStr);
+                    saveData.getLevelIndex() + 1, saveData.getSteps(), gameTimeStr, saveTimeStr);
 
             int choice = JOptionPane.showConfirmDialog(
                     view,
@@ -190,36 +191,6 @@ public class SaveManager {
     }
 
     /**
-     * 从存档数据创建地图模型
-     *
-     * @param saveData 存档数据
-     * @return 创建的地图模型，如果创建失败返回null
-     */
-    public MapModel createMapModelFromSave(DatabaseService.GameSaveData saveData) {
-        if (saveData == null) {
-            return null;
-        }
-
-        try {
-            // 将字符串类型的地图状态转换为长整型
-            long mapStateLong = Long.parseLong(saveData.getMapState());
-
-            // 使用序列化工具将长整型转为矩阵
-            int[][] newMatrix = BoardSerializer.deserialize(mapStateLong);
-
-            // 创建并返回新的地图模型
-            return new MapModel(newMatrix);
-        } catch (Exception e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(view,
-                    "Error creating map model from save data: " + e.getMessage(),
-                    "Load Error",
-                    JOptionPane.ERROR_MESSAGE);
-            return null;
-        }
-    }
-
-    /**
      * 保存当前游戏状态到数据库 检查用户是否有已存在的存档，提示新建或覆盖
      *
      * @return 保存是否成功
@@ -237,6 +208,21 @@ public class SaveManager {
         // 检查用户是否已登录
         if (!UserSession.getInstance().isLoggedIn()) {
             System.out.println("Unable to save game: Login status is abnormal");
+            return false;
+        }
+
+        // 添加模型空值检查
+        if (model == null) {
+            System.err.println("Cannot save game state: Model is null.");
+            JOptionPane.showMessageDialog(view,
+                    "Save failed: Game data is missing.",
+                    "Failed",
+                    JOptionPane.ERROR_MESSAGE);
+            return false;
+        }
+        // 添加视图空值检查 (虽然不太可能在这里为null)
+        if (view == null) {
+            System.err.println("Cannot save game state: View is null.");
             return false;
         }
 
@@ -275,8 +261,11 @@ public class SaveManager {
                 JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
 
         if (result == JOptionPane.YES_OPTION) {
-            // 调用数据库服务保存游戏状态
-            boolean saved = DatabaseService.getInstance().saveGameState(username, mapState, steps, gameTime, description);
+            // 直接从模型获取当前关卡索引
+            int levelIndex = model.getCurrentLevelIndex();
+
+            // 调用数据库服务保存游戏状态，包含关卡索引
+            boolean saved = DatabaseService.getInstance().saveGameState(username, mapState, steps, gameTime, levelIndex, description);
 
             // 显示保存结果
             if (saved) {
@@ -309,5 +298,38 @@ public class SaveManager {
 
         String username = UserSession.getInstance().getCurrentUser().getUsername();
         return DatabaseService.getInstance().hasUserGameSave(username);
+    }
+
+    /**
+     * 从存档数据创建地图模型
+     *
+     * @param saveData 存档数据
+     * @return 创建的地图模型，如果创建失败返回null
+     */
+    public MapModel createMapModelFromSave(DatabaseService.GameSaveData saveData) {
+        if (saveData == null) {
+            return null;
+        }
+
+        try {
+            // 将字符串类型的地图状态转换为长整型
+            long mapStateLong = Long.parseLong(saveData.getMapState());
+
+            // 使用序列化工具将长整型转为矩阵
+            int[][] newMatrix = BoardSerializer.deserialize(mapStateLong);
+
+            // 创建地图模型，同时设置关卡索引和加载标志
+            MapModel newModel = new MapModel(newMatrix, saveData.getLevelIndex());
+            newModel.setLoadedFromSave(true);
+
+            return newModel;
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(view,
+                    "Error creating map model from save data: " + e.getMessage(),
+                    "Load Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return null;
+        }
     }
 }

@@ -77,14 +77,14 @@ public class HomeController {
             DatabaseService.GameSaveData saveData = saveManager.getLoadedGameData(true);
 
             if (saveData != null) {
-                // 从存档数据创建地图模型
+                // 从存档数据创建地图模型 (构造函数会设置索引和 loadedFromSave 标志)
                 MapModel mapModel = saveManager.createMapModelFromSave(saveData);
 
                 if (mapModel != null) {
                     // 使用FrameManager导航到游戏界面
                     frameManager.navigateFromHomeToGame();
 
-                    // 使用loadLevel方法加载游戏
+                    // 使用loadLevel方法加载游戏 (这会创建或重置GameController, 它会从模型读取索引)
                     frameManager.getGameFrame().initializeGamePanel(mapModel);
 
                     // 设置已保存的步数
@@ -94,11 +94,14 @@ public class HomeController {
 
                     // 设置已保存的游戏时间
                     if (frameManager.getGameFrame().getController() != null) {
-                        frameManager.getGameFrame().getController().setLoadedGameTime(saveData.getGameTime());
-                    }
+                        GameController controller = frameManager.getGameFrame().getController();
+                        controller.setLoadedGameTime(saveData.getGameTime());
 
-                    // 确保游戏面板获得焦点以接收键盘事件
-                    frameManager.getGameFrame().getGamePanel().requestFocusInWindow();
+                        // 确保游戏面板获得焦点以接收键盘事件
+                        frameManager.getGameFrame().getGamePanel().requestFocusInWindow();
+                    } else {
+                        System.err.println("Warning: GameController is null after initializing GamePanel in HomeController.loadGame.");
+                    }
                 } else {
                     homeView.showStyledMessage(
                             "Failed to create map model from save data",

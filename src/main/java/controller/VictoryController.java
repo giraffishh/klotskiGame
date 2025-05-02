@@ -26,9 +26,6 @@ public class VictoryController {
     // 游戏窗口引用
     private GameFrame parentFrame;
 
-    // 当前关卡索引
-    private int currentLevelIndex = 0;
-
     // 胜利状态标志，防止重复弹出胜利提示
     private boolean victoryAchieved = false;
 
@@ -61,15 +58,6 @@ public class VictoryController {
     public void setVictoryView(VictoryView victoryView) {
         this.victoryView = victoryView;
         setupVictoryListeners();
-    }
-
-    /**
-     * 设置当前关卡索引
-     *
-     * @param index 关卡索引
-     */
-    public void setCurrentLevelIndex(int index) {
-        this.currentLevelIndex = index;
     }
 
     /**
@@ -110,6 +98,7 @@ public class VictoryController {
         victoryView.setRestartListener(e -> {
             victoryView.hideVictory();
             // 重新开始游戏
+            // 如果游戏是从存档加载的，首先会在restartGame方法中处理
             gameController.restartGame();
         });
 
@@ -118,6 +107,14 @@ public class VictoryController {
             if (!isLastLevel()) {
                 // 先隐藏胜利界面，再加载下一关
                 victoryView.hideVictory();
+
+                // 获取模型并检查/设置加载状态
+                MapModel model = gameController.getModel();
+                if (model != null && model.isLoadedFromSave()) {
+                    model.setLoadedFromSave(false);
+                    System.out.println("Cleared loadedFromSave flag in model before loading next level.");
+                }
+
                 System.out.println("\nLoading next level...");
                 SwingUtilities.invokeLater(this::loadNextLevel);
             }
@@ -240,7 +237,7 @@ public class VictoryController {
             }
 
             // 创建新的地图模型
-            MapModel mapModel = new MapModel(nextLevel.getLayout());
+            MapModel mapModel = new MapModel(nextLevel.getLayout(), nextLevelIndex);
 
             // 停止当前游戏的计时器
             if (gameController != null) {
@@ -254,11 +251,7 @@ public class VictoryController {
                 // 设置新的关卡索引
                 GameController controller = parentFrame.getController();
                 if (controller != null) {
-                    controller.setCurrentLevelIndex(nextLevelIndex);
                     controller.resetTimer();
-
-                    // 更新当前关卡索引
-                    this.currentLevelIndex = nextLevelIndex;
                 }
 
                 // 确保游戏面板获得焦点以接收键盘事件
@@ -269,7 +262,9 @@ public class VictoryController {
                 showErrorMessage("Game window is not available");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            // 使用日志记录代替打印堆栈跟踪
+            System.err.println("Error loading next level: " + e.getMessage());
+            // 考虑使用更健壮的日志框架
             showErrorMessage("Failed to load next level: " + e.getMessage());
         }
     }
@@ -280,14 +275,25 @@ public class VictoryController {
      * @return 下一关索引，如果没有下一关则返回-1
      */
     private int getNextLevelIndex() {
+        // 直接从模型获取当前索引
+        int currentIdx = -1;
+        if (gameController != null && gameController.getModel() != null) {
+            currentIdx = gameController.getModel().getCurrentLevelIndex();
+        } else {
+            System.err.println("Warning: Cannot get current level index in getNextLevelIndex - GameController or Model is null.");
+            return -1; // 无法确定当前关卡，返回-1
+        }
+
         LevelSelectFrame levelSelectFrame = FrameManager.getInstance().getLevelSelectFrame();
         if (levelSelectFrame != null) {
             LevelSelectController levelController = levelSelectFrame.getController();
             if (levelController != null) {
                 java.util.List<LevelSelectController.LevelData> levels = levelController.getLevels();
-                int nextIndex = currentLevelIndex + 1;
-                if (nextIndex < levels.size()) {
-                    return nextIndex;
+                if (levels != null) {
+                    int nextIndex = currentIdx + 1;
+                    if (nextIndex < levels.size()) {
+                        return nextIndex;
+                    }
                 }
             }
         }

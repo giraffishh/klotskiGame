@@ -93,6 +93,8 @@ public class LevelSelectController {
 
             // 创建新的地图模型
             MapModel mapModel = new MapModel(selected.getLayout());
+            // 设置模型中的关卡索引
+            mapModel.setCurrentLevelIndex(levelIndex);
 
             // 停止任何可能运行的计时器
             if (gameFrame.getController() != null) {
@@ -105,9 +107,7 @@ public class LevelSelectController {
             // 验证控制器是否已正确初始化
             GameController controller = gameFrame.getController();
             if (controller != null) {
-                // 设置当前关卡索引
-                controller.setCurrentLevelIndex(levelIndex);
-                System.out.println("Current level index: " + levelIndex);
+                System.out.println("Current level index set in model: " + levelIndex);
 
                 // 确保游戏状态被完全重置
                 controller.resetTimer();

@@ -2,8 +2,10 @@ package controller;
 
 import java.text.DecimalFormat;
 import java.util.List;
+
 import javax.swing.Timer;
 
+import controller.LevelSelectController.LevelData;
 import controller.history.HistoryManager;
 import controller.mover.BigBlockMover;
 import controller.mover.BlockMover;
@@ -18,6 +20,8 @@ import model.MapModel;
 import view.game.BoxComponent;
 import view.game.GameFrame;
 import view.game.GamePanel;
+import view.level.LevelSelectFrame;
+import view.util.FrameManager;
 import view.victory.VictoryView;
 
 /**
@@ -51,9 +55,6 @@ public class GameController {
     // 胜利控制器
     private final VictoryController victoryController;
 
-    // 当前关卡索引，由setCurrentLevelIndex方法修改
-    private int currentLevelIndex = 0;
-
     // 计时相关
     private Timer gameTimer;                  // 游戏计时器
     private long startTime;                   // 计时开始时间
@@ -64,15 +65,28 @@ public class GameController {
     private final DecimalFormat millisFormat = new DecimalFormat("00");
 
     /**
-     * 构造函数初始化控制器，建立视图和模型之间的连接
+     * 构造函数初始化控制器，建立视图和模型之间的连接 Assumes view and model are non-null when called
+     * via initializeGamePanel.
      *
-     * @param view 游戏面板视图
-     * @param model 地图数据模型
+     * @param view 游戏面板视图 (Should not be null)
+     * @param model 地图数据模型 (Should not be null)
      */
     public GameController(GamePanel view, MapModel model) {
+        // If the calling logic is correct, view and model should not be null here.
+        // Log if they are, indicating a problem in GameFrame's initialization flow.
+        if (view == null) {
+            System.err.println("CRITICAL ERROR: GamePanel (view) is null during GameController construction!");
+        }
+        if (model == null) {
+            System.err.println("CRITICAL ERROR: MapModel (model) is null during GameController construction!");
+            // Optionally throw an exception if this state is truly invalid
+            // throw new IllegalArgumentException("MapModel cannot be null for GameController");
+        }
+
         this.view = view;
         this.model = model;
-        view.setController(this); // 将当前控制器设置到视图中，使视图能够调用控制器方法
+        // Assuming view is not null based on the corrected flow
+        view.setController(this);
 
         // 初始化方块移动策略
         this.singleBlockMover = new SingleBlockMover();
@@ -80,16 +94,16 @@ public class GameController {
         this.verticalBlockMover = new VerticalBlockMover();
         this.bigBlockMover = new BigBlockMover();
 
-        // 初始化游戏状态管理器
+        // 初始化游戏状态管理器 - Reverted null checks
+        // Assumes view and model are valid
         this.saveManager = new SaveManager(view, model);
-
-        // 设置加载完成后更新最短步数的回调
         this.saveManager.setOnLoadCompleteCallback(this::updateMinStepsDisplay);
 
-        // 初始化华容道求解器，但不立即计算和更新显示
+        // 初始化华容道求解器
         this.solver = new KlotskiSolver();
 
-        // 初始化历史记录管理器
+        // 初始化历史记录管理器 - Reverted null checks
+        // Assumes view and model are valid
         this.historyManager = new HistoryManager(view, model);
 
         // 初始化胜利控制器
@@ -97,6 +111,15 @@ public class GameController {
 
         // 初始化计时器
         initializeTimer();
+    }
+
+    /**
+     * 获取当前游戏模型
+     *
+     * @return 当前地图模型
+     */
+    public MapModel getModel() {
+        return model;
     }
 
     /**
@@ -208,20 +231,6 @@ public class GameController {
         }
     }
 
-
-    /**
-     * 设置当前关卡索引
-     *
-     * @param index 关卡索引
-     */
-    public void setCurrentLevelIndex(int index) {
-        System.out.println("Current level index: " + index);
-        this.currentLevelIndex = index;
-        if (victoryController != null) {
-            victoryController.setCurrentLevelIndex(index);
-        }
-    }
-
     /**
      * 初始化游戏，在UI组件完全准备好后调用 这个方法应在GameFrame完成所有UI元素设置后调用 主要负责初始化求解器和更新显示。其他重置操作移至
      * resetWithNewModel 或 restartGame。
@@ -328,12 +337,64 @@ public class GameController {
                 return;
             }
 
-            // 重置地图模型到初始状态
-            model.resetToInitialState();
+            // 检查是否从存档加载
+            if (model.isLoadedFromSave()) {
+                System.out.println("Restarting a game loaded from save. Resetting to original level layout.");
+                int levelIndexToLoad = model.getCurrentLevelIndex();
+                int[][] originalLayout = null;
 
-            // 重置游戏面板
+                // 通过FrameManager获取LevelSelectController来加载原始布局
+                FrameManager frameManager = FrameManager.getInstance();
+                LevelSelectFrame levelSelectFrame = frameManager.getLevelSelectFrame();
+                if (levelSelectFrame != null) {
+                    LevelSelectController levelController = levelSelectFrame.getController();
+                    if (levelController != null) {
+                        List<LevelData> levels = levelController.getLevels();
+                        if (levelIndexToLoad >= 0 && levelIndexToLoad < levels.size()) {
+                            LevelData levelData = levels.get(levelIndexToLoad);
+                            if (levelData != null && levelData.getLayout() != null) {
+                                // 获取原始布局
+                                int[][] layoutSource = levelData.getLayout();
+                                // 创建深拷贝
+                                originalLayout = new int[layoutSource.length][layoutSource[0].length];
+                                for (int i = 0; i < layoutSource.length; i++) {
+                                    System.arraycopy(layoutSource[i], 0, originalLayout[i], 0, layoutSource[i].length);
+                                }
+                                System.out.println("Successfully retrieved original layout for level " + (levelIndexToLoad + 1) + " via LevelSelectController.");
+                            } else {
+                                System.err.println("Level data or layout is null for index: " + levelIndexToLoad);
+                            }
+                        } else {
+                            System.err.println("Invalid level index to load original layout: " + levelIndexToLoad);
+                        }
+                    } else {
+                        System.err.println("LevelSelectController is null, cannot load original layout.");
+                    }
+                } else {
+                    System.err.println("LevelSelectFrame is null, cannot load original layout.");
+                }
+
+                if (originalLayout != null) {
+                    // 使用原始布局重置当前模型状态
+                    model.setMatrix(originalLayout); // 重置当前布局
+                    model.updateInitialMatrix(originalLayout); // 更新模型的初始状态记录
+                    model.setLoadedFromSave(false); // 清除从存档加载的标志
+                    System.out.println("Model reset to original layout for level " + (levelIndexToLoad + 1));
+                } else {
+                    System.err.println("Failed to load original layout for level index: " + levelIndexToLoad + ". Resetting to saved initial state instead.");
+                    // 如果加载失败，回退到重置为保存时的初始状态（可能不是关卡初始状态）
+                    model.resetToInitialState();
+                    model.setLoadedFromSave(false); // 仍然清除标志
+                }
+            } else {
+                // 正常重置到当前关卡的初始状态
+                model.resetToInitialState();
+                System.out.println("Game reset to its initial state.");
+            }
+
+            // 重置游戏面板 (会重置步数显示并重绘)
             if (view != null) {
-                view.resetGame(); // resetGame 会重置步数显示并重新绘制方块
+                view.resetGame();
             }
 
             // 重新初始化求解器并更新显示

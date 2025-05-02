@@ -52,7 +52,7 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
      * @param height 窗口高度
      * @param mapModel 游戏地图模型，可以为null（此时将在选择关卡时初始化）
      */
-    public GameFrame(int width, int height, MapModel mapModel) {
+    public GameFrame(int width, int height, MapModel mapModel) { // mapModel is likely null here
         // 设置窗口标题
         this.setTitle("2025 CS109 Project Demo");
         // 使用绝对布局
@@ -64,7 +64,7 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         this.add(homeBtn);
 
         // 创建游戏面板（可以传入null模型，稍后再设置）
-        gamePanel = new GamePanel(mapModel);
+        gamePanel = new GamePanel(null); // Pass null, model will be set in initializeGamePanel
 
         // 使用默认大小计算窗口尺寸
         int panelWidth = gamePanel.getWidth();
@@ -82,10 +82,6 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         int panelY = (windowHeight - panelHeight) / 2;
         gamePanel.setLocation(panelX, panelY);
         this.add(gamePanel);
-
-        // 创建游戏控制器，关联面板和模型
-        this.controller = new GameController(gamePanel, mapModel);
-        controller.setParentFrame(this);
 
         // 计算右侧控制区域的起始位置和尺寸
         int controlX = panelX + panelWidth + 20;
@@ -112,9 +108,15 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         controlY += 50;
 
         // 将步数标签、最短步数标签和时间标签设置到游戏面板中
-        gamePanel.setStepLabel(stepLabel);
-        gamePanel.setMinStepsLabel(minStepsLabel);
-        gamePanel.setTimeLabel(timeLabel);
+        if (stepLabel != null) {
+            gamePanel.setStepLabel(stepLabel);
+        }
+        if (minStepsLabel != null) {
+            gamePanel.setMinStepsLabel(minStepsLabel);
+        }
+        if (timeLabel != null) {
+            gamePanel.setTimeLabel(timeLabel);
+        }
 
         // 第一行按钮：左侧重启，右侧保存
         this.restartBtn = FrameUtil.createStyledButton("Restart", true);
@@ -139,7 +141,6 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
 
         // 初始化胜利界面
         this.victoryFrame = new VictoryFrame(this);
-        controller.setVictoryView(victoryFrame);
 
         // 添加按钮事件监听器
         addButtonListeners();
@@ -162,43 +163,50 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
     private void addButtonListeners() {
         // 为重新开始按钮添加点击事件监听器
         this.restartBtn.addActionListener(e -> {
-            // 重新开始游戏
-            controller.restartGame();
-            // 将焦点设置回游戏面板以便接收键盘事件
-            gamePanel.requestFocusInWindow();
+            if (controller != null) {
+                controller.restartGame();
+                gamePanel.requestFocusInWindow();
+            } else {
+                System.err.println("Restart button clicked but controller is null.");
+            }
         });
 
         // 为保存游戏按钮添加点击事件监听器
         this.saveBtn.addActionListener(e -> {
-            // 调用控制器的保存游戏方法
-            controller.saveGameState();
-
-            // 将焦点设置回游戏面板以便接收键盘事件
-            gamePanel.requestFocusInWindow();
+            if (controller != null) {
+                controller.saveGameState();
+                gamePanel.requestFocusInWindow();
+            } else {
+                System.err.println("Save button clicked but controller is null.");
+            }
         });
 
         // 为撤销按钮添加点击事件监听器
         this.undoBtn.addActionListener(e -> {
-            // 调用控制器的撤销方法
-            controller.undoMove();
-            // 将焦点设置回游戏面板以便接收键盘事件
-            gamePanel.requestFocusInWindow();
+            if (controller != null) {
+                controller.undoMove();
+                gamePanel.requestFocusInWindow();
+            } else {
+                System.err.println("Undo button clicked but controller is null.");
+            }
         });
 
         // 为重做按钮添加点击事件监听器
         this.redoBtn.addActionListener(e -> {
-            // 调用控制器的重做方法
-            controller.redoMove();
-            // 将焦点设置回游戏面板以便接收键盘事件
-            gamePanel.requestFocusInWindow();
+            if (controller != null) {
+                controller.redoMove();
+                gamePanel.requestFocusInWindow();
+            } else {
+                System.err.println("Redo button clicked but controller is null.");
+            }
         });
 
         // 为返回主页面按钮添加点击事件监听器
         this.homeBtn.addActionListener(e -> {
-            // 返回主页面
             returnToHome();
-            // 将焦点设置回游戏面板以便接收键盘事件
-            gamePanel.requestFocusInWindow();
+            if (gamePanel != null) {
+                gamePanel.requestFocusInWindow();
+            }
         });
     }
 
@@ -206,10 +214,12 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
      * 返回主页面
      */
     private void returnToHome() {
-        // 在显示确认对话框前暂停计时器
-        controller.stopTimer();
+        if (controller != null) {
+            controller.stopTimer();
+        } else {
+            System.err.println("Return to home called but controller is null.");
+        }
 
-        // 显示确认对话框，询问用户是否确定要返回主界面
         int result = JOptionPane.showConfirmDialog(
                 this,
                 "Are you sure you want to return to the main menu? \nThe current game progress will be lost.",
@@ -217,51 +227,43 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE);
 
-        // 如果用户确认，则返回主界面，但不重置游戏状态
         if (result == JOptionPane.YES_OPTION) {
-            // 使用FrameManager导航到主页
             FrameManager.getInstance().navigateFromGameToHome();
         } else {
-            // 用户选择继续游戏，恢复计时器
-            controller.startTimer();
+            if (controller != null) {
+                controller.startTimer();
+            }
         }
     }
 
-
     /**
-     * 加载新关卡
+     * 初始化或重置游戏面板，并创建/重置控制器
      *
-     * @param mapModel 游戏地图模型
+     * @param mapModel 游戏地图模型 (保证非 null)
      */
     public void initializeGamePanel(MapModel mapModel) {
         if (mapModel == null) {
-            System.err.println("Error: Cannot load null MapModel");
+            System.err.println("CRITICAL ERROR: initializeGamePanel called with null MapModel!");
+            JOptionPane.showMessageDialog(this, "Failed to load level: Invalid map data.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
         try {
-            // 停止现有计时器
             if (controller != null) {
                 controller.stopTimer();
             }
 
-            // 如果已有游戏面板，先从布局中移除
-            if (gamePanel != null) {
-                this.remove(gamePanel);
+            if (gamePanel == null) {
+                gamePanel = new GamePanel(mapModel);
+                int panelX = (this.getWidth() - gamePanel.getWidth()) / 2 - 100;
+                int panelY = (this.getHeight() - gamePanel.getHeight()) / 2;
+                gamePanel.setLocation(panelX, panelY);
+                this.add(gamePanel);
+            } else {
+                gamePanel.setModel(mapModel);
+                gamePanel.resetGame();
             }
 
-            // 创建新的游戏面板
-            gamePanel = new GamePanel(mapModel);
-
-            // 计算面板位置，确保居中显示
-            int panelX = (this.getWidth() - gamePanel.getWidth()) / 2 - 100; // 从-80改为-100
-            int panelY = (this.getHeight() - gamePanel.getHeight()) / 2;
-            gamePanel.setLocation(panelX, panelY);
-
-            // 将面板添加到窗口
-            this.add(gamePanel);
-
-            // 更新面板的标签引用
             if (stepLabel != null) {
                 gamePanel.setStepLabel(stepLabel);
             }
@@ -272,38 +274,30 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
                 gamePanel.setTimeLabel(timeLabel);
             }
 
-            // 复用或创建游戏控制器
             if (controller == null) {
-                // 首次创建控制器
                 controller = new GameController(gamePanel, mapModel);
                 controller.setParentFrame(this);
-                // 设置必要的引用
                 if (victoryFrame != null) {
                     controller.setVictoryView(victoryFrame);
+                } else {
+                    System.err.println("Warning: VictoryFrame is null when setting VictoryView in GameController.");
                 }
             } else {
-                // 复用现有控制器，更新模型和视图引用
                 controller.resetWithNewModel(mapModel, gamePanel);
-                // 确保 gamePanel 的 controller 引用是最新的
-                gamePanel.setController(controller);
             }
+            gamePanel.setController(controller);
 
-            // 初始化游戏（重置求解器、历史、计时器等）
             controller.initializeGame();
 
-            // 更新按钮状态
             updateButtonsState();
-            updateUndoRedoButtons(false, false); // 确保按钮状态在加载新关卡时重置
+            updateUndoRedoButtons(false, false);
 
-            // 重新设置窗口居中显示
             this.setLocationRelativeTo(null);
-
-            // 刷新窗口布局
             revalidate();
             repaint();
 
-            // 将焦点设置到游戏面板
             gamePanel.requestFocusInWindow();
+
         } catch (Exception e) {
             e.printStackTrace();
             JOptionPane.showMessageDialog(
@@ -338,7 +332,6 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
      */
     @Override
     public void onSessionStateChanged() {
-        // 在UI线程中安全地更新按钮状态
         SwingUtilities.invokeLater(this::updateButtonsState);
     }
 
@@ -349,7 +342,6 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         UserSession session = UserSession.getInstance();
         boolean isGuest = session.isGuest();
 
-        // 访客模式下禁用保存功能
         saveBtn.setEnabled(!isGuest);
     }
 
@@ -360,7 +352,6 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
      * @param canRedo 是否可以重做
      */
     public void updateUndoRedoButtons(boolean canUndo, boolean canRedo) {
-        // 添加空指针检查，确保按钮已经初始化
         if (undoBtn != null) {
             undoBtn.setEnabled(canUndo);
         }

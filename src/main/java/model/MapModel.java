@@ -3,31 +3,34 @@ package model;
 import controller.util.BoardSerializer;
 
 /**
- * 地图模型类，用于记录和管理游戏的地图数据
- * 地图由整数矩阵表示，不同数字代表不同类型的方块：
- * 0 - 空白区域
- * 1 - 1x1单元格方块
- * 2 - 2x1水平方块
- * 3 - 1x2垂直方块
- * 4 - 2x2大方块
- * 该类负责提供地图数据访问和管理功能，支持从存档加载和重置地图
+ * 地图模型类，用于记录和管理游戏的地图数据 地图由整数矩阵表示，不同数字代表不同类型的方块： 0 - 空白区域 1 - 1x1单元格方块 2 -
+ * 2x1水平方块 3 - 1x2垂直方块 4 - 2x2大方块 该类负责提供地图数据访问和管理功能，支持从存档加载和重置地图
  */
 public class MapModel {
+
     /**
-     * 当前地图状态的二维整数矩阵
-     * 存储每个位置的方块类型
+     * 当前地图状态的二维整数矩阵 存储每个位置的方块类型
      */
     int[][] matrix;
-    
+
     /**
-     * 初始地图状态的二维整数矩阵
-     * 用于重置游戏时恢复到初始状态
+     * 初始地图状态的二维整数矩阵 用于重置游戏时恢复到初始状态
      */
     int[][] initialMatrix; // 保存初始地图状态
 
     /**
+     * 当前关卡索引 用于标识当前加载的关卡编号
+     */
+    private int currentLevelIndex = 0;
+
+    /**
+     * 标记地图是否从存档加载
+     */
+    private boolean loadedFromSave = false;
+
+    /**
      * 构造函数，初始化地图模型
-     * 
+     *
      * @param matrix 初始地图数据的二维整数数组
      */
     public MapModel(int[][] matrix) {
@@ -40,8 +43,19 @@ public class MapModel {
     }
 
     /**
+     * 构造函数，初始化地图模型并设置关卡索引
+     *
+     * @param matrix 初始地图数据的二维整数数组
+     * @param levelIndex 关卡索引
+     */
+    public MapModel(int[][] matrix, int levelIndex) {
+        this(matrix);
+        this.currentLevelIndex = levelIndex;
+    }
+
+    /**
      * 获取地图的宽度（列数）
-     * 
+     *
      * @return 地图宽度
      */
     public int getWidth() {
@@ -50,7 +64,7 @@ public class MapModel {
 
     /**
      * 获取地图的高度（行数）
-     * 
+     *
      * @return 地图高度
      */
     public int getHeight() {
@@ -59,7 +73,7 @@ public class MapModel {
 
     /**
      * 获取指定位置的方块类型ID
-     * 
+     *
      * @param row 行索引
      * @param col 列索引
      * @return 方块类型ID：0-空白，1-单元格，2-水平方块，3-垂直方块，4-大方块
@@ -70,7 +84,7 @@ public class MapModel {
 
     /**
      * 获取完整的地图矩阵
-     * 
+     *
      * @return 当前地图的二维整数数组
      */
     public int[][] getMatrix() {
@@ -78,8 +92,7 @@ public class MapModel {
     }
 
     /**
-     * 设置新的地图矩阵
-     * 用于从保存的游戏中加载地图状态
+     * 设置新的地图矩阵 用于从保存的游戏中加载地图状态
      *
      * @param newMatrix 新的地图矩阵
      */
@@ -88,8 +101,7 @@ public class MapModel {
     }
 
     /**
-     * 创建一个二维数组的深拷贝
-     * 用于在移动前保存当前状态，支持撤销功能
+     * 创建一个二维数组的深拷贝 用于在移动前保存当前状态，支持撤销功能
      *
      * @return 当前地图矩阵的深拷贝
      */
@@ -103,7 +115,7 @@ public class MapModel {
 
     /**
      * 检查指定列索引是否在地图宽度范围内
-     * 
+     *
      * @param col 列索引
      * @return 如果列索引有效返回true，否则返回false
      */
@@ -113,7 +125,7 @@ public class MapModel {
 
     /**
      * 检查指定行索引是否在地图高度范围内
-     * 
+     *
      * @param row 行索引
      * @return 如果行索引有效返回true，否则返回false
      */
@@ -122,8 +134,7 @@ public class MapModel {
     }
 
     /**
-     * 重置地图到初始状态
-     * 用于重新开始游戏时恢复地图
+     * 重置地图到初始状态 用于重新开始游戏时恢复地图
      */
     public void resetToInitialState() {
         for (int i = 0; i < matrix.length; i++) {
@@ -132,12 +143,66 @@ public class MapModel {
     }
 
     /**
-     * 获取当前地图状态的序列化长整型表示
-     * 用于华容道求解器的计算
+     * 获取当前地图状态的序列化长整型表示 用于华容道求解器的计算
      *
      * @return 当前地图的序列化长整型表示
      */
     public long getSerializedLayout() {
         return BoardSerializer.serialize(this.matrix);
+    }
+
+    /**
+     * 获取当前关卡索引
+     *
+     * @return 当前关卡索引
+     */
+    public int getCurrentLevelIndex() {
+        return currentLevelIndex;
+    }
+
+    /**
+     * 设置当前关卡索引
+     *
+     * @param index 关卡索引
+     */
+    public void setCurrentLevelIndex(int index) {
+        this.currentLevelIndex = index;
+    }
+
+    /**
+     * 设置是否从存档加载
+     *
+     * @param loadedFromSave 是否从存档加载
+     */
+    public void setLoadedFromSave(boolean loadedFromSave) {
+        this.loadedFromSave = loadedFromSave;
+    }
+
+    /**
+     * 检查是否从存档加载
+     *
+     * @return 是否从存档加载
+     */
+    public boolean isLoadedFromSave() {
+        return loadedFromSave;
+    }
+
+    /**
+     * 更新初始矩阵，用于从存档重置时设置新的初始状态
+     *
+     * @param newInitialMatrix 新的初始矩阵
+     */
+    public void updateInitialMatrix(int[][] newInitialMatrix) {
+        if (newInitialMatrix == null || newInitialMatrix.length == 0 || newInitialMatrix[0].length == 0) {
+            throw new IllegalArgumentException("Invalid matrix provided");
+        }
+
+        // 创建新的初始矩阵副本
+        this.initialMatrix = new int[newInitialMatrix.length][newInitialMatrix[0].length];
+        for (int i = 0; i < newInitialMatrix.length; i++) {
+            System.arraycopy(newInitialMatrix[i], 0, initialMatrix[i], 0, newInitialMatrix[i].length);
+        }
+
+        System.out.println("Initial matrix has been updated");
     }
 }
