@@ -8,8 +8,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 
 import model.MapModel;
 import view.game.GameFrame;
-import view.home.HomeFrame;
 import view.level.LevelSelectView;
+import view.util.FrameManager;
 
 /**
  * 关卡选择控制器 管理华容道游戏的预设关卡，提供选择和加载功能
@@ -18,10 +18,6 @@ public class LevelSelectController {
 
     // 视图引用
     private final LevelSelectView levelSelectView;
-
-    // 其他窗口引用
-    private GameFrame gameFrame;
-    private HomeFrame homeFrame;
 
     // 关卡列表
     private final List<LevelData> levels;
@@ -67,33 +63,6 @@ public class LevelSelectController {
     }
 
     /**
-     * 设置游戏窗口引用
-     *
-     * @param gameFrame 游戏窗口实例
-     */
-    public void setGameFrame(GameFrame gameFrame) {
-        this.gameFrame = gameFrame;
-    }
-
-    /**
-     * 设置主页窗口引用
-     *
-     * @param homeFrame 主页窗口实例
-     */
-    public void setHomeFrame(HomeFrame homeFrame) {
-        this.homeFrame = homeFrame;
-    }
-
-    /**
-     * 获取所有关卡数据
-     *
-     * @return 关卡数据列表
-     */
-    public List<LevelData> getLevels() {
-        return levels;
-    }
-
-    /**
      * 选择并加载关卡
      *
      * @param levelIndex 关卡索引
@@ -104,6 +73,10 @@ public class LevelSelectController {
             levelSelectView.showStyledMessage("Invalid level selection", "Error", javax.swing.JOptionPane.ERROR_MESSAGE);
             return;
         }
+
+        // 通过FrameManager获取GameFrame
+        FrameManager frameManager = FrameManager.getInstance();
+        GameFrame gameFrame = frameManager.getGameFrame();
 
         if (gameFrame == null) {
             levelSelectView.showStyledMessage("Game window not properly initialized", "Error", javax.swing.JOptionPane.ERROR_MESSAGE);
@@ -140,9 +113,8 @@ public class LevelSelectController {
                 controller.resetTimer();
             }
 
-            // 显示游戏窗口，隐藏关卡选择窗口
-            gameFrame.setVisible(true);
-            levelSelectView.hideLevelSelect();
+            // 使用FrameManager导航到游戏界面
+            frameManager.navigateFromLevelSelectToGame();
 
             // 确保游戏面板获得焦点以接收键盘事件
             if (gameFrame.getGamePanel() != null) {
@@ -160,24 +132,29 @@ public class LevelSelectController {
     }
 
     /**
+     * 返回主页
+     */
+    public void returnToHome() {
+        // 使用FrameManager导航到主页
+        FrameManager.getInstance().navigateFromLevelSelectToHome();
+    }
+
+    /**
+     * 获取所有关卡数据
+     *
+     * @return 关卡数据列表
+     */
+    public List<LevelData> getLevels() {
+        return levels;
+    }
+
+    /**
      * 重置所有关卡数据 当从具体关卡返回时调用，确保再次进入时为初始状态
      */
     public void resetAllLevels() {
         // 重新从JSON加载所有关卡数据
         this.levels.clear();
         this.levels.addAll(loadLevelsFromJson());
-    }
-
-    /**
-     * 返回主页
-     */
-    public void returnToHome() {
-        if (homeFrame != null) {
-            homeFrame.setVisible(true);
-            levelSelectView.hideLevelSelect();
-        } else {
-            levelSelectView.showStyledMessage("Home window not properly initialized", "Error", javax.swing.JOptionPane.ERROR_MESSAGE);
-        }
     }
 
     /**

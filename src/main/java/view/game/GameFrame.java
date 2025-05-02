@@ -10,12 +10,9 @@ import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
 import controller.GameController;
-import controller.history.HistoryManager; // 添加导入
-import controller.save.SaveManager;       // 添加导入
 import model.MapModel;
 import service.UserSession;
-import view.home.HomeFrame;
-import view.level.LevelSelectFrame;
+import view.util.FrameManager;
 import view.util.FrameUtil;
 import view.victory.VictoryFrame;
 
@@ -44,12 +41,9 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
     private JButton redoBtn;
     // 返回主页面按钮
     private JButton homeBtn;
-    // 主页面引用
-    private HomeFrame homeFrame;
+
     // 胜利界面
     private VictoryFrame victoryFrame;
-    // 添加关卡选择界面引用
-    private LevelSelectFrame levelSelectFrame;
 
     /**
      * 创建游戏窗口
@@ -209,6 +203,32 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
     }
 
     /**
+     * 返回主页面
+     */
+    private void returnToHome() {
+        // 在显示确认对话框前暂停计时器
+        controller.stopTimer();
+
+        // 显示确认对话框，询问用户是否确定要返回主界面
+        int result = JOptionPane.showConfirmDialog(
+                this,
+                "Are you sure you want to return to the main menu? \nThe current game progress will be lost.",
+                "Return to Main Menu",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+
+        // 如果用户确认，则返回主界面，但不重置游戏状态
+        if (result == JOptionPane.YES_OPTION) {
+            // 使用FrameManager导航到主页
+            FrameManager.getInstance().navigateFromGameToHome();
+        } else {
+            // 用户选择继续游戏，恢复计时器
+            controller.startTimer();
+        }
+    }
+
+
+    /**
      * 加载新关卡
      *
      * @param mapModel 游戏地图模型
@@ -261,9 +281,6 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
                 if (victoryFrame != null) {
                     controller.setVictoryView(victoryFrame);
                 }
-                if (levelSelectFrame != null) {
-                    controller.setLevelSelectFrame(levelSelectFrame);
-                }
             } else {
                 // 复用现有控制器，更新模型和视图引用
                 controller.resetWithNewModel(mapModel, gamePanel);
@@ -305,86 +322,6 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
      */
     public GamePanel getGamePanel() {
         return gamePanel;
-    }
-
-    /**
-     * 设置主页面窗口引用
-     *
-     * @param homeFrame 主页面窗口
-     */
-    public void setHomeFrame(HomeFrame homeFrame) {
-        this.homeFrame = homeFrame;
-    }
-
-    /**
-     * 返回主页面
-     */
-    private void returnToHome() {
-        if (homeFrame != null) {
-            // 在显示确认对话框前暂停计时器
-            controller.stopTimer();
-
-            // 显示确认对话框，询问用户是否确定要返回主界面
-            int result = JOptionPane.showConfirmDialog(
-                    this,
-                    "Are you sure you want to return to the main menu? \nThe current game progress will be lost.",
-                    "Return to Main Menu",
-                    JOptionPane.YES_NO_OPTION,
-                    JOptionPane.WARNING_MESSAGE);
-
-            // 如果用户确认，则返回主界面，但不重置游戏状态
-            if (result == JOptionPane.YES_OPTION) {
-                // 不再调用controller.restartGame()，防止不必要地重新初始化求解器
-                // 只需在下次进入游戏时再重置状态就可以了
-
-                // 显示主页面
-                homeFrame.setVisible(true);
-                // 隐藏游戏窗口
-                this.setVisible(false);
-            } else {
-                // 用户选择继续游戏，恢复计时器
-                controller.startTimer();
-            }
-            // 如果用户选择否，则什么都不做，继续游戏
-        } else {
-            // 如果homeFrame为null，显示错误消息
-            JOptionPane.showMessageDialog(this,
-                    "Cannot return to home page. Home page reference is missing.",
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
-    /**
-     * 用于从胜利界面返回
-     */
-    public void returnToHomeDirectly() {
-        if (homeFrame != null) {
-            // 不再调用controller.restartGame()，防止不必要地重新初始化求解器
-
-            controller.stopTimer();
-
-            // 显示主页面
-            homeFrame.setVisible(true);
-            // 隐藏游戏窗口
-            this.setVisible(false);
-        } else {
-            // 如果homeFrame为null，显示错误消息
-            JOptionPane.showMessageDialog(this,
-                    "Cannot return to home page. Home page reference is missing.",
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
-    /**
-     * 设置关卡选择界面引用
-     */
-    public void setLevelSelectFrame(LevelSelectFrame levelSelectFrame) {
-        this.levelSelectFrame = levelSelectFrame;
-        if (controller != null) {
-            controller.setLevelSelectFrame(levelSelectFrame);
-        }
     }
 
     /**

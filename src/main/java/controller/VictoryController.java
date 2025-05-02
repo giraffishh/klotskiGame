@@ -9,6 +9,7 @@ import javax.swing.SwingUtilities;
 import model.MapModel;
 import view.game.GameFrame;
 import view.level.LevelSelectFrame;
+import view.util.FrameManager;
 import view.victory.VictoryView;
 
 /**
@@ -24,9 +25,6 @@ public class VictoryController {
 
     // 游戏窗口引用
     private GameFrame parentFrame;
-
-    // 关卡选择界面引用
-    private LevelSelectFrame levelSelectFrame;
 
     // 当前关卡索引
     private int currentLevelIndex = 0;
@@ -66,15 +64,6 @@ public class VictoryController {
     }
 
     /**
-     * 设置关卡选择界面
-     *
-     * @param levelSelectFrame 关卡选择界面
-     */
-    public void setLevelSelectFrame(LevelSelectFrame levelSelectFrame) {
-        this.levelSelectFrame = levelSelectFrame;
-    }
-
-    /**
      * 设置当前关卡索引
      *
      * @param index 关卡索引
@@ -98,36 +87,30 @@ public class VictoryController {
             return;
         }
 
+        // 获取FrameManager实例
+        FrameManager frameManager = FrameManager.getInstance();
+
         // 设置回到主页按钮监听器 - 直接返回，不显示确认对话框
         victoryView.setHomeListener(e -> {
+            victoryView.hideVictory();
             if (parentFrame != null) {
-                victoryView.hideVictory();
-                parentFrame.returnToHomeDirectly(); // 使用直接返回方法，不显示确认对话框
+                // 使用FrameManager导航到主页
+                frameManager.navigateFromGameToHome();
             }
         });
 
         // 设置关卡选择按钮监听器
         victoryView.setLevelSelectListener(e -> {
             victoryView.hideVictory();
-            // 显示关卡选择界面
-            if (levelSelectFrame != null) {
-                // 先关闭游戏界面，再显示关卡选择界面
-                if (parentFrame != null) {
-                    parentFrame.dispose(); // 关闭游戏窗口
-                }
-                levelSelectFrame.showLevelSelect();
-            } else {
-                System.err.println("Level selection frame reference is not set");
-            }
+            // 使用FrameManager导航到关卡选择界面
+            frameManager.navigateFromGameToLevelSelect();
         });
 
         // 设置再来一次按钮监听器
         victoryView.setRestartListener(e -> {
-
             victoryView.hideVictory();
             // 重新开始游戏
             gameController.restartGame();
-
         });
 
         // 设置下一关按钮监听器
@@ -136,7 +119,7 @@ public class VictoryController {
                 // 先隐藏胜利界面，再加载下一关
                 victoryView.hideVictory();
                 System.out.println("\nLoading next level...");
-                SwingUtilities.invokeLater(this::loadNextLevel); // 使用invokeLater确保UI更新完成后再加载
+                SwingUtilities.invokeLater(this::loadNextLevel);
             }
         });
     }
@@ -220,10 +203,8 @@ public class VictoryController {
                     JOptionPane.INFORMATION_MESSAGE
             );
 
-            // 直接返回主页，不需要用户选择
-            if (parentFrame != null) {
-                parentFrame.returnToHomeDirectly();
-            }
+            // 使用FrameManager直接返回主页
+            FrameManager.getInstance().navigateFromGameToHome();
             return; // 直接返回，不执行后续加载逻辑
         }
 
@@ -236,8 +217,10 @@ public class VictoryController {
                 return;
             }
 
-            // 获取关卡选择控制器
+            // 通过FrameManager获取关卡选择控制器
+            LevelSelectFrame levelSelectFrame = FrameManager.getInstance().getLevelSelectFrame();
             LevelSelectController levelController = levelSelectFrame.getController();
+
             if (levelController == null) {
                 showErrorMessage("Level selection controller is null");
                 return;
@@ -297,6 +280,7 @@ public class VictoryController {
      * @return 下一关索引，如果没有下一关则返回-1
      */
     private int getNextLevelIndex() {
+        LevelSelectFrame levelSelectFrame = FrameManager.getInstance().getLevelSelectFrame();
         if (levelSelectFrame != null) {
             LevelSelectController levelController = levelSelectFrame.getController();
             if (levelController != null) {

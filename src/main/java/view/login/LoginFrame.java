@@ -1,24 +1,36 @@
 package view.login;
 
-import controller.LoginController;
-import view.util.FontManager;
-import view.util.FrameUtil;
-import view.game.GameFrame;
-import view.home.HomeFrame;
-
-import javax.swing.*;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JPasswordField;
+import javax.swing.JTextField;
+import javax.swing.UIManager;
+import javax.swing.WindowConstants;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+
+import controller.LoginController;
+import view.util.FontManager;
+import view.util.FrameUtil;
+
 /**
- * 登录界面窗口，提供用户名和密码输入功能
- * 登录成功后可跳转到Home主界面
- * 使用 FlatLaf 浅色主题
+ * 登录界面窗口，提供用户名和密码输入功能 登录成功后可跳转到Home主界面 使用 FlatLaf 浅色主题
  */
 public class LoginFrame extends JFrame implements LoginView {
+
     // 窗口尺寸常量
     private static final Dimension LOGIN_MODE_SIZE = new Dimension(480, 370);     // 登录模式窗口尺寸
     private static final Dimension REGISTER_MODE_SIZE = new Dimension(480, 420);  // 注册模式窗口尺寸
@@ -54,6 +66,7 @@ public class LoginFrame extends JFrame implements LoginView {
 
     /**
      * 创建登录窗口
+     *
      * @param width 窗口宽度
      * @param height 窗口高度
      */
@@ -62,30 +75,30 @@ public class LoginFrame extends JFrame implements LoginView {
 
         // 初始化控制器
         this.controller = new LoginController(this);
-        
+
         // 使用 BorderLayout 和面板组合而不是绝对布局
         this.setLayout(new BorderLayout());
-        
+
         // 创建主面板，使用 BorderLayout 进行布局
         mainPanel = FrameUtil.createPaddedPanel(new BorderLayout(), 30, 40, 30, 40);
-        
+
         // 添加标题
         JLabel titleLabel = FrameUtil.createTitleLabel("Welcome to Game", JLabel.CENTER);
         FrameUtil.setPadding(titleLabel, 0, 0, 30, 0);
-        
+
         // 将标题添加到主面板顶部
         mainPanel.add(titleLabel, BorderLayout.NORTH);
-        
+
         // 创建表单面板 - 改用BoxLayout替代GridLayout，更灵活地控制组件大小
         formPanel = new JPanel();
         formPanel.setLayout(new BoxLayout(formPanel, BoxLayout.Y_AXIS));
         FrameUtil.setPadding(formPanel, 0, 0, 20, 0);
-        
+
         // 创建用户名输入面板
         username = FrameUtil.createStyledTextField(15);
         JPanel usernamePanel = FrameUtil.createInputPanel("Username:", username);
         FrameUtil.setPadding(usernamePanel, 0, 0, 0, 50);
-        
+
         // 创建用户名错误提示标签 - 放在一个固定高度的面板中
         usernameErrorLabel = new JLabel("Username cannot be empty");
         usernameErrorLabel.setForeground(FrameUtil.ERROR_COLOR);
@@ -95,12 +108,12 @@ public class LoginFrame extends JFrame implements LoginView {
         usernameErrorPanel.setPreferredSize(new Dimension(width, 22)); // 固定高度
         FrameUtil.setPadding(usernameErrorPanel, 0, 70, 0, 0);
         usernameErrorPanel.add(usernameErrorLabel);
-        
+
         // 创建密码输入面板
         password = FrameUtil.createStyledPasswordField(15);
         JPanel passwordPanel = FrameUtil.createInputPanel("Password:", password);
         FrameUtil.setPadding(passwordPanel, 0, 0, 0, 50);
-        
+
         // 创建密码错误提示标签 - 放在一个固定高度的面板中
         passwordErrorLabel = new JLabel("Password cannot be empty");
         passwordErrorLabel.setForeground(FrameUtil.ERROR_COLOR);
@@ -110,7 +123,7 @@ public class LoginFrame extends JFrame implements LoginView {
         passwordErrorPanel.setPreferredSize(new Dimension(width, 22)); // 固定高度
         FrameUtil.setPadding(passwordErrorPanel, 0, 70, 0, 0);
         passwordErrorPanel.add(passwordErrorLabel);
-        
+
         // 创建确认密码输入面板
         confirmPassword = FrameUtil.createStyledPasswordField(15);
         confirmPasswordPanel = FrameUtil.createInputPanel("Confirm Password:", confirmPassword);
@@ -137,7 +150,7 @@ public class LoginFrame extends JFrame implements LoginView {
         JButton[] buttons = {submitBtn, guestLoginBtn};
         JPanel buttonPanel = FrameUtil.createButtonPanel(buttons, 15);
         FrameUtil.setPadding(buttonPanel, 10, 20, 0, 20);
-        
+
         // 将元素添加到表单面板，添加垂直间隔
         formPanel.add(usernamePanel);
         formPanel.add(Box.createVerticalStrut(0));
@@ -152,16 +165,16 @@ public class LoginFrame extends JFrame implements LoginView {
         formPanel.add(confirmPasswordErrorPanel);
         formPanel.add(Box.createVerticalStrut(15));
         formPanel.add(buttonPanel);
-        
+
         // 将表单面板添加到主面板中心
         mainPanel.add(formPanel, BorderLayout.CENTER);
-        
+
         // 将主面板添加到窗口
         this.add(mainPanel, BorderLayout.CENTER);
-        
+
         // 添加输入框事件监听器，用于清除错误状态
         addTextFieldListeners();
-        
+
         // 添加用户名输入框的焦点监听器，用于检测用户名是否已注册
         username.addFocusListener(new FocusAdapter() {
             @Override
@@ -202,7 +215,7 @@ public class LoginFrame extends JFrame implements LoginView {
                 controller.processLogin(usernameText, passwordText);
             }
         });
-        
+
         // 添加访客登录按钮事件监听器
         guestLoginBtn.addActionListener(e -> controller.processGuestLogin());
 
@@ -214,6 +227,7 @@ public class LoginFrame extends JFrame implements LoginView {
 
     /**
      * 设置是否处于注册模式，显示或隐藏确认密码区域
+     *
      * @param isRegistration 是否为注册模式
      */
     public void setRegistrationMode(boolean isRegistration) {
@@ -259,7 +273,7 @@ public class LoginFrame extends JFrame implements LoginView {
             passwordErrorLabel.setVisible(false);
         }
     }
-    
+
     @Override
     public void setConfirmPasswordError(boolean isError) {
         if (isError) {
@@ -277,7 +291,7 @@ public class LoginFrame extends JFrame implements LoginView {
         setPasswordError(false, "");
         setConfirmPasswordError(false);
     }
-    
+
     @Override
     public void resetForm() {
         username.setText(""); // 清空用户名
@@ -313,7 +327,7 @@ public class LoginFrame extends JFrame implements LoginView {
                 setUsernameError(false);
             }
         });
-        
+
         // 为密码输入框添加文档监听器
         password.getDocument().addDocumentListener(new DocumentListener() {
             @Override
@@ -365,9 +379,9 @@ public class LoginFrame extends JFrame implements LoginView {
 
         // 显示自定义对话框
         JOptionPane optionPane = new JOptionPane(
-            label,
-            messageType,
-            JOptionPane.DEFAULT_OPTION);
+                label,
+                messageType,
+                JOptionPane.DEFAULT_OPTION);
 
         // 设置标题字体
         UIManager.put("OptionPane.messageFont", FontManager.getRegularFont(16));
@@ -381,21 +395,4 @@ public class LoginFrame extends JFrame implements LoginView {
         // 恢复默认UI设置
         FrameUtil.initUIDefaults();
     }
-
-    /**
-     * 设置Home窗口引用，用于登录成功后的界面跳转
-     * @param homeFrame Home主窗口实例
-     */
-    public void setHomeFrame(HomeFrame homeFrame) {
-        this.controller.setHomeFrame(homeFrame);
-    }
-    
-    /**
-     * 设置游戏窗口引用，用于登录成功后的界面跳转
-     * @param gameFrame 游戏主窗口实例
-     */
-    public void setGameFrame(GameFrame gameFrame) {
-        this.controller.setGameFrame(gameFrame);
-    }
 }
-

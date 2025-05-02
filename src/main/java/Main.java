@@ -1,16 +1,11 @@
 
 import javax.swing.SwingUtilities;
 
-import controller.LevelSelectController;
 import model.AppSettings;
 import service.DatabaseService;
 import service.UserSession;
-import view.game.GameFrame;
-import view.home.HomeFrame;
-import view.level.LevelSelectFrame;
-import view.login.LoginFrame;
-import view.settings.SettingsFrame;
 import view.util.FontManager;
+import view.util.FrameManager;
 import view.util.FrameUtil;
 
 public class Main {
@@ -42,40 +37,12 @@ public class Main {
         AppSettings.getInstance();
 
         SwingUtilities.invokeLater(() -> {
-            // 创建登录窗口并显示
-            LoginFrame loginFrame = new LoginFrame(460, 370);
-
-            // 创建游戏窗口（不再直接传入地图模型）
-            GameFrame gameFrame = new GameFrame(700, 550, null);
-            gameFrame.setVisible(false);
-
-            // 创建Home窗口
-            HomeFrame homeFrame = new HomeFrame(500, 400);
-            homeFrame.setVisible(false);
-
-            // 创建关卡选择界面
-            LevelSelectFrame levelSelectFrame = new LevelSelectFrame(700, 550);
-            LevelSelectController levelSelectController = new LevelSelectController(levelSelectFrame);
-            levelSelectFrame.setController(levelSelectController);
-
-            // 创建Settings窗口
-            SettingsFrame settingsFrame = new SettingsFrame(400, 300);
-            settingsFrame.setVisible(false);
-
-            // 设置窗口之间的相互引用
-            loginFrame.setHomeFrame(homeFrame);
-            homeFrame.setLoginFrame(loginFrame);
-            homeFrame.setGameFrame(gameFrame);
-            homeFrame.setSettingsFrame(settingsFrame);
-            gameFrame.setHomeFrame(homeFrame);
-            gameFrame.setLevelSelectFrame(levelSelectFrame);
-            loginFrame.setGameFrame(gameFrame);
-            homeFrame.setLevelSelectFrame(levelSelectFrame);
-            levelSelectFrame.setHomeFrame(homeFrame);
-            levelSelectFrame.setGameFrame(gameFrame);
+            // 使用FrameManager初始化所有窗口
+            FrameManager frameManager = FrameManager.getInstance();
+            frameManager.initializeAllFrames();
 
             // 显示登录窗口
-            loginFrame.setVisible(true);
+            frameManager.showLoginFrame();
         });
     }
 }

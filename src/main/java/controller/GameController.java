@@ -1,32 +1,23 @@
 package controller;
 
+import java.text.DecimalFormat;
+import java.util.List;
+import javax.swing.Timer;
+
+import controller.history.HistoryManager;
+import controller.mover.BigBlockMover;
+import controller.mover.BlockMover;
+import controller.mover.HorizontalBlockMover;
+import controller.mover.SingleBlockMover;
+import controller.mover.VerticalBlockMover;
+import controller.save.SaveManager;
+import controller.solver.BoardState;
+import controller.solver.KlotskiSolver;
 import model.Direction;
 import model.MapModel;
 import view.game.BoxComponent;
-import view.game.GamePanel;
-import controller.solver.KlotskiSolver;
-import controller.solver.BoardState;
-import controller.history.HistoryManager;
-
-// 导入移动策略类
-import controller.mover.BlockMover;
-import controller.mover.SingleBlockMover;
-import controller.mover.HorizontalBlockMover;
-import controller.mover.VerticalBlockMover;
-import controller.mover.BigBlockMover;
-
-// 导入格子布局序列化工具类和存档管理器
-import controller.save.SaveManager;
-
-import javax.swing.Timer;
-
-import java.util.List;
-import java.awt.event.ActionListener;
-import java.awt.event.ActionEvent;
-import java.text.DecimalFormat;
-
 import view.game.GameFrame;
-import view.level.LevelSelectFrame;
+import view.game.GamePanel;
 import view.victory.VictoryView;
 
 /**
@@ -58,12 +49,9 @@ public class GameController {
     private GameFrame parentFrame;
 
     // 胜利控制器
-    private VictoryController victoryController;
+    private final VictoryController victoryController;
 
-    // 选关界面引用
-    private LevelSelectFrame levelSelectFrame;
-
-    // 当前关卡索引
+    // 当前关卡索引，由setCurrentLevelIndex方法修改
     private int currentLevelIndex = 0;
 
     // 计时相关
@@ -115,16 +103,13 @@ public class GameController {
      * 初始化游戏计时器
      */
     private void initializeTimer() {
-        gameTimer = new Timer(50, new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                // 计算当前经过的总时间（毫秒）
-                long currentTime = System.currentTimeMillis();
-                long totalElapsed = elapsedTimeBeforeStart + (currentTime - startTime);
+        gameTimer = new Timer(50, e -> {
+            // 计算当前经过的总时间（毫秒）
+            long currentTime = System.currentTimeMillis();
+            long totalElapsed = elapsedTimeBeforeStart + (currentTime - startTime);
 
-                // 更新时间显示
-                updateTimeDisplay(totalElapsed);
-            }
+            // 更新时间显示
+            updateTimeDisplay(totalElapsed);
         });
     }
 
@@ -223,17 +208,6 @@ public class GameController {
         }
     }
 
-    /**
-     * 设置关卡选择界面
-     *
-     * @param levelSelectFrame 关卡选择界面
-     */
-    public void setLevelSelectFrame(LevelSelectFrame levelSelectFrame) {
-        this.levelSelectFrame = levelSelectFrame;
-        if (victoryController != null) {
-            victoryController.setLevelSelectFrame(levelSelectFrame);
-        }
-    }
 
     /**
      * 设置当前关卡索引
@@ -320,7 +294,7 @@ public class GameController {
         this.solver = new KlotskiSolver();
 
         // 记录求解开始时间
-        long startTime = System.currentTimeMillis();
+        long solverStartTime = System.currentTimeMillis();
 
         // 执行初始求解
         List<BoardState> solution = solver.initialSolve(initialState);
@@ -329,7 +303,7 @@ public class GameController {
         long endTime = System.currentTimeMillis();
 
         // 输出求解统计信息
-        System.out.println("[initialSolve] Solving time: " + (endTime - startTime) + " ms");
+        System.out.println("[initialSolve] Solving time: " + (endTime - solverStartTime) + " ms");
         System.out.println("[initialSolve] BFS nodes explored: " + solver.getNodesExploredBFS());
 
         // 输出求解结果
@@ -503,7 +477,7 @@ public class GameController {
             BoardState currentState = new BoardState(currentLayout);
 
             // 记录求解开始时间
-            long startTime = System.currentTimeMillis();
+            long solverStartTime = System.currentTimeMillis();
 
             // 使用求解器获取从当前状态到目标的路径
             List<BoardState> path = solver.findPathFrom(currentState);
@@ -517,7 +491,7 @@ public class GameController {
                 view.setMinSteps(minSteps);
 
                 // 输出当前求解信息
-                System.out.println("[findPathFrom] Current layout solved in: " + (endTime - startTime) + " ms");
+                System.out.println("[findPathFrom] Current layout solved in: " + (endTime - solverStartTime) + " ms");
                 System.out.println("[findPathFrom] A* nodes explored: " + solver.getNodesExploredAStar());
                 System.out.println("[findPathFrom] Minimum steps: " + minSteps);
 
@@ -537,6 +511,11 @@ public class GameController {
             }
         } catch (Exception e) {
             System.err.println("Error calculating minimum steps: " + e.getMessage());
+            // 不再使用e.printStackTrace()，而是使用更好的日志格式
+            System.err.println("Stack trace: ");
+            for (StackTraceElement element : e.getStackTrace()) {
+                System.err.println("  at " + element);
+            }
             view.setMinSteps(-1);
         }
     }

@@ -18,8 +18,6 @@ import javax.swing.UIManager;
 import javax.swing.WindowConstants;
 
 import controller.LevelSelectController;
-import view.game.GameFrame;
-import view.home.HomeFrame;
 import view.util.FontManager;
 import view.util.FrameUtil;
 
@@ -231,28 +229,6 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
 
         // 恢复默认UI设置
         FrameUtil.initUIDefaults();
-    }
-
-    /**
-     * 设置游戏窗口引用
-     *
-     * @param gameFrame 游戏窗口
-     */
-    public void setGameFrame(GameFrame gameFrame) {
-        if (controller != null && gameFrame != null) {
-            controller.setGameFrame(gameFrame);
-        }
-    }
-
-    /**
-     * 设置主页窗口引用
-     *
-     * @param homeFrame 主页窗口
-     */
-    public void setHomeFrame(HomeFrame homeFrame) {
-        if (controller != null && homeFrame != null) {
-            controller.setHomeFrame(homeFrame);
-        }
     }
 
     /**
