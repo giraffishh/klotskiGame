@@ -1,4 +1,4 @@
-package controller.solverArchived.TireTree; // New package
+package controller.solver.solverArchived.TireTree; // New package
 
 import controller.util.BoardSerializer;
 import controller.solver.BoardState;

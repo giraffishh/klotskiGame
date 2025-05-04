@@ -1,4 +1,4 @@
-package controller.solverArchived.BiBFSSymmetry; // Can keep same package or make V2
+package controller.solver.solverArchived.BiBFSSymmetry; // Can keep same package or make V2
 
 import controller.util.BoardSerializer;
 import controller.solver.BoardState;

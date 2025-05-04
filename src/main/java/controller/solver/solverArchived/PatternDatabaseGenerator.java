@@ -1,4 +1,4 @@
-package controller.solverArchived;
+package controller.solver.solverArchived;
 
 import controller.util.BoardSerializer;
 import controller.solver.BoardState;
