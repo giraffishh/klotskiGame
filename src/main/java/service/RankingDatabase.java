@@ -5,6 +5,7 @@ import java.util.Date;
 import java.util.List;
 
 import org.bson.Document;
+import org.bson.conversions.Bson; // 新增导入
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
@@ -15,6 +16,10 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Filters; // 新增导入
+import com.mongodb.client.model.UpdateOptions; // 新增导入
+import com.mongodb.client.model.Updates; // 新增导入
+import com.mongodb.client.result.UpdateResult; // 新增导入
 
 /**
  * 排行榜数据库服务类负责与MongoDB数据库交互，上传和获取排行榜数据
@@ -72,7 +77,7 @@ public class RankingDatabase {
     }
 
     /**
-     * 上传游戏分数到数据库
+     * 上传游戏分数到数据库。 如果该玩家在该关卡已有记录，则覆盖更新；否则插入新记录。
      *
      * @param playerName 玩家名称
      * @param levelIndex 关卡索引
@@ -92,18 +97,36 @@ public class RankingDatabase {
         }
 
         try {
-            Document scoreDocument = new Document("playerName", playerName)
-                    .append("levelIndex", levelIndex)
-                    .append("moves", moves)
-                    .append("timeInMillis", timeInMillis)
-                    .append("timestamp", new Date());
+            // 1. 定义查询过滤器：匹配玩家名和关卡索引
+            Bson filter = Filters.and(
+                    Filters.eq("playerName", playerName),
+                    Filters.eq("levelIndex", levelIndex)
+            );
 
-            scoresCollection.insertOne(scoreDocument);
-            System.out.println("Upload Successfully: Player=" + playerName + ", Level=" + levelIndex + ", Moves=" + moves + ", Time=" + timeInMillis);
+            // 2. 定义更新操作：设置新的步数、时间和时间戳
+            Bson update = Updates.combine(
+                    Updates.set("moves", moves),
+                    Updates.set("timeInMillis", timeInMillis),
+                    Updates.set("timestamp", new Date())
+            );
+
+            // 3. 设置更新选项：upsert=true 表示如果找不到匹配文档则插入新文档
+            UpdateOptions options = new UpdateOptions().upsert(true);
+
+            // 4. 执行更新或插入操作
+            UpdateResult result = scoresCollection.updateOne(filter, update, options);
+
+            if (result.getUpsertedId() != null) {
+                System.out.println("新分数记录插入成功: Player=" + playerName + ", LevelIndex=" + levelIndex + ", Moves=" + moves + ", Time=" + timeInMillis);
+            } else if (result.getModifiedCount() > 0) {
+                System.out.println("分数记录更新成功: Player=" + playerName + ", LevelIndex=" + levelIndex + ", Moves=" + moves + ", Time=" + timeInMillis);
+            } else {
+                // 可能文档已存在但内容相同，未实际修改
+                System.out.println("分数记录已存在且无需更新: Player=" + playerName + ", LevelIndex=" + levelIndex);
+            }
+
         } catch (MongoException e) {
-            System.err.println("上传分数失败: " + e.getMessage());
-            // 可以选择性地重新抛出异常，让调用者知道失败
-            // throw e;
+            System.err.println("上传或更新分数失败: " + e.getMessage());
         }
     }
 

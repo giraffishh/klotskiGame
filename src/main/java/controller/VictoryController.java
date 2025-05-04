@@ -99,16 +99,27 @@ public class VictoryController {
 
         // 设置再来一次按钮监听器
         victoryView.setRestartListener(e -> {
+            if (parentFrame != null) {
+                parentFrame.setVisible(true);
+                System.out.println("GameFrame shown after restart.");
+            }
             victoryView.hideVictory();
-            // 重新开始游戏
-            // 如果游戏是从存档加载的，首先会在restartGame方法中处理
+
+            // 重新开始游戏，如果游戏是从存档加载的，首先会在restartGame方法中处理
             gameController.restartGame();
+            // 确保游戏面板获得焦点
+            if (parentFrame != null && parentFrame.getGamePanel() != null) {
+                parentFrame.getGamePanel().requestFocusInWindow();
+            }
         });
 
         // 设置下一关按钮监听器
         victoryView.setNextLevelListener(e -> {
             if (!isLastLevel()) {
-                // 先隐藏胜利界面，再加载下一关
+                if (parentFrame != null) {
+                    parentFrame.setVisible(true);
+                    System.out.println("GameFrame shown before loading next level.");
+                }
                 victoryView.hideVictory();
 
                 // 获取模型并检查/设置加载状态
@@ -145,7 +156,6 @@ public class VictoryController {
             } else {
                 System.out.println("访客模式，跳过分数上传。");
             }
-            // --- 上传分数结束 ---
 
             // 显示胜利界面
             SwingUtilities.invokeLater(() -> {
@@ -174,6 +184,13 @@ public class VictoryController {
                     JOptionPane.showMessageDialog(parentFrame, messageLabel, "Victory", JOptionPane.INFORMATION_MESSAGE);
                 }
             });
+
+            // 隐藏游戏窗口
+            if (parentFrame != null) {
+                parentFrame.setVisible(false);
+                System.out.println("GameFrame hidden due to victory.");
+            }
+
             return true;
         }
         return false;
@@ -338,6 +355,12 @@ public class VictoryController {
             // 加载关卡到游戏窗口
             if (parentFrame != null) {
                 parentFrame.initializeGamePanel(mapModel);
+
+                // 确保游戏窗口可见（可能在监听器中已设置，但再次确认）
+                if (!parentFrame.isVisible()) {
+                    parentFrame.setVisible(true);
+                    System.out.println("GameFrame made visible during loadNextLevel.");
+                }
 
                 // 设置新的关卡索引
                 GameController controller = parentFrame.getController();

@@ -5,7 +5,6 @@ import java.awt.GridLayout;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.awt.event.WindowListener;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -36,6 +35,8 @@ public class VictoryFrame extends JDialog implements VictoryView {
 
     // 存储返回主页的监听器，用于窗口关闭时调用
     private ActionListener homeListener;
+    // 新增：存储关卡选择的监听器，用于窗口关闭时调用
+    private ActionListener levelSelectListener;
 
     /**
      * 构造方法，初始化胜利界面的UI组件
@@ -46,21 +47,28 @@ public class VictoryFrame extends JDialog implements VictoryView {
         super(parent, "Victory!", true); // 创建模态对话框
 
         // 设置对话框基本属性
-        setSize(450, 380); // 增加高度以适应时间标签
+        setSize(700, 550); // 增加高度以适应时间标签
         setLocationRelativeTo(parent); // 居中显示
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setResizable(false);
 
-        // 添加窗口关闭监听器，使关闭窗口时执行与点击"Back to Home"相同的操作
+        // 添加窗口关闭监听器，使关闭窗口时执行与点击"Level Select"相同的操作
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                if (homeListener != null) {
-                    // 创建一个ActionEvent并传递给homeListener
+                // 优先调用 levelSelectListener
+                if (levelSelectListener != null) {
+                    // 创建一个ActionEvent并传递给levelSelectListener
+                    levelSelectListener.actionPerformed(
+                            new java.awt.event.ActionEvent(levelSelectButton, // 使用 levelSelectButton 作为事件源
+                                    java.awt.event.ActionEvent.ACTION_PERFORMED,
+                                    "windowClosingToLevelSelect") // 修改 action command
+                    );
+                } else if (homeListener != null) { // 如果 levelSelectListener 未设置，则回退到 homeListener (理论上不应发生)
                     homeListener.actionPerformed(
                             new java.awt.event.ActionEvent(homeButton,
                                     java.awt.event.ActionEvent.ACTION_PERFORMED,
-                                    "windowClosing")
+                                    "windowClosingToHomeFallback")
                     );
                 }
             }
@@ -151,14 +159,10 @@ public class VictoryFrame extends JDialog implements VictoryView {
     public void hideVictory() {
         confettiPanel.stopAnimation();
 
-        // 使用标志变量追踪窗口关闭状态，避免重复触发事件
+        // 检查窗口是否可见，避免重复操作
         if (isVisible()) {
             setVisible(false);
-            // 移除所有窗口监听器，防止窗口关闭时触发额外的操作
-            for (WindowListener listener : getWindowListeners()) {
-                removeWindowListener(listener);
-            }
-            dispose();
+            dispose(); // dispose() 会释放窗口资源
         }
     }
 
@@ -171,6 +175,8 @@ public class VictoryFrame extends JDialog implements VictoryView {
 
     @Override
     public void setLevelSelectListener(ActionListener listener) {
+        // 保存监听器引用，用于窗口关闭时调用
+        this.levelSelectListener = listener;
         levelSelectButton.addActionListener(listener);
     }
 
