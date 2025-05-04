@@ -6,10 +6,9 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
+import controller.rank.RankManager;
 import model.MapModel;
-import model.User; // 确保导入 User 类
-import service.RankingDatabase; // 新增导入
-import service.UserSession; // 新增导入
+import service.UserSession;
 import view.game.GameFrame;
 import view.level.LevelSelectFrame;
 import view.util.FrameManager;
@@ -150,12 +149,24 @@ public class VictoryController {
             // 停止计时器
             gameController.stopTimer();
 
-            // --- 上传分数到排行榜 (如果不是访客) ---
-            if (!UserSession.getInstance().isGuest()) {
-                uploadScoreToLeaderboard(currentMoveCount, gameTimeInMillis);
-            } else {
-                System.out.println("访客模式，跳过分数上传。");
+            // 获取当前关卡模型，并立即提取关键信息以避免线程同步问题
+            final MapModel model = gameController.getModel();
+            // 健壮性检查：确保model不为null
+            if (model == null) {
+                System.err.println("错误：在 checkVictory 时 model 为 null！无法继续。");
+                victoryAchieved = false; // 重置状态，允许下次尝试
+                return false;
             }
+            final int currentLevelIndex = model.getCurrentLevelIndex();
+
+            // 记录当前关卡，用于调试
+            System.out.println("[VictoryController] 胜利! 当前关卡索引: " + currentLevelIndex);
+
+            // --- 上传分数到排行榜 (如果不是访客) ---
+            final boolean isGuest = UserSession.getInstance().isGuest();
+            final String username = isGuest ? "Guest"
+                    : (UserSession.getInstance().getCurrentUser() != null
+                    ? UserSession.getInstance().getCurrentUser().getUsername() : "ErrorUser"); // 添加null检查
 
             // 显示胜利界面
             SwingUtilities.invokeLater(() -> {
@@ -177,8 +188,27 @@ public class VictoryController {
 
                     // 只调用一次showVictory方法，避免重复显示
                     victoryView.showVictory("Victory!", currentMoveCount, timeText);
+
+                    // 处理排行榜展示逻辑 - 使用已捕获的关卡索引
+                    // 简化：先上传（RankManager内部后台），然后立即请求加载（RankManager内部SwingWorker）
+                    if (!isGuest) {
+                        // 触发分数上传（在后台线程中执行）
+                        RankManager.getInstance().uploadScore(
+                                currentLevelIndex, username, currentMoveCount, gameTimeInMillis);
+                        // 立即触发排行榜加载（使用SwingWorker在后台获取数据，然后在EDT更新UI）
+                        // 注意：这里不再需要sleep，因为上传和加载是独立的后台任务
+                        RankManager.getInstance().loadLeaderboardData(
+                                victoryView, currentLevelIndex, isGuest,
+                                username, currentMoveCount, gameTimeInMillis);
+                    } else {
+                        // 访客模式直接加载排行榜，同时传入当前成绩以便显示
+                        RankManager.getInstance().loadLeaderboardData(
+                                victoryView, currentLevelIndex, isGuest,
+                                username, currentMoveCount, gameTimeInMillis);
+                    }
                 } else {
                     // 如果胜利视图未设置，使用旧的对话框显示
+                    System.err.println("[VictoryController] victoryView 为 null，无法显示胜利界面和排行榜！");
                     JLabel messageLabel = new JLabel("Congratulations! You have completed the Klotski challenge!");
                     messageLabel.setFont(view.util.FontManager.getTitleFont(16));
                     JOptionPane.showMessageDialog(parentFrame, messageLabel, "Victory", JOptionPane.INFORMATION_MESSAGE);
@@ -188,92 +218,12 @@ public class VictoryController {
             // 隐藏游戏窗口
             if (parentFrame != null) {
                 parentFrame.setVisible(false);
-                System.out.println("GameFrame hidden due to victory.");
+                System.out.println("[VictoryController] GameFrame hidden due to victory.");
             }
 
             return true;
         }
         return false;
-    }
-
-    /**
-     * 将当前游戏成绩上传到排行榜数据库
-     *
-     * @param moves 步数
-     * @param timeInMillis 用时（毫秒）
-     */
-    private void uploadScoreToLeaderboard(int moves, long timeInMillis) {
-        // 再次检查是否为访客
-        if (UserSession.getInstance().isGuest()) {
-            System.out.println("访客模式无法上传分数。");
-            return;
-        }
-
-        RankingDatabase rankingDb = RankingDatabase.getInstance();
-        // 检查数据库是否连接成功
-        if (!rankingDb.isConnected()) {
-            System.out.println("排行榜数据库未连接，跳过分数上传。");
-            return;
-        }
-
-        // 获取当前用户对象
-        User currentUser = UserSession.getInstance().getCurrentUser();
-
-        // 检查用户对象是否为 null (理论上非访客模式下不应为 null)
-        if (currentUser == null) {
-            throw new IllegalStateException("非访客用户尝试上传分数，但 UserSession 中的 currentUser 为 null。");
-        }
-
-        // 获取当前玩家名称
-        String playerName = currentUser.getUsername();
-
-        // 检查获取到的用户名是否有效 (理论上已登录用户应该有用户名)
-        if (playerName == null || playerName.trim().isEmpty()) {
-            throw new IllegalStateException("非访客用户尝试上传分数，但无法从 User 对象获取有效的用户名。");
-        }
-
-        // 获取当前关卡信息
-        MapModel model = gameController.getModel();
-        if (model == null) {
-            System.err.println("无法获取地图模型，无法上传分数。");
-            return;
-        }
-        int levelIndex = model.getCurrentLevelIndex();
-        // 尝试获取关卡名称 (如果LevelData可用)
-        String levelName = "Level " + (levelIndex + 1); // 默认名称
-        try {
-            LevelSelectFrame lsf = FrameManager.getInstance().getLevelSelectFrame();
-            if (lsf != null && lsf.getController() != null) {
-                java.util.List<LevelSelectController.LevelData> levels = lsf.getController().getLevels();
-                if (levels != null && levelIndex >= 0 && levelIndex < levels.size()) {
-                    // 确保获取到的名称不为空
-                    String fetchedName = levels.get(levelIndex).getName();
-                    if (fetchedName != null && !fetchedName.trim().isEmpty()) {
-                        levelName = fetchedName; // 获取真实的关卡名称
-                    }
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("获取关卡名称时出错: " + e.getMessage());
-        }
-
-        System.out.println("Uploading Score: Player=" + playerName + ", LevelIndex=" + levelIndex + ", LevelName=" + levelName + ", Moves=" + moves + ", Time=" + timeInMillis);
-
-        final String finalPlayerName = playerName;
-        final int finalLevelIndex = levelIndex;
-        final int finalMoves = moves;
-        final long finalTimeInMillis = timeInMillis;
-
-        // 在后台线程上传分数，避免阻塞UI线程
-        new Thread(() -> {
-            try {
-                // 使用 final 副本
-                rankingDb.uploadScore(finalPlayerName, finalLevelIndex, finalMoves, finalTimeInMillis);
-            } catch (Exception e) {
-                // 记录上传失败，但通常不打断用户流程
-                System.err.println("后台上传分数时发生错误: " + e.getMessage());
-            }
-        }).start();
     }
 
     /**

@@ -149,9 +149,9 @@ public class RankingDatabase {
             // 创建查询条件
             Document query = new Document("levelIndex", levelIndex);
 
-            // 按步数升序，然后按时间升序排序
-            Document sort = new Document("moves", 1)
-                    .append("timeInMillis", 1);
+            // 修改排序逻辑：先按用时升序，然后按步数升序排序
+            Document sort = new Document("timeInMillis", 1)
+                    .append("moves", 1);
 
             // 执行查询并获取结果
             scoresCollection.find(query)

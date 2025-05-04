@@ -25,9 +25,9 @@ public class ConfettiPanel extends JPanel {
     private final List<Confetti> confettiPool = new ArrayList<>();
     private final Random random = new Random();
 
-    private static final int MAX_CONFETTI = 180;
+    private static final int MAX_CONFETTI = 200;
     private int totalConfettiGenerated = 0;
-    private static final int MAX_TOTAL_CONFETTI = 180;
+    private static final int MAX_TOTAL_CONFETTI = 200;
     private static final int CONFETTI_BATCH_SIZE = 7;
     private static final int GENERATION_INTERVAL = 100;
 

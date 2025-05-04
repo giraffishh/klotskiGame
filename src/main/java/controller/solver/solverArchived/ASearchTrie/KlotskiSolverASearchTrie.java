@@ -1,4 +1,4 @@
-package controller.solverArchived.ASearchTrie; // New package
+package controller.solver.solverArchived.ASearchTrie; // New package
 
 import controller.util.BoardSerializer;
 import controller.solver.BoardState;
