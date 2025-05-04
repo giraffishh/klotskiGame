@@ -1,18 +1,18 @@
-package controller.solverArchived;
+package controller.solver.solverArchived;
 
 import controller.util.BoardSerializer;
 import controller.solver.BoardState;
 import controller.solver.KlotskiSolver; // 添加导入新的KlotskiSolver类
-import controller.solverArchived.ASearchHashMap.KlotskiSolverASearchHashMap;
-import controller.solverArchived.ASearchPDB.KlotskiSolverPDB; // 添加PDB求解器的导入
-import controller.solverArchived.ASearchTrie.KlotskiSolverASearchTrie;
-import controller.solverArchived.BFS.KlotskiSolverBFS;
-import controller.solverArchived.BiBFS.KlotskiSolverBiBFS;
-import controller.solverArchived.BiBFSSymmetry.KlotskiSolverBiBFSSymmetry; // 添加BiBFSTrie求解器的导入
-import controller.solverArchived.TireTree.KlotskiSolverTrieTree;
-import controller.solverArchived.BiBFSOptLayoutGen.KlotskiSolverBiBFSOptLayoutGen; // 添加新的优化布局生成求解器导入
-import controller.solverArchived.BFSTireOptLayoutGen.KlotskiSolverBFSTrieOptLayoutGen; // 添加BFS Trie优化布局生成求解器导入
-import controller.solverArchived.ASearchTrieOptLayoutGen.KlotskiSolverASearchTrieOptLayoutGen; // 添加 A* Trie 优化布局生成求解器导入
+import controller.solver.solverArchived.ASearchHashMap.KlotskiSolverASearchHashMap;
+import controller.solver.solverArchived.ASearchPDB.KlotskiSolverPDB; // 添加PDB求解器的导入
+import controller.solver.solverArchived.ASearchTrie.KlotskiSolverASearchTrie;
+import controller.solver.solverArchived.BFS.KlotskiSolverBFS;
+import controller.solver.solverArchived.BiBFS.KlotskiSolverBiBFS;
+import controller.solver.solverArchived.BiBFSSymmetry.KlotskiSolverBiBFSSymmetry; // 添加BiBFSTrie求解器的导入
+import controller.solver.solverArchived.TireTree.KlotskiSolverTrieTree;
+import controller.solver.solverArchived.BiBFSOptLayoutGen.KlotskiSolverBiBFSOptLayoutGen; // 添加新的优化布局生成求解器导入
+import controller.solver.solverArchived.BFSTireOptLayoutGen.KlotskiSolverBFSTrieOptLayoutGen; // 添加BFS Trie优化布局生成求解器导入
+import controller.solver.solverArchived.ASearchTrieOptLayoutGen.KlotskiSolverASearchTrieOptLayoutGen; // 添加 A* Trie 优化布局生成求解器导入
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

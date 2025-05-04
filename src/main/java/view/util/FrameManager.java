@@ -65,11 +65,6 @@ public class FrameManager {
         // 创建设置窗口
         settingsFrame = new SettingsFrame(500, 400);
         settingsFrame.setVisible(false);
-
-        // 确保胜利视图已设置
-        if (gameFrame != null && gameFrame.getController() != null) {
-            // GameController可能需要设置VictoryView等
-        }
     }
 
     // Getters for all frames
@@ -118,7 +113,13 @@ public class FrameManager {
      * 显示关卡选择窗口
      */
     public void showLevelSelectFrame() {
-        levelSelectFrame.showLevelSelect(); // 使用自定义显示方法
+        if (levelSelectFrame != null) {
+            levelSelectFrame.showLevelSelect(); // 使用自定义显示方法
+            levelSelectFrame.toFront(); // 确保窗口显示在最前面
+            levelSelectFrame.requestFocus(); // 尝试请求焦点
+        } else {
+            System.err.println("Attempted to show LevelSelectFrame, but it is null.");
+        }
     }
 
     /**
@@ -221,8 +222,8 @@ public class FrameManager {
      * 从游戏界面导航到关卡选择界面
      */
     public void navigateFromGameToLevelSelect() {
-        hideGameFrame();
-        showLevelSelectFrame();
+        hideGameFrame(); // 确保游戏窗口是隐藏的
+        showLevelSelectFrame(); // 显示关卡选择窗口并置于顶层
     }
 
     /**

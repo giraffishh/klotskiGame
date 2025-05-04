@@ -6,7 +6,9 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
+import controller.rank.RankManager;
 import model.MapModel;
+import service.UserSession;
 import view.game.GameFrame;
 import view.level.LevelSelectFrame;
 import view.util.FrameManager;
@@ -75,50 +77,65 @@ public class VictoryController {
             return;
         }
 
-        // 获取FrameManager实例
         FrameManager frameManager = FrameManager.getInstance();
+        RankManager rankManager = RankManager.getInstance();
 
-        // 设置回到主页按钮监听器 - 直接返回，不显示确认对话框
+        // Common action for hiding the victory view and cancelling load
+        Runnable hideAndCancel = () -> {
+            rankManager.cancelLoad(); // Attempt to cancel any ongoing load
+            // Check if victoryView is still valid before hiding
+            if (victoryView != null) {
+                victoryView.hideVictory();
+            }
+        };
+
         victoryView.setHomeListener(e -> {
-            victoryView.hideVictory();
+            hideAndCancel.run();
             if (parentFrame != null) {
-                // 使用FrameManager导航到主页
                 frameManager.navigateFromGameToHome();
             }
         });
 
-        // 设置关卡选择按钮监听器
         victoryView.setLevelSelectListener(e -> {
-            victoryView.hideVictory();
-            // 使用FrameManager导航到关卡选择界面
+            hideAndCancel.run();
             frameManager.navigateFromGameToLevelSelect();
         });
 
-        // 设置再来一次按钮监听器
         victoryView.setRestartListener(e -> {
-            victoryView.hideVictory();
-            // 重新开始游戏
-            // 如果游戏是从存档加载的，首先会在restartGame方法中处理
+            hideAndCancel.run();
+            if (parentFrame != null) {
+                parentFrame.setVisible(true);
+            }
             gameController.restartGame();
-        });
-
-        // 设置下一关按钮监听器
-        victoryView.setNextLevelListener(e -> {
-            if (!isLastLevel()) {
-                // 先隐藏胜利界面，再加载下一关
-                victoryView.hideVictory();
-
-                // 获取模型并检查/设置加载状态
-                MapModel model = gameController.getModel();
-                if (model != null && model.isLoadedFromSave()) {
-                    model.setLoadedFromSave(false);
-                    System.out.println("Cleared loadedFromSave flag in model before loading next level.");
-                }
-
-                System.out.println("\nLoading next level...");
-                SwingUtilities.invokeLater(this::loadNextLevel);
+            if (parentFrame != null && parentFrame.getGamePanel() != null) {
+                parentFrame.getGamePanel().requestFocusInWindow();
             }
         });
+
+        victoryView.setNextLevelListener(e -> {
+            if (!isLastLevel()) {
+                hideAndCancel.run(); // Hide and cancel first
+                if (parentFrame != null) {
+                    parentFrame.setVisible(true); // Show game frame briefly
+                }
+                System.out.println("\nLoading next level...");
+                SwingUtilities.invokeLater(this::loadNextLevel); // Schedule next level load
+            }
+        });
+
+        // Also handle window closing event
+        // Ensure we are dealing with VictoryFrame to add WindowListener
+        if (victoryView instanceof java.awt.Window) { // More general check if it's a Window
+            ((java.awt.Window) victoryView).addWindowListener(new java.awt.event.WindowAdapter() {
+                @Override
+                public void windowClosing(java.awt.event.WindowEvent e) {
+                    rankManager.cancelLoad();
+                    // Let the default close operation handle hiding/disposing
+                }
+            });
+        } else {
+            System.err.println("[VictoryController] Cannot add window listener because victoryView is not a Window instance.");
+        }
     }
 
     /**
@@ -136,7 +153,23 @@ public class VictoryController {
             // 停止计时器
             gameController.stopTimer();
 
-            // 显示胜利界面
+            // 获取当前关卡模型，并立即提取关键信息以避免线程同步问题
+            final MapModel model = gameController.getModel();
+            // 健壮性检查：确保model不为null
+            if (model == null) {
+                System.err.println("错误：在 checkVictory 时 model 为 null！无法继续。");
+                victoryAchieved = false; // 重置状态，允许下次尝试
+                return false;
+            }
+            final int currentLevelIndex = model.getCurrentLevelIndex();
+
+            // --- 上传分数到排行榜 (如果不是访客) ---
+            final boolean isGuest = UserSession.getInstance().isGuest();
+            final String username = isGuest ? "Guest"
+                    : (UserSession.getInstance().getCurrentUser() != null
+                    ? UserSession.getInstance().getCurrentUser().getUsername() : "ErrorUser"); // 添加null检查
+
+            // 显示胜利界面 - 在EDT中执行
             SwingUtilities.invokeLater(() -> {
                 if (victoryView != null) {
                     // 格式化时间字符串
@@ -154,15 +187,29 @@ public class VictoryController {
                         victoryView.setNextLevelButtonEnabled(true);
                     }
 
-                    // 只调用一次showVictory方法，避免重复显示
+                    // --- 触发排行榜加载 (现在内部会先处理上传) ---
+                    RankManager.getInstance().loadLeaderboardData(
+                            victoryView, currentLevelIndex, isGuest,
+                            username, currentMoveCount, gameTimeInMillis);
+
+                    // --- 然后显示模态对话框 ---
+                    // 这会阻塞当前invokeLater任务，直到对话框关闭
                     victoryView.showVictory("Victory!", currentMoveCount, timeText);
+
                 } else {
                     // 如果胜利视图未设置，使用旧的对话框显示
+                    System.err.println("[VictoryController] victoryView 为 null，无法显示胜利界面和排行榜！");
                     JLabel messageLabel = new JLabel("Congratulations! You have completed the Klotski challenge!");
                     messageLabel.setFont(view.util.FontManager.getTitleFont(16));
                     JOptionPane.showMessageDialog(parentFrame, messageLabel, "Victory", JOptionPane.INFORMATION_MESSAGE);
                 }
             });
+
+            // 隐藏游戏窗口 (这部分在invokeLater之外，会立即执行)
+            if (parentFrame != null) {
+                parentFrame.setVisible(false);
+            }
+
             return true;
         }
         return false;
@@ -247,6 +294,11 @@ public class VictoryController {
             // 加载关卡到游戏窗口
             if (parentFrame != null) {
                 parentFrame.initializeGamePanel(mapModel);
+
+                // 确保游戏窗口可见（可能在监听器中已设置，但再次确认）
+                if (!parentFrame.isVisible()) {
+                    parentFrame.setVisible(true);
+                }
 
                 // 设置新的关卡索引
                 GameController controller = parentFrame.getController();

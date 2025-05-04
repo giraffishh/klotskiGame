@@ -1,4 +1,4 @@
-package controller.solverArchived.BiBFS;
+package controller.solver.solverArchived.BiBFS;
 
 import controller.util.BoardSerializer;
 import controller.solver.BoardState;

@@ -1,4 +1,4 @@
-package controller.mover;
+package controller.movement;
 
 import model.Direction;
 import model.MapModel;

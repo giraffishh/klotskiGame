@@ -1,4 +1,4 @@
-package controller.solverArchived.BFSTireOptLayoutGen; // Consistent package
+package controller.solver.solverArchived.BFSTireOptLayoutGen; // Consistent package
 
 import controller.util.BoardSerializer;
 import controller.solver.BoardState;

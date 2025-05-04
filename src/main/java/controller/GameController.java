@@ -7,11 +7,11 @@ import javax.swing.Timer;
 
 import controller.LevelSelectController.LevelData;
 import controller.history.HistoryManager;
-import controller.mover.BigBlockMover;
-import controller.mover.BlockMover;
-import controller.mover.HorizontalBlockMover;
-import controller.mover.SingleBlockMover;
-import controller.mover.VerticalBlockMover;
+import controller.movement.BigBlockMover;
+import controller.movement.BlockMover;
+import controller.movement.HorizontalBlockMover;
+import controller.movement.SingleBlockMover;
+import controller.movement.VerticalBlockMover;
 import controller.save.SaveManager;
 import controller.solver.BoardState;
 import controller.solver.KlotskiSolver;
