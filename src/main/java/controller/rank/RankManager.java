@@ -3,6 +3,7 @@ package controller.rank;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
@@ -19,6 +20,7 @@ import view.victory.VictoryView;
 public class RankManager {
 
     private static RankManager instance;
+    private volatile SwingWorker<List<Document>, Void> currentWorker = null;
 
     /**
      * 获取RankManager单例
@@ -35,6 +37,16 @@ public class RankManager {
     }
 
     /**
+     * 取消当前正在进行的排行榜加载操作
+     */
+    public void cancelLoad() {
+        SwingWorker<List<Document>, Void> worker = currentWorker;
+        if (worker != null && !worker.isDone()) {
+            worker.cancel(true);
+        }
+    }
+
+    /**
      * 加载排行榜数据并更新到视图组件
      *
      * @param victoryView 胜利视图组件
@@ -47,50 +59,50 @@ public class RankManager {
     public void loadLeaderboardData(final VictoryView victoryView, final int levelIndex,
             final boolean isGuest, final String username, final int moves, final long timeInMillis) {
 
-        // 记录加载的关卡索引，用于调试
-        System.out.println("[RankManager] 请求加载关卡 " + (levelIndex + 1) + " 的排行榜数据");
+        cancelLoad();
 
-        // 设置加载状态
         if (victoryView != null) {
             victoryView.setLeaderboardLoading(true);
+        } else {
+            System.err.println("[RankManager] VictoryView is null when requesting leaderboard load for levelIndex: " + levelIndex);
+            return;
         }
 
-        // 使用SwingWorker在后台线程加载排行榜数据
-        new SwingWorker<List<Document>, Void>() {
+        final SwingWorker<List<Document>, Void> worker = new SwingWorker<List<Document>, Void>() {
             @Override
-            protected List<Document> doInBackground() {
-                // 在后台线程开始时记录levelIndex
-                System.out.println("[RankManager Worker BG] 开始获取 levelIndex: " + levelIndex + " 的排行榜");
+            protected List<Document> doInBackground() throws InterruptedException {
                 try {
+                    if (Thread.currentThread().isInterrupted()) {
+                        throw new InterruptedException("Leaderboard load interrupted before DB query for levelIndex: " + levelIndex);
+                    }
+
                     RankingDatabase rankingDb = RankingDatabase.getInstance();
                     if (!rankingDb.isConnected()) {
                         System.err.println("[RankManager Worker BG] 数据库未连接，无法加载 levelIndex: " + levelIndex);
-                        return new ArrayList<>(); // 返回空列表
+                        return new ArrayList<>();
                     }
 
-                    // 获取前10名排行榜数据
                     List<Document> leaderboardData = rankingDb.getLeaderboard(levelIndex, 10);
-                    System.out.println("[RankManager Worker BG] 从数据库获取到 " + (leaderboardData != null ? leaderboardData.size() : 0) + " 条 levelIndex: " + levelIndex + " 的记录");
 
-                    // 如果是访客模式，将当前成绩添加到临时列表中以便排序和显示
+                    if (Thread.currentThread().isInterrupted()) {
+                        throw new InterruptedException("Leaderboard load interrupted after DB query for levelIndex: " + levelIndex);
+                    }
+
                     if (isGuest) {
                         List<Document> combined = new ArrayList<>(leaderboardData);
-                        // 创建访客成绩文档
                         Document guestScore = new Document()
                                 .append("playerName", "Guest")
-                                .append("levelIndex", levelIndex) // 确保使用正确的levelIndex
+                                .append("levelIndex", levelIndex)
                                 .append("moves", moves)
                                 .append("timeInMillis", timeInMillis)
                                 .append("timestamp", new Date());
                         combined.add(guestScore);
 
-                        // 对列表重新排序（按照时间和步数）
                         combined.sort((doc1, doc2) -> {
                             Long time1 = doc1.getLong("timeInMillis");
                             Long time2 = doc2.getLong("timeInMillis");
                             if (time1 == null) {
-                                time1 = Long.MAX_VALUE; // 处理可能的null值
-
+                                time1 = Long.MAX_VALUE;
                             }
                             if (time2 == null) {
                                 time2 = Long.MAX_VALUE;
@@ -101,68 +113,109 @@ public class RankManager {
                                 return timeCompare;
                             }
 
-                            // 时间相同时，比较步数
                             Integer moves1 = doc1.getInteger("moves", Integer.MAX_VALUE);
                             Integer moves2 = doc2.getInteger("moves", Integer.MAX_VALUE);
                             return Integer.compare(moves1, moves2);
                         });
 
-                        // 只保留前10名
                         if (combined.size() > 10) {
                             combined = combined.subList(0, 10);
                         }
-                        System.out.println("[RankManager Worker BG] 访客模式，合并并排序后 levelIndex: " + levelIndex + " 的记录数: " + combined.size());
                         return combined;
                     }
 
                     return leaderboardData;
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return null;
                 } catch (Exception e) {
                     System.err.println("[RankManager Worker BG] 获取 levelIndex: " + levelIndex + " 排行榜数据时发生异常: " + e.getMessage());
-                    e.printStackTrace(); // 打印堆栈跟踪以获取详细信息
-                    return new ArrayList<>(); // 出错时返回空列表
+                    e.printStackTrace();
+                    return new ArrayList<>();
                 }
             }
 
             @Override
             protected void done() {
-                try {
-                    final List<Document> leaderboardData = get();
-                    // 在EDT线程准备更新UI前记录levelIndex
-                    System.out.println("[RankManager Worker Done] 准备更新UI，levelIndex: " + levelIndex + "，数据条数: " + (leaderboardData != null ? leaderboardData.size() : 0));
+                boolean stillCurrent = (currentWorker == this);
+                if (stillCurrent) {
+                    currentWorker = null;
+                } else {
+                    return;
+                }
 
-                    // 确保在EDT中更新UI，避免线程问题
+                if (isCancelled()) {
                     SwingUtilities.invokeLater(() -> {
                         if (victoryView != null) {
-                            // 在实际更新UI前再次确认levelIndex
-                            System.out.println("[RankManager EDT Update] 调用 updateLeaderboard，levelIndex: " + levelIndex);
+                            victoryView.setLeaderboardLoading(false);
+                        }
+                    });
+                    return;
+                }
 
-                            // 确保数据中的levelIndex正确（作为后备检查）
-                            if (leaderboardData != null && !leaderboardData.isEmpty()) {
-                                for (Document doc : leaderboardData) {
+                List<Document> leaderboardData = null;
+                try {
+                    leaderboardData = get();
+
+                    if (leaderboardData == null) {
+                        SwingUtilities.invokeLater(() -> {
+                            if (victoryView != null) {
+                                victoryView.setLeaderboardLoading(false);
+                            }
+                        });
+                        return;
+                    }
+
+                    if (victoryView == null) {
+                        System.err.println("[RankManager Worker Done] VictoryView became null before UI update for levelIndex: " + levelIndex);
+                        return;
+                    }
+
+                    final List<Document> finalLeaderboardData = leaderboardData;
+                    SwingUtilities.invokeLater(() -> {
+                        if (victoryView != null) {
+                            if (finalLeaderboardData != null && !finalLeaderboardData.isEmpty()) {
+                                for (Document doc : finalLeaderboardData) {
                                     if (!doc.containsKey("levelIndex") || doc.getInteger("levelIndex", -1) != levelIndex) {
-                                        System.err.println("[RankManager EDT Update] 警告：排行榜数据中发现不匹配的levelIndex！强制设置为 " + levelIndex);
-                                        doc.put("levelIndex", levelIndex); // 强制修正
+                                        doc.put("levelIndex", levelIndex);
                                     }
                                 }
                             }
 
-                            victoryView.updateLeaderboard(leaderboardData, username);
+                            victoryView.updateLeaderboard(finalLeaderboardData, username);
                             victoryView.setLeaderboardLoading(false);
                         } else {
-                            System.err.println("[RankManager Worker Done] victoryView 为 null，无法更新UI，levelIndex: " + levelIndex);
+                            System.err.println("[RankManager EDT Update] VictoryView is null inside EDT task for levelIndex: " + levelIndex);
+                        }
+                    });
+
+                } catch (CancellationException e) {
+                    SwingUtilities.invokeLater(() -> {
+                        if (victoryView != null) {
+                            victoryView.setLeaderboardLoading(false);
+                        }
+                    });
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    SwingUtilities.invokeLater(() -> {
+                        if (victoryView != null) {
+                            victoryView.setLeaderboardLoading(false);
                         }
                     });
                 } catch (Exception e) {
-                    System.err.println("[RankManager Worker Done] 处理 levelIndex: " + levelIndex + " 排行榜数据失败: " + e.getMessage());
-                    e.printStackTrace(); // 打印堆栈跟踪
+                    System.err.println("[RankManager Worker Done] Error getting result for levelIndex: " + levelIndex + ": " + e.getMessage());
+                    e.printStackTrace();
                     SwingUtilities.invokeLater(() -> {
                         if (victoryView != null) {
-                            victoryView.setLeaderboardLoading(false); // 确保加载状态被重置
+                            victoryView.setLeaderboardLoading(false);
                         }
                     });
                 }
             }
-        }.execute();
+        };
+
+        this.currentWorker = worker;
+        worker.execute();
     }
 
     /**
@@ -176,40 +229,27 @@ public class RankManager {
     public void uploadScore(final int levelIndex, final String playerName,
             final int moves, final long timeInMillis) {
 
-        // 再次检查是否为访客
         if (UserSession.getInstance().isGuest()) {
-            System.out.println("[RankManager] 访客模式无法上传分数 (levelIndex: " + levelIndex + ")");
             return;
         }
 
         RankingDatabase rankingDb = RankingDatabase.getInstance();
-        // 检查数据库是否连接成功
         if (!rankingDb.isConnected()) {
-            System.out.println("[RankManager] 排行榜数据库未连接，跳过分数上传 (levelIndex: " + levelIndex + ")");
+            System.err.println("[RankManager] 排行榜数据库未连接，跳过分数上传 (levelIndex: " + levelIndex + ")");
             return;
         }
 
-        // 检查获取到的用户名是否有效
         if (playerName == null || playerName.trim().isEmpty()) {
             System.err.println("[RankManager] 无法上传分数：玩家名称无效 (levelIndex: " + levelIndex + ")");
-            return; // 修正：之前是抛出异常，改为打印错误并返回
+            return;
         }
 
-        System.out.println("[RankManager] 准备上传分数: Player=" + playerName
-                + ", LevelIndex=" + levelIndex
-                + ", Moves=" + moves
-                + ", Time=" + timeInMillis);
-
-        // 在后台线程上传分数，避免阻塞UI线程
         new Thread(() -> {
             try {
-                System.out.println("[RankManager Upload Thread] 开始上传分数 for levelIndex: " + levelIndex);
                 rankingDb.uploadScore(playerName, levelIndex, moves, timeInMillis);
-                System.out.println("[RankManager Upload Thread] 分数上传完成 for levelIndex: " + levelIndex);
             } catch (Exception e) {
-                // 记录上传失败，但通常不打断用户流程
                 System.err.println("[RankManager Upload Thread] 后台上传分数时发生错误 (levelIndex: " + levelIndex + "): " + e.getMessage());
-                e.printStackTrace(); // 打印堆栈跟踪
+                e.printStackTrace();
             }
         }).start();
     }

@@ -294,7 +294,6 @@ public class VictoryFrame extends JDialog implements VictoryView {
 
     @Override
     public void updateLeaderboard(List<Document> leaderboardData, String currentUsername) {
-        System.out.println("[VictoryFrame] updateLeaderboard called. 数据条数: " + (leaderboardData != null ? leaderboardData.size() : 0) + ", 当前用户: " + currentUsername);
         // 清空表格
         tableModel.setRowCount(0);
 
@@ -308,7 +307,6 @@ public class VictoryFrame extends JDialog implements VictoryView {
         }
 
         if (leaderboardData == null || leaderboardData.isEmpty()) {
-            System.out.println("[VictoryFrame] 排行榜数据为空或null。");
             loadingLabel.setText("No leaderboard data available");
             loadingLabel.setVisible(true);
             if (scrollPane != null) {
@@ -332,7 +330,6 @@ public class VictoryFrame extends JDialog implements VictoryView {
             if (firstRecord.containsKey("levelIndex")) {
                 levelIndex = firstRecord.getInteger("levelIndex", -1);
             } else {
-                System.err.println("[VictoryFrame] 警告：排行榜第一条记录缺少 levelIndex！");
                 // 尝试从其他记录查找
                 for (Document doc : leaderboardData) {
                     if (doc.containsKey("levelIndex")) {
@@ -348,7 +345,6 @@ public class VictoryFrame extends JDialog implements VictoryView {
                 }
             }
 
-            System.out.println("[VictoryFrame] 设置排行榜标题为 Level " + (levelIndex + 1));
             leaderboardTitleLabel.setText("Level " + (levelIndex + 1) + " Leaderboard");
 
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
@@ -362,7 +358,6 @@ public class VictoryFrame extends JDialog implements VictoryView {
                     break;
                 }
             }
-            System.out.println("[VictoryFrame] 当前用户 '" + currentUsername + "' 是否在排行榜中: " + currentUserInLeaderboard);
 
             // 填充排行榜数据
             for (int i = 0; i < leaderboardData.size(); i++) {
@@ -496,7 +491,6 @@ public class VictoryFrame extends JDialog implements VictoryView {
 
     @Override
     public void setLeaderboardLoading(boolean isLoading) {
-        System.out.println("[VictoryFrame] setLeaderboardLoading called with: " + isLoading);
         JScrollPane scrollPane = null;
         if (leaderboardTable.getParent() instanceof javax.swing.JViewport
                 && leaderboardTable.getParent().getParent() instanceof JScrollPane) {
