@@ -3,6 +3,7 @@ import javax.swing.SwingUtilities;
 
 import model.AppSettings;
 import service.DatabaseService;
+import service.RankingDatabase;
 import service.UserSession;
 import view.util.FontManager;
 import view.util.FrameManager;
@@ -36,6 +37,9 @@ public class Main {
         // 初始化应用程序设置管理器
         AppSettings.getInstance();
 
+        // 初始化排行榜数据库服务
+        RankingDatabase.getInstance(); // 初始化单例
+
         SwingUtilities.invokeLater(() -> {
             // 使用FrameManager初始化所有窗口
             FrameManager frameManager = FrameManager.getInstance();
@@ -44,5 +48,11 @@ public class Main {
             // 显示登录窗口
             frameManager.showLoginFrame();
         });
+
+        // 添加JVM关闭钩子以关闭数据库连接
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            RankingDatabase.getInstance().close();
+            System.out.println("数据库连接已关闭。");
+        }));
     }
 }
