@@ -1,5 +1,22 @@
 package controller.rank;
 
+// --- Necessary MongoDB Imports ---
+// Ensure your project includes the MongoDB Java Driver dependency.
+// For Maven, add to pom.xml:
+// <dependency>
+//     <groupId>org.mongodb</groupId>
+//     <artifactId>mongodb-driver-sync</artifactId>
+//     <version>LATEST_VERSION</version> <!-- Replace LATEST_VERSION with the desired version, e.g., 4.11.1 -->
+// </dependency>
+import com.mongodb.MongoException;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.UpdateOptions;
+import com.mongodb.client.model.Updates;
+import com.mongodb.client.result.UpdateResult;
+import org.bson.Document;
+import org.bson.conversions.Bson;
+// --- End MongoDB Imports ---
+
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -7,8 +24,6 @@ import java.util.concurrent.CancellationException;
 
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
-
-import org.bson.Document;
 
 import service.RankingDatabase;
 import service.UserSession;
@@ -47,14 +62,14 @@ public class RankManager {
     }
 
     /**
-     * 加载排行榜数据并更新到视图组件
+     * 加载排行榜数据并更新到视图组件。 如果不是访客模式，此方法现在也会先尝试上传/更新分数，然后再加载排行榜。
      *
      * @param victoryView 胜利视图组件
      * @param levelIndex 要加载的关卡索引
      * @param isGuest 是否是访客模式
      * @param username 当前用户名
-     * @param moves 当前步数（访客模式下用）
-     * @param timeInMillis 当前用时（访客模式下用）
+     * @param moves 当前步数
+     * @param timeInMillis 当前用时
      */
     public void loadLeaderboardData(final VictoryView victoryView, final int levelIndex,
             final boolean isGuest, final String username, final int moves, final long timeInMillis) {
@@ -72,6 +87,42 @@ public class RankManager {
             @Override
             protected List<Document> doInBackground() throws InterruptedException {
                 try {
+                    if (!isGuest) {
+                        RankingDatabase rankingDb = RankingDatabase.getInstance();
+                        if (rankingDb.isConnected()) {
+                            if (username != null && !username.trim().isEmpty() && !username.equals("ErrorUser")) {
+                                System.out.println("[RankManager Worker BG] 开始上传/更新分数 for levelIndex: " + levelIndex + ", Player: " + username);
+                                try {
+                                    Bson filter = Filters.and(
+                                            Filters.eq("playerName", username),
+                                            Filters.eq("levelIndex", levelIndex)
+                                    );
+                                    Bson update = Updates.combine(
+                                            Updates.set("moves", moves),
+                                            Updates.set("timeInMillis", timeInMillis),
+                                            Updates.set("timestamp", new Date())
+                                    );
+                                    UpdateOptions options = new UpdateOptions().upsert(true);
+                                    UpdateResult result = rankingDb.getScoresCollection().updateOne(filter, update, options);
+
+                                    if (result.getUpsertedId() != null) {
+                                        System.out.println("[RankManager Worker BG] 新分数记录插入成功。");
+                                    } else if (result.getModifiedCount() > 0) {
+                                        System.out.println("[RankManager Worker BG] 分数记录更新成功。");
+                                    } else {
+                                        System.out.println("[RankManager Worker BG] 分数记录已存在且无需更新。");
+                                    }
+                                } catch (MongoException e) {
+                                    System.err.println("[RankManager Worker BG] 上传或更新分数时发生错误: " + e.getMessage());
+                                }
+                            } else {
+                                System.err.println("[RankManager Worker BG] 无法上传分数：玩家名称无效 (" + username + ")");
+                            }
+                        } else {
+                            System.err.println("[RankManager Worker BG] 无法上传分数：数据库未连接。");
+                        }
+                    }
+
                     if (Thread.currentThread().isInterrupted()) {
                         throw new InterruptedException("Leaderboard load interrupted before DB query for levelIndex: " + levelIndex);
                     }
@@ -219,7 +270,8 @@ public class RankManager {
     }
 
     /**
-     * 将当前游戏成绩上传到排行榜数据库
+     * 将当前游戏成绩上传到排行榜数据库 (此方法现在不再被VictoryController直接调用，
+     * 上传逻辑已移至loadLeaderboardData的worker中，但保留此方法以备将来使用或内部调用)
      *
      * @param levelIndex 关卡索引
      * @param playerName 玩家名称
@@ -238,15 +290,24 @@ public class RankManager {
             System.err.println("[RankManager] 排行榜数据库未连接，跳过分数上传 (levelIndex: " + levelIndex + ")");
             return;
         }
-
-        if (playerName == null || playerName.trim().isEmpty()) {
+        if (playerName == null || playerName.trim().isEmpty() || playerName.equals("ErrorUser")) {
             System.err.println("[RankManager] 无法上传分数：玩家名称无效 (levelIndex: " + levelIndex + ")");
             return;
         }
 
         new Thread(() -> {
             try {
-                rankingDb.uploadScore(playerName, levelIndex, moves, timeInMillis);
+                Bson filter = Filters.and(
+                        Filters.eq("playerName", playerName),
+                        Filters.eq("levelIndex", levelIndex)
+                );
+                Bson update = Updates.combine(
+                        Updates.set("moves", moves),
+                        Updates.set("timeInMillis", timeInMillis),
+                        Updates.set("timestamp", new Date())
+                );
+                UpdateOptions options = new UpdateOptions().upsert(true);
+                rankingDb.getScoresCollection().updateOne(filter, update, options);
             } catch (Exception e) {
                 System.err.println("[RankManager Upload Thread] 后台上传分数时发生错误 (levelIndex: " + levelIndex + "): " + e.getMessage());
                 e.printStackTrace();

@@ -17,7 +17,6 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
-import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -34,9 +33,10 @@ import view.util.FontManager;
 import view.util.FrameUtil;
 
 /**
- * 游戏胜利界面，显示胜利消息和提供不同的后续操作按钮
+ * 游戏胜利界面，显示胜利消息和提供不同的后续操作按钮 Changed from JDialog to JFrame to ensure taskbar
+ * icon.
  */
-public class VictoryFrame extends JDialog implements VictoryView {
+public class VictoryFrame extends JFrame implements VictoryView {
 
     private final JLabel messageLabel;
     private final JLabel stepsLabel;
@@ -64,16 +64,20 @@ public class VictoryFrame extends JDialog implements VictoryView {
     /**
      * 构造方法，初始化胜利界面的UI组件
      *
-     * @param parent 父窗口引用
+     * @param parent 父窗口引用 (不再需要，JFrame不需要父窗口来显示在任务栏)
      */
     public VictoryFrame(JFrame parent) {
-        super(parent, "Victory!", true); // 创建模态对话框
+        // 修改 super 调用，使用 JFrame 的构造函数
+        super("Victory!");
 
-        // 设置对话框基本属性
-        setSize(850, 650); // 增加尺寸以适应排行榜
-        setLocationRelativeTo(parent); // 居中显示
-        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        // 设置窗口基本属性
+        setSize(850, 650);
+        // 使窗口在屏幕中央显示
+        setLocationRelativeTo(null);
+        // 设置关闭操作为销毁窗口
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setResizable(false);
+        // JFrames are not modal by default, which is usually desired for taskbar presence.
 
         // 添加窗口关闭监听器，使关闭窗口时执行与点击"Level Select"相同的操作
         addWindowListener(new WindowAdapter() {
@@ -94,6 +98,7 @@ public class VictoryFrame extends JDialog implements VictoryView {
                                     "windowClosingToHomeFallback")
                     );
                 }
+                // Note: DefaultCloseOperation is DISPOSE_ON_CLOSE, so the window will be disposed after listeners run.
             }
         });
 
@@ -244,7 +249,9 @@ public class VictoryFrame extends JDialog implements VictoryView {
         stepsLabel.setText("Steps: " + steps);
         timeLabel.setText(timeElapsed);
         confettiPanel.startAnimation();
-        setVisible(true);
+        setVisible(true); // Make the JFrame visible
+        toFront(); // Bring the frame to the front
+        requestFocus(); // Request focus for the frame
     }
 
     @Override
@@ -254,7 +261,7 @@ public class VictoryFrame extends JDialog implements VictoryView {
         // 检查窗口是否可见，避免重复操作
         if (isVisible()) {
             setVisible(false);
-            dispose(); // dispose() 会释放窗口资源
+            dispose(); // dispose() 会释放窗口资源 (Correct for JFrame with DISPOSE_ON_CLOSE)
         }
     }
 

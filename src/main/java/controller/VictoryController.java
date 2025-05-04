@@ -118,6 +118,7 @@ public class VictoryController {
                 if (parentFrame != null) {
                     parentFrame.setVisible(true); // Show game frame briefly
                 }
+                System.out.println("\nLoading next level...");
                 SwingUtilities.invokeLater(this::loadNextLevel); // Schedule next level load
             }
         });
@@ -186,21 +187,10 @@ public class VictoryController {
                         victoryView.setNextLevelButtonEnabled(true);
                     }
 
-                    // --- 关键修改：先触发排行榜加载 ---
-                    if (!isGuest) {
-                        // 触发分数上传（在后台线程中执行）
-                        RankManager.getInstance().uploadScore(
-                                currentLevelIndex, username, currentMoveCount, gameTimeInMillis);
-                        // 立即触发排行榜加载（使用SwingWorker在后台获取数据，然后在EDT更新UI）
-                        RankManager.getInstance().loadLeaderboardData(
-                                victoryView, currentLevelIndex, isGuest,
-                                username, currentMoveCount, gameTimeInMillis);
-                    } else {
-                        // 访客模式直接加载排行榜，同时传入当前成绩以便显示
-                        RankManager.getInstance().loadLeaderboardData(
-                                victoryView, currentLevelIndex, isGuest,
-                                username, currentMoveCount, gameTimeInMillis);
-                    }
+                    // --- 触发排行榜加载 (现在内部会先处理上传) ---
+                    RankManager.getInstance().loadLeaderboardData(
+                            victoryView, currentLevelIndex, isGuest,
+                            username, currentMoveCount, gameTimeInMillis);
 
                     // --- 然后显示模态对话框 ---
                     // 这会阻塞当前invokeLater任务，直到对话框关闭

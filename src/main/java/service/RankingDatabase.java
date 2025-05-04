@@ -38,7 +38,7 @@ public class RankingDatabase {
     private final String connectionUri = "mongodb+srv://giraffish:hibq67UTeg7bs1Yz@klotskigame.9yxxlqh.mongodb.net/?retryWrites=true&w=majority&appName=KlotskiGame";
     private MongoClient mongoClient;
     private MongoDatabase database;
-    private MongoCollection<Document> scoresCollection;
+    private MongoCollection<Document> scoresCollection; // Changed back to private
 
     /**
      * 私有构造函数，初始化数据库连接 (单例模式)
@@ -163,6 +163,15 @@ public class RankingDatabase {
         }
 
         return results;
+    }
+
+    /**
+     * 获取分数集合的引用 (供 RankManager 使用)
+     *
+     * @return MongoCollection<Document>
+     */
+    public MongoCollection<Document> getScoresCollection() { // Changed to public
+        return scoresCollection;
     }
 
     /**
