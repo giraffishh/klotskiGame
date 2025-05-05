@@ -10,6 +10,7 @@ import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -29,12 +30,12 @@ import javax.swing.table.DefaultTableModel;
 
 import org.bson.Document;
 
+import controller.rank.RankManager;
 import view.util.FontManager;
 import view.util.FrameUtil;
 
 /**
- * 游戏胜利界面，显示胜利消息和提供不同的后续操作按钮 Changed from JDialog to JFrame to ensure taskbar
- * icon.
+ * 游戏胜利界面，显示胜利消息和提供不同的后续操作按钮
  */
 public class VictoryFrame extends JFrame implements VictoryView {
 
@@ -60,6 +61,8 @@ public class VictoryFrame extends JFrame implements VictoryView {
     private ActionListener homeListener;
     // 新增：存储关卡选择的监听器，用于窗口关闭时调用
     private ActionListener levelSelectListener;
+    // 新增：存储当前游戏用时（毫秒），用于访客排名显示
+    private long currentGameTimeMillis;
 
     /**
      * 构造方法，初始化胜利界面的UI组件
@@ -89,7 +92,7 @@ public class VictoryFrame extends JFrame implements VictoryView {
                     levelSelectListener.actionPerformed(
                             new java.awt.event.ActionEvent(levelSelectButton, // 使用 levelSelectButton 作为事件源
                                     java.awt.event.ActionEvent.ACTION_PERFORMED,
-                                    "windowClosingToLevelSelect") // 修改 action command
+                                    "windowClosingToLevelSelect")
                     );
                 } else if (homeListener != null) { // 如果 levelSelectListener 未设置，则回退到 homeListener (理论上不应发生)
                     homeListener.actionPerformed(
@@ -105,13 +108,14 @@ public class VictoryFrame extends JFrame implements VictoryView {
         // 创建主面板，使用BoxLayout实现垂直布局
         JPanel mainPanel = new JPanel();
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        // 减少顶部边距从 20 到 10
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(0, 20, 10, 20));
         setContentPane(mainPanel);
 
         // 创建顶部胜利消息面板
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setOpaque(false);
-        headerPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 15, 0));
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
 
         // 创建胜利消息标签
         messageLabel = new JLabel("Victory!", SwingConstants.CENTER);
@@ -120,19 +124,13 @@ public class VictoryFrame extends JFrame implements VictoryView {
         messageLabel.setAlignmentX(CENTER_ALIGNMENT);
         headerPanel.add(messageLabel, BorderLayout.CENTER);
 
-        // 添加副标题
-        JLabel subtitleLabel = new JLabel("You completed the puzzle!", SwingConstants.CENTER);
-        subtitleLabel.setFont(FontManager.getRegularFont(18));
-        subtitleLabel.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
-        headerPanel.add(subtitleLabel, BorderLayout.SOUTH);
-
         mainPanel.add(headerPanel);
 
         // 创建中央信息面板（步数和用时）
         JPanel infoPanel = new JPanel();
-        infoPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 50, 10));
+        infoPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 50, 5));
         infoPanel.setOpaque(false);
-        infoPanel.setMaximumSize(new Dimension(800, 100));
+        infoPanel.setMaximumSize(new Dimension(800, 50));
 
         // 创建用时标签
         timeLabel = new JLabel("Time: 00:00.00", SwingConstants.CENTER);
@@ -147,7 +145,7 @@ public class VictoryFrame extends JFrame implements VictoryView {
         infoPanel.add(stepsLabel);
 
         mainPanel.add(infoPanel);
-        mainPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+        mainPanel.add(Box.createRigidArea(new Dimension(0, 5)));
 
         // 创建排行榜面板
         leaderboardPanel = new JPanel();
@@ -156,11 +154,11 @@ public class VictoryFrame extends JFrame implements VictoryView {
                 BorderFactory.createLineBorder(new Color(200, 200, 200), 1, true),
                 BorderFactory.createEmptyBorder(10, 10, 10, 10)));
         leaderboardPanel.setBackground(new Color(250, 250, 250));
-        leaderboardPanel.setMaximumSize(new Dimension(800, 300));
+        leaderboardPanel.setMaximumSize(new Dimension(800, 400)); // 进一步增加最大高度从 350 到 400
         leaderboardPanel.setAlignmentX(CENTER_ALIGNMENT);
 
         // 排行榜标题
-        leaderboardTitleLabel = new JLabel("Level Leaderboard", SwingConstants.CENTER);
+        leaderboardTitleLabel = new JLabel("Leaderboard", SwingConstants.CENTER);
         leaderboardTitleLabel.setFont(FontManager.getTitleFont(18));
         leaderboardTitleLabel.setAlignmentX(CENTER_ALIGNMENT);
         leaderboardPanel.add(leaderboardTitleLabel);
@@ -204,7 +202,7 @@ public class VictoryFrame extends JFrame implements VictoryView {
 
         // 创建滚动面板
         JScrollPane scrollPane = new JScrollPane(leaderboardTable);
-        scrollPane.setPreferredSize(new Dimension(700, 200));
+        scrollPane.setPreferredSize(new Dimension(700, 300)); // 增加滚动面板的首选高度从 250 到 300
         scrollPane.setAlignmentX(CENTER_ALIGNMENT);
 
         // 默认隐藏表格，显示加载文本
@@ -222,7 +220,7 @@ public class VictoryFrame extends JFrame implements VictoryView {
 
         // 创建按钮面板
         JPanel buttonPanel = new JPanel(new GridLayout(2, 2, 15, 15));
-        buttonPanel.setBorder(BorderFactory.createEmptyBorder(0, 10, 10, 10));
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(5, 10, 10, 10)); // 减少顶部边距
         buttonPanel.setOpaque(false);
         buttonPanel.setMaximumSize(new Dimension(800, 100));
         buttonPanel.setAlignmentX(CENTER_ALIGNMENT);
@@ -244,10 +242,11 @@ public class VictoryFrame extends JFrame implements VictoryView {
     }
 
     @Override
-    public void showVictory(String victoryMessage, int steps, String timeElapsed) {
+    public void showVictory(String victoryMessage, int steps, String timeElapsed, long gameTimeInMillis) {
+        this.currentGameTimeMillis = gameTimeInMillis; // 存储时间
         messageLabel.setText(victoryMessage);
         stepsLabel.setText("Steps: " + steps);
-        timeLabel.setText(timeElapsed);
+        timeLabel.setText(timeElapsed); // timeElapsed 是格式化后的字符串
         confettiPanel.startAnimation();
         setVisible(true); // Make the JFrame visible
         toFront(); // Bring the frame to the front
@@ -300,7 +299,7 @@ public class VictoryFrame extends JFrame implements VictoryView {
     }
 
     @Override
-    public void updateLeaderboard(List<Document> leaderboardData, String currentUsername) {
+    public void updateLeaderboard(List<Document> processedLeaderboardData, String currentUsername) {
         // 清空表格
         tableModel.setRowCount(0);
 
@@ -313,112 +312,98 @@ public class VictoryFrame extends JFrame implements VictoryView {
             System.err.println("[VictoryFrame] 无法找到排行榜表格的 JScrollPane！");
         }
 
-        if (leaderboardData == null || leaderboardData.isEmpty()) {
+        // 从 RankManager 获取完整的排行榜数据
+        List<Document> fullLeaderboardData = RankManager.getInstance().getLastLoadedData();
+        if (fullLeaderboardData == null) {
+            fullLeaderboardData = new ArrayList<>();
+        }
+
+        // 处理传入的 processedLeaderboardData 为空的情况
+        if (processedLeaderboardData == null || processedLeaderboardData.isEmpty()) {
             loadingLabel.setText("No leaderboard data available");
             loadingLabel.setVisible(true);
             if (scrollPane != null) {
                 scrollPane.setVisible(false);
             }
+            setupTableRenderers(currentUsername, !fullLeaderboardData.isEmpty());
             return;
         }
 
-        // 确保有数据可以显示
         try {
-            // 隐藏加载标签，显示表格
-            loadingLabel.setVisible(false);
             if (scrollPane != null) {
                 scrollPane.setVisible(true);
             }
 
-            // 设置排行榜标题 - 从第一条记录获取levelIndex
-            Document firstRecord = leaderboardData.get(0);
-            // 添加健壮性检查，如果第一条记录没有levelIndex，尝试从其他记录获取或使用默认值
-            int levelIndex = -1;
-            if (firstRecord.containsKey("levelIndex")) {
-                levelIndex = firstRecord.getInteger("levelIndex", -1);
-            } else {
-                // 尝试从其他记录查找
-                for (Document doc : leaderboardData) {
-                    if (doc.containsKey("levelIndex")) {
-                        levelIndex = doc.getInteger("levelIndex", -1);
-                        if (levelIndex != -1) {
+            leaderboardTitleLabel.setText("Level Leaderboard");
+
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+
+            Document currentUserScoreDoc = null;
+            int currentUserRank = -1;
+            boolean isGuest = "Guest".equals(currentUsername);
+
+            if (currentUsername != null) {
+                if (isGuest) {
+                    int currentMoves = 0;
+                    try {
+                        currentMoves = Integer.parseInt(stepsLabel.getText().replace("Steps: ", ""));
+                        for (Document doc : processedLeaderboardData) {
+                            if ("Guest".equals(doc.getString("playerName"))) {
+                                currentUserScoreDoc = doc;
+                                break;
+                            }
+                        }
+                        if (currentUserScoreDoc == null) {
+                            currentUserScoreDoc = new Document()
+                                    .append("playerName", "Guest")
+                                    .append("moves", currentMoves)
+                                    .append("timeInMillis", this.currentGameTimeMillis) // 使用存储的实际时间
+                                    .append("timestamp", new Date());
+                            currentUserRank = 999;
+                        } else {
+                            for (int i = 0; i < processedLeaderboardData.size(); i++) {
+                                if ("Guest".equals(processedLeaderboardData.get(i).getString("playerName"))) {
+                                    currentUserRank = i;
+                                    break;
+                                }
+                            }
+                        }
+                    } catch (NumberFormatException e) {
+                        System.err.println("Error parsing steps label for guest score.");
+                    }
+                } else {
+                    for (int i = 0; i < fullLeaderboardData.size(); i++) {
+                        Document doc = fullLeaderboardData.get(i);
+                        String pName = doc.getString("playerName");
+                        if (currentUsername.equals(pName)) {
+                            currentUserScoreDoc = doc;
+                            currentUserRank = i;
                             break;
                         }
                     }
                 }
-                if (levelIndex == -1) {
-                    levelIndex = 0; // 最后回退到0
+            }
+            boolean currentUserExists = (currentUserScoreDoc != null);
 
+            boolean userDisplayedInTable = false;
+            for (int i = 0; i < processedLeaderboardData.size(); i++) {
+                Document score = processedLeaderboardData.get(i);
+                addRowToTable(score, i + 1, dateFormat);
+                if (currentUsername != null && currentUsername.equals(score.getString("playerName"))) {
+                    userDisplayedInTable = true;
                 }
             }
 
-            leaderboardTitleLabel.setText("Level " + (levelIndex + 1) + " Leaderboard");
-
-            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-
-            // 判断当前用户是否在排行榜中
-            boolean currentUserInLeaderboard = false;
-            for (Document doc : leaderboardData) {
-                String pName = doc.getString("playerName");
-                if (pName != null && pName.equals(currentUsername)) {
-                    currentUserInLeaderboard = true;
-                    break;
-                }
+            if (currentUserExists && !userDisplayedInTable && currentUserScoreDoc != null) {
+                int rankToDisplay = (currentUserRank == 999) ? -1 : currentUserRank + 1;
+                addRowToTable(currentUserScoreDoc, rankToDisplay, dateFormat);
             }
 
-            // 填充排行榜数据
-            for (int i = 0; i < leaderboardData.size(); i++) {
-                Document score = leaderboardData.get(i);
-                String playerName = score.getString("playerName");
-                // 安全获取 moves
-                Integer movesObj = score.getInteger("moves");
-                int moves = movesObj != null ? movesObj : 0;
-
-                // 安全获取 timeInMillis
-                Long timeObj = null;
-                try {
-                    Object timeVal = score.get("timeInMillis");
-                    if (timeVal instanceof Long) {
-                        timeObj = (Long) timeVal;
-                    } else if (timeVal instanceof Integer) { // 兼容可能存为Integer的情况
-                        timeObj = ((Integer) timeVal).longValue();
-                    }
-                } catch (Exception e) {
-                    System.err.println("[VictoryFrame] 获取 timeInMillis 失败 for " + playerName + ": " + e.getMessage());
-                }
-                long timeInMillis = timeObj != null ? timeObj : 0L;
-
-                // 安全获取 timestamp
-                Date timestamp = null;
-                try {
-                    timestamp = score.getDate("timestamp");
-                } catch (Exception e) {
-                    System.err.println("[VictoryFrame] 获取 timestamp 失败 for " + playerName + ": " + e.getMessage());
-                }
-
-                // 格式化时间显示
-                String timeFormatted = formatTimeForDisplay(timeInMillis);
-
-                // 格式化日期
-                String dateFormatted = timestamp != null ? dateFormat.format(timestamp) : "N/A";
-
-                // 添加行数据
-                Object[] rowData = {
-                    i + 1,
-                    playerName,
-                    moves,
-                    timeFormatted,
-                    dateFormatted
-                };
-                tableModel.addRow(rowData);
-            }
-
-            // 应用渲染器设置
-            setupTableRenderers(currentUsername, currentUserInLeaderboard);
+            setupTableRenderers(currentUsername, false);
 
         } catch (Exception e) {
             System.err.println("[VictoryFrame] 更新排行榜UI时出错: " + e.getMessage());
-            e.printStackTrace(); // 打印详细错误
+            e.printStackTrace();
             loadingLabel.setText("Error displaying leaderboard");
             loadingLabel.setVisible(true);
             if (scrollPane != null) {
@@ -427,73 +412,121 @@ public class VictoryFrame extends JFrame implements VictoryView {
         }
     }
 
-    /**
-     * 设置表格渲染器，处理选择和高亮问题
-     */
-    private void setupTableRenderers(String currentUsername, boolean currentUserInLeaderboard) {
-        // 1. 首先禁用表格的选择行为，防止点击时文本变成白色
+    private void addRowToTable(Document score, int rank, SimpleDateFormat dateFormat) {
+        String playerName = score.getString("playerName");
+        Integer movesObj = score.getInteger("moves");
+        int moves = movesObj != null ? movesObj : 0;
+
+        Long timeObj = null;
+        try {
+            Object timeVal = score.get("timeInMillis");
+            if (timeVal instanceof Long) {
+                timeObj = (Long) timeVal;
+            } else if (timeVal instanceof Integer) {
+                timeObj = ((Integer) timeVal).longValue();
+            }
+        } catch (Exception e) {
+            System.err.println("[VictoryFrame] 获取 timeInMillis 失败 for " + playerName + ": " + e.getMessage());
+        }
+        long timeInMillis = timeObj != null ? timeObj : 0L;
+
+        Date timestamp = null;
+        try {
+            timestamp = score.getDate("timestamp");
+        } catch (Exception e) {
+            System.err.println("[VictoryFrame] 获取 timestamp 失败 for " + playerName + ": " + e.getMessage());
+        }
+
+        String timeFormatted = formatTimeForDisplay(timeInMillis);
+        String dateFormatted = timestamp != null ? dateFormat.format(timestamp) : "N/A";
+
+        Object[] rowData = {
+            (rank == -1) ? "..." : rank,
+            playerName,
+            moves,
+            timeFormatted,
+            dateFormatted
+        };
+        tableModel.addRow(rowData);
+    }
+
+    private void setupTableRenderers(String currentUsername, boolean currentUserInLeaderboardData_IGNORED) {
         leaderboardTable.setRowSelectionAllowed(false);
         leaderboardTable.setCellSelectionEnabled(false);
         leaderboardTable.setFocusable(false);
 
-        // 2. 创建自定义渲染器
         DefaultTableCellRenderer customRenderer = new DefaultTableCellRenderer() {
             @Override
             public java.awt.Component getTableCellRendererComponent(
                     JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-                // 确保不使用系统默认的选择样式
                 super.getTableCellRendererComponent(table, value, false, false, row, column);
 
-                // 检查是否为当前用户所在行
-                // 添加边界检查和null检查
                 if (row >= 0 && row < table.getRowCount() && table.getValueAt(row, 1) != null) {
                     String rowPlayerName = table.getValueAt(row, 1).toString();
                     if (rowPlayerName.equals(currentUsername)) {
-                        // 使用与Victory标题相似但饱和度更低的颜色高亮当前用户
-                        // 创建半透明版本的强调色
                         Color baseColor = FrameUtil.ACCENT_COLOR;
-                        // 创建更柔和的高亮色
                         Color highlightColor = new Color(
                                 baseColor.getRed(),
                                 baseColor.getGreen(),
                                 baseColor.getBlue(),
-                                200);  // 透明度值，0-255
-
+                                200);
                         setFont(getFont().deriveFont(Font.BOLD));
                         setBackground(highlightColor);
                         setForeground(Color.WHITE);
                     } else {
-                        // 其他行使用默认样式
                         setFont(getFont().deriveFont(Font.PLAIN));
-                        setBackground(Color.WHITE);
+                        setBackground(row % 2 == 0 ? Color.WHITE : new Color(245, 245, 245));
                         setForeground(Color.BLACK);
                     }
                 } else {
-                    // 如果行无效或玩家名为空，使用默认样式
                     setFont(getFont().deriveFont(Font.PLAIN));
                     setBackground(Color.WHITE);
                     setForeground(Color.BLACK);
                 }
 
-                // 所有单元格文本居中
                 setHorizontalAlignment(JLabel.CENTER);
                 return this;
             }
         };
 
-        // 3. 应用渲染器到所有列
         for (int col = 0; col < leaderboardTable.getColumnCount(); col++) {
             leaderboardTable.getColumnModel().getColumn(col).setCellRenderer(customRenderer);
         }
 
-        // 4. 如果当前用户不在排行榜中且不是访客，可以添加提示信息
-        if (!currentUserInLeaderboard && currentUsername != null && !currentUsername.equals("Guest")) {
-            loadingLabel.setText("Your score has been submitted!"); // 简化提示信息
-            loadingLabel.setVisible(true);
-        } else if (currentUserInLeaderboard || (currentUsername != null && currentUsername.equals("Guest"))) {
-            // 如果用户在榜上，或者用户是访客（访客成绩已临时加入），则隐藏加载/提示标签
+        boolean isGuest = "Guest".equals(currentUsername);
+        if (isGuest) {
+            loadingLabel.setVisible(false);
+        } else if (currentUsername != null) {
+            int userRank = findUserRank(currentUsername);
+
+            if (userRank != -1) {
+                if (userRank >= 10) {
+                    loadingLabel.setText("Your score is submitted! Rank: " + (userRank + 1));
+                    loadingLabel.setVisible(true);
+                } else {
+                    loadingLabel.setVisible(false);
+                }
+            } else {
+                loadingLabel.setText("Your score has been submitted!");
+                loadingLabel.setVisible(true);
+            }
+        } else {
             loadingLabel.setVisible(false);
         }
+    }
+
+    private int findUserRank(String username) {
+        List<Document> originalData = RankManager.getInstance().getLastLoadedData();
+        if (originalData != null && username != null) {
+            for (int i = 0; i < originalData.size(); i++) {
+                Document doc = originalData.get(i);
+                String playerName = doc.getString("playerName");
+                if (username.equals(playerName)) {
+                    return i;
+                }
+            }
+        }
+        return -1;
     }
 
     @Override
@@ -510,17 +543,9 @@ public class VictoryFrame extends JFrame implements VictoryView {
             if (scrollPane != null) {
                 scrollPane.setVisible(false);
             }
-        } else {
-            // 只有在数据成功加载后才隐藏loading标签，updateLeaderboard会处理这个
-            // 这里只处理加载失败或取消的情况（虽然目前没有取消逻辑）
-            // loadingLabel.setVisible(false);
-            // if (scrollPane != null) scrollPane.setVisible(true);
         }
     }
 
-    /**
-     * 格式化时间显示，格式为 mm:ss.xx（分:秒.厘秒）
-     */
     private String formatTimeForDisplay(long timeInMillis) {
         int minutes = (int) (timeInMillis / 60000);
         int seconds = (int) ((timeInMillis % 60000) / 1000);

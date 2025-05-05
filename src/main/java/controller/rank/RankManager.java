@@ -1,13 +1,5 @@
 package controller.rank;
 
-// --- Necessary MongoDB Imports ---
-// Ensure your project includes the MongoDB Java Driver dependency.
-// For Maven, add to pom.xml:
-// <dependency>
-//     <groupId>org.mongodb</groupId>
-//     <artifactId>mongodb-driver-sync</artifactId>
-//     <version>LATEST_VERSION</version> <!-- Replace LATEST_VERSION with the desired version, e.g., 4.11.1 -->
-// </dependency>
 import com.mongodb.MongoException;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.UpdateOptions;
@@ -36,6 +28,8 @@ public class RankManager {
 
     private static RankManager instance;
     private volatile SwingWorker<List<Document>, Void> currentWorker = null;
+    // 新增：存储最近一次加载的完整排行榜数据
+    private volatile List<Document> lastLoadedFullData = null;
 
     /**
      * 获取RankManager单例
@@ -130,17 +124,23 @@ public class RankManager {
                     RankingDatabase rankingDb = RankingDatabase.getInstance();
                     if (!rankingDb.isConnected()) {
                         System.err.println("[RankManager Worker BG] 数据库未连接，无法加载 levelIndex: " + levelIndex);
-                        return new ArrayList<>();
+                        lastLoadedFullData = new ArrayList<>(); // 清空旧数据
+                        return lastLoadedFullData;
                     }
 
-                    List<Document> leaderboardData = rankingDb.getLeaderboard(levelIndex, 10);
+                    // 获取完整的排行榜数据（不限制数量）
+                    List<Document> fullLeaderboardData = rankingDb.getLeaderboard(levelIndex, 0); // 0表示获取所有
+                    lastLoadedFullData = fullLeaderboardData; // 存储完整数据
 
                     if (Thread.currentThread().isInterrupted()) {
                         throw new InterruptedException("Leaderboard load interrupted after DB query for levelIndex: " + levelIndex);
                     }
 
+                    // --- 后续处理（访客模式、限制数量） ---
+                    List<Document> processedData;
                     if (isGuest) {
-                        List<Document> combined = new ArrayList<>(leaderboardData);
+                        // 为访客添加临时分数并排序，然后取前10
+                        List<Document> combined = new ArrayList<>(fullLeaderboardData); // 使用完整数据
                         Document guestScore = new Document()
                                 .append("playerName", "Guest")
                                 .append("levelIndex", levelIndex)
@@ -149,6 +149,7 @@ public class RankManager {
                                 .append("timestamp", new Date());
                         combined.add(guestScore);
 
+                        // 排序逻辑
                         combined.sort((doc1, doc2) -> {
                             Long time1 = doc1.getLong("timeInMillis");
                             Long time2 = doc2.getLong("timeInMillis");
@@ -169,20 +170,24 @@ public class RankManager {
                             return Integer.compare(moves1, moves2);
                         });
 
-                        if (combined.size() > 10) {
-                            combined = combined.subList(0, 10);
-                        }
-                        return combined;
+                        // 取前10名
+                        processedData = combined.subList(0, Math.min(combined.size(), 10));
+
+                    } else {
+                        // 非访客，直接取前10名
+                        processedData = fullLeaderboardData.subList(0, Math.min(fullLeaderboardData.size(), 10));
                     }
 
-                    return leaderboardData;
+                    return processedData; // 返回处理后的数据（最多10条或包含访客）
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
+                    lastLoadedFullData = null; // 中断时清空
                     return null;
                 } catch (Exception e) {
                     System.err.println("[RankManager Worker BG] 获取 levelIndex: " + levelIndex + " 排行榜数据时发生异常: " + e.getMessage());
                     e.printStackTrace();
-                    return new ArrayList<>();
+                    lastLoadedFullData = new ArrayList<>(); // 出错时返回空列表
+                    return lastLoadedFullData;
                 }
             }
 
@@ -267,6 +272,15 @@ public class RankManager {
 
         this.currentWorker = worker;
         worker.execute();
+    }
+
+    /**
+     * 获取最近一次成功加载的完整排行榜数据。
+     *
+     * @return 包含完整排行榜文档的列表，如果从未加载或加载失败则可能为 null 或空列表。
+     */
+    public List<Document> getLastLoadedData() {
+        return lastLoadedFullData;
     }
 
     /**

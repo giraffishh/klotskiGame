@@ -11,9 +11,14 @@ import org.bson.Document;
 public interface VictoryView {
 
     /**
-     * 显示胜利界面，包含步数和用时信息
+     * 显示胜利界面，包含步数、用时信息和原始用时（毫秒）
+     *
+     * @param victoryMessage 胜利消息
+     * @param steps 步数
+     * @param timeElapsed 格式化后的时间字符串
+     * @param gameTimeInMillis 游戏用时（毫秒）
      */
-    void showVictory(String victoryMessage, int steps, String timeElapsed);
+    void showVictory(String victoryMessage, int steps, String timeElapsed, long gameTimeInMillis);
 
     /**
      * 隐藏胜利界面

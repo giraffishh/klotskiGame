@@ -193,8 +193,8 @@ public class VictoryController {
                             username, currentMoveCount, gameTimeInMillis);
 
                     // --- 然后显示模态对话框 ---
-                    // 这会阻塞当前invokeLater任务，直到对话框关闭
-                    victoryView.showVictory("Victory!", currentMoveCount, timeText);
+                    // 传递 gameTimeInMillis
+                    victoryView.showVictory("Victory!", currentMoveCount, timeText, gameTimeInMillis);
 
                 } else {
                     // 如果胜利视图未设置，使用旧的对话框显示
