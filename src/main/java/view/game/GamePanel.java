@@ -296,8 +296,7 @@ public class GamePanel extends ListenerPanel {
     }
 
     /**
-     * 处理胜利快捷键
-     * 当按下 'Ctrl+Shift+V' 键时直接触发胜利
+     * 处理胜利快捷键 当按下 'Ctrl+Shift+V' 键时直接触发胜利
      */
     @Override
     public void doVictoryShortcut() {
@@ -366,10 +365,18 @@ public class GamePanel extends ListenerPanel {
      */
     public void setMinSteps(int minSteps) {
         if (this.minStepsLabel != null) {
-            if (minSteps >= 0) {
-                this.minStepsLabel.setText(String.format("Min Steps: %d", minSteps));
+            // 只有在练习模式下才显示最短步数
+            if (model != null && model.getGameMode() == MapModel.PRACTICE_MODE) {
+                if (minSteps >= 0) {
+                    this.minStepsLabel.setText(String.format("Min Steps: %d", minSteps));
+                } else {
+                    this.minStepsLabel.setText("Min Steps: --");
+                }
+                // 确保标签可见
+                this.minStepsLabel.setVisible(true);
             } else {
-                this.minStepsLabel.setText("Min Steps: --");
+                // 在竞速模式下不显示最短步数
+                this.minStepsLabel.setVisible(false);
             }
         }
     }

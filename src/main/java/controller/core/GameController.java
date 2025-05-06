@@ -158,6 +158,12 @@ public class GameController {
      * 初始化游戏，在UI组件完全准备好后调用
      */
     public void initializeGame() {
+        // 根据游戏模式控制最短步数标签的显示
+        if (parentFrame != null) {
+            boolean isPracticeMode = model.getGameMode() == MapModel.PRACTICE_MODE;
+            parentFrame.setMinStepsLabelVisible(isPracticeMode);
+        }
+
         gameStateManager.initializeGame();
     }
 
@@ -171,6 +177,12 @@ public class GameController {
         this.model = newModel;
         this.view = newView;
         this.view.setController(this);
+
+        // 根据游戏模式控制最短步数标签的显示
+        if (parentFrame != null) {
+            boolean isPracticeMode = newModel.getGameMode() == MapModel.PRACTICE_MODE;
+            parentFrame.setMinStepsLabelVisible(isPracticeMode);
+        }
 
         gameStateManager.resetWithNewModel(newModel, newView);
     }

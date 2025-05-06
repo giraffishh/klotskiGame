@@ -89,22 +89,22 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         int controlWidth = windowWidth - controlX - 50; // 右边距从40增加到50
         int buttonWidth = Math.min((controlWidth - 20) / 2, 110); // 限制按钮最大宽度
 
-        // 步数显示标签 - 放在顶部中央
-        this.stepLabel = FrameUtil.createTitleLabel("Start", JLabel.CENTER);
+        // 用时显示标签 - 放在最上方
+        this.timeLabel = FrameUtil.createTitleLabel("Time: 00:00.00", JLabel.CENTER);
+        timeLabel.setBounds(controlX, controlY, controlWidth, 30);
+        this.add(timeLabel);
+        controlY += 40;
+
+        // 步数显示标签 - 放在中间
+        this.stepLabel = FrameUtil.createTitleLabel("Steps: 0", JLabel.CENTER);
         stepLabel.setBounds(controlX, controlY, controlWidth, 30);
         this.add(stepLabel);
         controlY += 40;
 
-        // 最短步数显示标签 - 放在步数标签下方
+        // 最短步数显示标签 - 放在最下方
         this.minStepsLabel = FrameUtil.createTitleLabel("Min Steps: --", JLabel.CENTER);
         minStepsLabel.setBounds(controlX, controlY, controlWidth, 30);
         this.add(minStepsLabel);
-        controlY += 50;
-
-        // 用时显示标签 - 放在最短步数标签下方
-        this.timeLabel = FrameUtil.createTitleLabel("Time: 00:00.00", JLabel.CENTER);
-        timeLabel.setBounds(controlX, controlY, controlWidth, 30);
-        this.add(timeLabel);
         controlY += 50;
 
         // 将步数标签、最短步数标签和时间标签设置到游戏面板中
@@ -357,6 +357,17 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         }
         if (redoBtn != null) {
             redoBtn.setEnabled(canRedo);
+        }
+    }
+
+    /**
+     * 设置最短步数标签的可见性
+     *
+     * @param visible 是否可见
+     */
+    public void setMinStepsLabelVisible(boolean visible) {
+        if (minStepsLabel != null) {
+            minStepsLabel.setVisible(visible);
         }
     }
 
