@@ -1,6 +1,6 @@
 package view.settings;
 
-import controller.SettingsController; // 确保导入控制器
+import controller.core.SettingsController; // 确保导入控制器
 import view.util.FontManager;
 import view.util.FrameUtil;
 

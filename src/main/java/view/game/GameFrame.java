@@ -9,7 +9,7 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
-import controller.GameController;
+import controller.core.GameController;
 import model.MapModel;
 import service.UserSession;
 import view.util.FrameManager;

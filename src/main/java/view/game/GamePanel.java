@@ -14,7 +14,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
 
-import controller.GameController;
+import controller.core.GameController;
 import model.Direction;
 import model.MapModel;
 import view.util.FrameUtil;

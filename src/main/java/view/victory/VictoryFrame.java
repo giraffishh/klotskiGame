@@ -30,7 +30,7 @@ import javax.swing.table.DefaultTableModel;
 
 import org.bson.Document;
 
-import controller.rank.RankManager;
+import controller.storage.rank.RankManager;
 import view.util.FontManager;
 import view.util.FrameUtil;
 

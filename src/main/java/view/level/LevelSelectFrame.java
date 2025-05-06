@@ -19,7 +19,7 @@ import javax.swing.JScrollPane;
 import javax.swing.UIManager;
 import javax.swing.WindowConstants;
 
-import controller.LevelSelectController;
+import controller.core.LevelSelectController;
 import view.util.FontManager;
 import view.util.FrameUtil;
 
