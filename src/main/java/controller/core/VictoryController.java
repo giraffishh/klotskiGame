@@ -163,6 +163,9 @@ public class VictoryController {
             }
             final int currentLevelIndex = model.getCurrentLevelIndex();
 
+            // 获取当前游戏模式
+            final int gameMode = model.getGameMode();
+
             // --- 上传分数到排行榜 (如果不是访客) ---
             final boolean isGuest = UserSession.getInstance().isGuest();
             final String username = isGuest ? "Guest"
@@ -187,10 +190,17 @@ public class VictoryController {
                         victoryView.setNextLevelButtonEnabled(true);
                     }
 
+                    // 如果是练习模式，设置提示信息
+                    if (gameMode == MapModel.PRACTICE_MODE) {
+                        victoryView.setPracticeModeTip("Practice mode: scores are not uploaded and not eligible for ranking.");
+                    } else {
+                        victoryView.setPracticeModeTip(null); // 清除提示信息
+                    }
+
                     // --- 触发排行榜加载 (现在内部会先处理上传) ---
                     RankManager.getInstance().loadLeaderboardData(
                             victoryView, currentLevelIndex, isGuest,
-                            username, currentMoveCount, gameTimeInMillis);
+                            username, currentMoveCount, gameTimeInMillis, gameMode);
 
                     // --- 然后显示模态对话框 ---
                     // 传递 gameTimeInMillis
@@ -283,8 +293,17 @@ public class VictoryController {
                 return;
             }
 
-            // 创建新的地图模型
+            // 获取当前游戏模式
+            int currentGameMode = MapModel.PRACTICE_MODE; // 默认为练习模式
+            if (gameController != null && gameController.getModel() != null) {
+                currentGameMode = gameController.getModel().getGameMode();
+            }
+
+            // 创建新的地图模型并继承当前游戏模式
             MapModel mapModel = new MapModel(nextLevel.getLayout(), nextLevelIndex);
+            mapModel.setGameMode(currentGameMode); // 继承当前游戏模式
+            System.out.println("Loading next level with game mode: "
+                    + (currentGameMode == MapModel.PRACTICE_MODE ? "Practice Mode" : "Speed Mode"));
 
             // 停止当前游戏的计时器
             if (gameController != null) {

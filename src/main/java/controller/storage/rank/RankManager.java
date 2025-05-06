@@ -56,7 +56,7 @@ public class RankManager {
     }
 
     /**
-     * 加载排行榜数据并更新到视图组件。 如果不是访客模式，此方法现在也会先尝试上传/更新分数，然后再加载排行榜。
+     * 加载排行榜数据并更新到视图组件。 如果不是访客模式且不是练习模式，此方法现在也会先尝试上传/更新分数，然后再加载排行榜。
      *
      * @param victoryView 胜利视图组件
      * @param levelIndex 要加载的关卡索引
@@ -64,9 +64,10 @@ public class RankManager {
      * @param username 当前用户名
      * @param moves 当前步数
      * @param timeInMillis 当前用时
+     * @param gameMode 游戏模式，0为练习模式，1为竞速模式
      */
     public void loadLeaderboardData(final VictoryView victoryView, final int levelIndex,
-            final boolean isGuest, final String username, final int moves, final long timeInMillis) {
+            final boolean isGuest, final String username, final int moves, final long timeInMillis, final int gameMode) {
 
         cancelLoad();
 
@@ -81,7 +82,8 @@ public class RankManager {
             @Override
             protected List<Document> doInBackground() throws InterruptedException {
                 try {
-                    if (!isGuest) {
+                    // 只有在以下条件下上传成绩：不是访客模式 且 不是练习模式
+                    if (!isGuest && gameMode != model.MapModel.PRACTICE_MODE) {
                         RankingDatabase rankingDb = RankingDatabase.getInstance();
                         if (rankingDb.isConnected()) {
                             if (username != null && !username.trim().isEmpty() && !username.equals("ErrorUser")) {
@@ -115,6 +117,8 @@ public class RankManager {
                         } else {
                             System.err.println("[RankManager Worker BG] 无法上传分数：数据库未连接。");
                         }
+                    } else if (gameMode == model.MapModel.PRACTICE_MODE) {
+                        System.out.println("[RankManager Worker BG] 练习模式，跳过上传分数");
                     }
 
                     if (Thread.currentThread().isInterrupted()) {
@@ -173,6 +177,10 @@ public class RankManager {
                         // 取前10名
                         processedData = combined.subList(0, Math.min(combined.size(), 10));
 
+                    } else if (gameMode == model.MapModel.PRACTICE_MODE) {
+                        // 练习模式下只显示排行榜，不追加当前成绩
+                        processedData = fullLeaderboardData.subList(0, Math.min(fullLeaderboardData.size(), 10));
+                        System.out.println("[RankManager Worker BG] 练习模式，只显示排行榜，不追加当前成绩");
                     } else {
                         // 非访客，直接取前10名
                         processedData = fullLeaderboardData.subList(0, Math.min(fullLeaderboardData.size(), 10));
@@ -238,7 +246,13 @@ public class RankManager {
                                 }
                             }
 
-                            victoryView.updateLeaderboard(finalLeaderboardData, username);
+                            // 在练习模式下不高亮显示当前成绩
+                            if (gameMode == model.MapModel.PRACTICE_MODE) {
+                                victoryView.updateLeaderboard(finalLeaderboardData, null); // 传递null表示不高亮任何成绩
+                                System.out.println("[RankManager EDT Update] 练习模式，不高亮显示玩家成绩");
+                            } else {
+                                victoryView.updateLeaderboard(finalLeaderboardData, username);
+                            }
                             victoryView.setLeaderboardLoading(false);
                         } else {
                             System.err.println("[RankManager EDT Update] VictoryView is null inside EDT task for levelIndex: " + levelIndex);
@@ -284,18 +298,21 @@ public class RankManager {
     }
 
     /**
-     * 将当前游戏成绩上传到排行榜数据库 (此方法现在不再被VictoryController直接调用，
-     * 上传逻辑已移至loadLeaderboardData的worker中，但保留此方法以备将来使用或内部调用)
+     * 将当前游戏成绩上传到排行榜数据库 在练习模式下不会上传成绩
      *
      * @param levelIndex 关卡索引
      * @param playerName 玩家名称
      * @param moves 完成步数
      * @param timeInMillis 完成时间（毫秒）
+     * @param gameMode 游戏模式
      */
     public void uploadScore(final int levelIndex, final String playerName,
-            final int moves, final long timeInMillis) {
+            final int moves, final long timeInMillis, final int gameMode) {
 
-        if (UserSession.getInstance().isGuest()) {
+        if (UserSession.getInstance().isGuest() || gameMode == model.MapModel.PRACTICE_MODE) {
+            if (gameMode == model.MapModel.PRACTICE_MODE) {
+                System.out.println("[RankManager] 练习模式，不上传分数");
+            }
             return;
         }
 
