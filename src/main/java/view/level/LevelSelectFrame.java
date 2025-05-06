@@ -4,6 +4,8 @@ import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.util.List;
 
 import javax.swing.BorderFactory;
@@ -40,6 +42,17 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
         this.setSize(width, height);
         this.setLocationRelativeTo(null); // 居中显示
         this.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+
+        // 添加窗口关闭监听器
+        this.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                // 当窗口关闭时返回主页
+                if (controller != null) {
+                    controller.returnToHome();
+                }
+            }
+        });
 
         // 初始化UI组件
         initializeUI();
