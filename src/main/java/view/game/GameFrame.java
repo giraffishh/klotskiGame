@@ -9,7 +9,7 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
-import controller.GameController;
+import controller.core.GameController;
 import model.MapModel;
 import service.UserSession;
 import view.util.FrameManager;
@@ -24,26 +24,26 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
     // 游戏控制器，处理游戏逻辑
     private GameController controller;
     // 重新开始按钮
-    private JButton restartBtn;
+    private final JButton restartBtn;
     // 保存游戏按钮
-    private JButton saveBtn;
+    private final JButton saveBtn;
     // 步数显示标签
-    private JLabel stepLabel;
+    private final JLabel stepLabel;
     // 最短步数显示标签
-    private JLabel minStepsLabel;
+    private final JLabel minStepsLabel;
     // 用时显示标签
-    private JLabel timeLabel;
+    private final JLabel timeLabel;
     // 游戏主面板，显示游戏地图
     private GamePanel gamePanel;
     // 撤销按钮
-    private JButton undoBtn;
+    private final JButton undoBtn;
     // 重做按钮
-    private JButton redoBtn;
+    private final JButton redoBtn;
     // 返回主页面按钮
-    private JButton homeBtn;
+    private final JButton homeBtn;
 
     // 胜利界面
-    private VictoryFrame victoryFrame;
+    private final VictoryFrame victoryFrame;
 
     /**
      * 创建游戏窗口
@@ -89,22 +89,22 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         int controlWidth = windowWidth - controlX - 50; // 右边距从40增加到50
         int buttonWidth = Math.min((controlWidth - 20) / 2, 110); // 限制按钮最大宽度
 
-        // 步数显示标签 - 放在顶部中央
-        this.stepLabel = FrameUtil.createTitleLabel("Start", JLabel.CENTER);
+        // 用时显示标签 - 放在最上方
+        this.timeLabel = FrameUtil.createTitleLabel("Time: 00:00.00", JLabel.CENTER);
+        timeLabel.setBounds(controlX, controlY, controlWidth, 30);
+        this.add(timeLabel);
+        controlY += 40;
+
+        // 步数显示标签 - 放在中间
+        this.stepLabel = FrameUtil.createTitleLabel("Steps: 0", JLabel.CENTER);
         stepLabel.setBounds(controlX, controlY, controlWidth, 30);
         this.add(stepLabel);
         controlY += 40;
 
-        // 最短步数显示标签 - 放在步数标签下方
+        // 最短步数显示标签 - 放在最下方
         this.minStepsLabel = FrameUtil.createTitleLabel("Min Steps: --", JLabel.CENTER);
         minStepsLabel.setBounds(controlX, controlY, controlWidth, 30);
         this.add(minStepsLabel);
-        controlY += 50;
-
-        // 用时显示标签 - 放在最短步数标签下方
-        this.timeLabel = FrameUtil.createTitleLabel("Time: 00:00.00", JLabel.CENTER);
-        timeLabel.setBounds(controlX, controlY, controlWidth, 30);
-        this.add(timeLabel);
         controlY += 50;
 
         // 将步数标签、最短步数标签和时间标签设置到游戏面板中
@@ -215,7 +215,7 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
      */
     private void returnToHome() {
         if (controller != null) {
-            controller.stopTimer();
+            controller.getTimerManager().stopTimer();
         } else {
             System.err.println("Return to home called but controller is null.");
         }
@@ -231,7 +231,7 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
             FrameManager.getInstance().navigateFromGameToHome();
         } else {
             if (controller != null) {
-                controller.startTimer();
+                controller.getTimerManager().startTimer();
             }
         }
     }
@@ -250,7 +250,7 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
 
         try {
             if (controller != null) {
-                controller.stopTimer();
+                controller.getTimerManager().stopTimer();
             }
 
             if (gamePanel == null) {
@@ -299,7 +299,7 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
             gamePanel.requestFocusInWindow();
 
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("Failed to load level: " + e.getMessage() + " Exception details: " + e);
             JOptionPane.showMessageDialog(
                     this,
                     "Failed to load level: " + e.getMessage(),
@@ -328,11 +328,14 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
     }
 
     /**
-     * 实现UserSessionListener接口方法，在用户会话状态变化时调用
+     * 设置保存按钮的可用状态
+     *
+     * @param enabled 是否可用
      */
-    @Override
-    public void onSessionStateChanged() {
-        SwingUtilities.invokeLater(this::updateButtonsState);
+    public void setSaveButtonEnabled(boolean enabled) {
+        if (saveBtn != null) {
+            saveBtn.setEnabled(enabled);
+        }
     }
 
     /**
@@ -342,7 +345,21 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         UserSession session = UserSession.getInstance();
         boolean isGuest = session.isGuest();
 
-        saveBtn.setEnabled(!isGuest);
+        // 检查游戏模式，如果是竞速模式则禁用保存按钮
+        boolean canSave = !isGuest;
+        if (controller != null && controller.getModel() != null) {
+            canSave = canSave && controller.getModel().getGameMode() != MapModel.SPEED_MODE;
+        }
+
+        saveBtn.setEnabled(canSave);
+    }
+
+    /**
+     * 实现UserSessionListener接口方法，在用户会话状态变化时调用
+     */
+    @Override
+    public void onSessionStateChanged() {
+        SwingUtilities.invokeLater(this::updateButtonsState);
     }
 
     /**
@@ -361,11 +378,22 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
     }
 
     /**
+     * 设置最短步数标签的可见性
+     *
+     * @param visible 是否可见
+     */
+    public void setMinStepsLabelVisible(boolean visible) {
+        if (minStepsLabel != null) {
+            minStepsLabel.setVisible(visible);
+        }
+    }
+
+    /**
      * 停止计时器
      */
     public void stopTimer() {
         if (controller != null) {
-            controller.stopTimer();
+            controller.getTimerManager().stopTimer();
         }
     }
 
@@ -374,7 +402,7 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
      */
     public void startTimer() {
         if (controller != null) {
-            controller.startTimer();
+            controller.getTimerManager().startTimer();
         }
     }
 
@@ -383,7 +411,7 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
      */
     public void resetTimer() {
         if (controller != null) {
-            controller.resetTimer();
+            controller.getTimerManager().resetTimer();
         }
     }
 }

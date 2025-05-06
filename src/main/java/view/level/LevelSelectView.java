@@ -1,8 +1,6 @@
 package view.level;
 
-import javax.swing.*;
-import java.util.List;
-import controller.LevelSelectController;
+import controller.core.LevelSelectController;
 
 public interface LevelSelectView {
     /**

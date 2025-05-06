@@ -73,4 +73,11 @@ public interface VictoryView {
      * @param isLoading 是否正在加载
      */
     void setLeaderboardLoading(boolean isLoading);
+
+    /**
+     * 设置练习模式提示信息
+     *
+     * @param tip 提示信息，为null时清除提示
+     */
+    void setPracticeModeTip(String tip);
 }

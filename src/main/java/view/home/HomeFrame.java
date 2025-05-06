@@ -15,7 +15,7 @@ import javax.swing.JPanel;
 import javax.swing.UIManager;
 import javax.swing.WindowConstants;
 
-import controller.HomeController;
+import controller.core.HomeController;
 import service.UserSession;
 import view.util.FontManager;
 import view.util.FrameUtil;
