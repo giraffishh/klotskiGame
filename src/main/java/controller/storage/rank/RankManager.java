@@ -249,7 +249,6 @@ public class RankManager {
                             // 在练习模式下不高亮显示当前成绩
                             if (gameMode == model.MapModel.PRACTICE_MODE) {
                                 victoryView.updateLeaderboard(finalLeaderboardData, null); // 传递null表示不高亮任何成绩
-                                System.out.println("[RankManager EDT Update] 练习模式，不高亮显示玩家成绩");
                             } else {
                                 victoryView.updateLeaderboard(finalLeaderboardData, username);
                             }

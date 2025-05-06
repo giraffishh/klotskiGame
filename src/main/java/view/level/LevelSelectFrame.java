@@ -2,6 +2,7 @@ package view.level;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -113,6 +114,18 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
         scrollPaneWrapper.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
         scrollPaneWrapper.add(scrollPane, BorderLayout.CENTER);
 
+        // 添加鼠标监听器，当鼠标离开滚动区域时清除所有卡片高亮
+        scrollPaneWrapper.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseExited(MouseEvent e) {
+                // 仅当鼠标真正离开区域时才清除高亮效果
+                Point p = e.getPoint();
+                if (p.x < 0 || p.y < 0 || p.x >= scrollPaneWrapper.getWidth() || p.y >= scrollPaneWrapper.getHeight()) {
+                    clearAllCardHighlights();
+                }
+            }
+        });
+
         // 添加包装后的滚动面板到主面板中央
         mainPanel.add(scrollPaneWrapper, BorderLayout.CENTER);
 
@@ -140,6 +153,52 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
                 controller.returnToHome();
             }
         });
+    }
+
+    /**
+     * 清除所有卡片的高亮效果
+     */
+    private void clearAllCardHighlights() {
+        for (Component comp : levelPanel.getComponents()) {
+            if (comp instanceof JPanel) {
+                JPanel wrapperPanel = (JPanel) comp;
+
+                // 找到ModeOverlayPanel并隐藏它
+                for (Component child : wrapperPanel.getComponents()) {
+                    if (child instanceof ModeOverlayPanel) {
+                        ((ModeOverlayPanel) child).setVisible(false);
+                        ((ModeOverlayPanel) child).setHoverSection(0);
+                    } else if (child instanceof JPanel) {
+                        // 找到卡片面板并重置样式
+                        JPanel card = (JPanel) child;
+                        card.setBorder(BorderFactory.createLineBorder(CARD_BORDER_COLOR, 2));
+
+                        // 只重置卡片本身和直接子面板的背景色，不递归处理预览面板
+                        card.setBackground(NORMAL_CARD_BG);
+
+                        // 直接获取并重置特定组件，而不是递归处理所有子组件
+                        for (Component cardChild : card.getComponents()) {
+                            if (cardChild instanceof JPanel) {
+                                JPanel contentPanel = (JPanel) cardChild;
+                                contentPanel.setBackground(NORMAL_CARD_BG);
+
+                                // 找出内容面板中的信息面板和预览容器
+                                for (Component contentChild : contentPanel.getComponents()) {
+                                    if (contentChild instanceof JPanel) {
+                                        // 重置信息面板和预览容器的背景色，但不修改预览面板本身
+                                        if (!(((JPanel) contentChild).getComponentCount() > 0
+                                                && ((JPanel) contentChild).getComponent(0) instanceof JPanel
+                                                && ((JPanel) ((JPanel) contentChild).getComponent(0)).getBackground().equals(FrameUtil.SECONDARY_COLOR))) {
+                                            ((JPanel) contentChild).setBackground(NORMAL_CARD_BG);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /**
