@@ -40,8 +40,7 @@ public class LevelSelectController {
     private List<LevelData> loadLevelsFromJson() {
         List<LevelData> levelList = new ArrayList<>();
 
-        try {
-            InputStream inputStream = getClass().getClassLoader().getResourceAsStream("layouts.json");
+        try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream("layouts.json")) {
             if (inputStream == null) {
                 System.err.println("Could not find layouts.json file");
                 throw new RuntimeException("Failed to load layouts.json");
@@ -50,13 +49,11 @@ public class LevelSelectController {
             ObjectMapper mapper = new ObjectMapper();
             levelList = mapper.readValue(inputStream, new TypeReference<List<LevelData>>() {
             });
-            inputStream.close();
 
             System.out.println("Successfully loaded " + levelList.size() + " levels from JSON");
         } catch (Exception e) {
             System.err.println("Error loading levels from JSON: " + e.getMessage());
-            e.printStackTrace();
-            throw new RuntimeException("Failed to load levels: " + e.getMessage());
+            throw new RuntimeException("Failed to load levels: " + e.getMessage(), e);
         }
 
         return levelList;
@@ -98,7 +95,7 @@ public class LevelSelectController {
 
             // 停止任何可能运行的计时器
             if (gameFrame.getController() != null) {
-                gameFrame.getController().stopTimer();
+                gameFrame.getController().getTimerManager().stopTimer();
             }
 
             // 加载关卡到游戏窗口
@@ -110,7 +107,7 @@ public class LevelSelectController {
                 System.out.println("Current level index set in model: " + levelIndex);
 
                 // 确保游戏状态被完全重置
-                controller.resetTimer();
+                controller.getTimerManager().resetTimer();
             }
 
             // 使用FrameManager导航到游戏界面
@@ -122,7 +119,7 @@ public class LevelSelectController {
             }
         } catch (Exception e) {
             // 捕获所有可能的异常
-            e.printStackTrace();
+            System.err.println("Failed to load level: " + e.getMessage() + " Exception details: " + e);
             levelSelectView.showStyledMessage(
                     "Failed to load level: " + e.getMessage(),
                     "Error",

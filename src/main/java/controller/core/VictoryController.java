@@ -125,8 +125,8 @@ public class VictoryController {
 
         // Also handle window closing event
         // Ensure we are dealing with VictoryFrame to add WindowListener
-        if (victoryView instanceof java.awt.Window) { // More general check if it's a Window
-            ((java.awt.Window) victoryView).addWindowListener(new java.awt.event.WindowAdapter() {
+        if (victoryView instanceof java.awt.Window windowView) { // More general check if it's a Window
+            windowView.addWindowListener(new java.awt.event.WindowAdapter() {
                 @Override
                 public void windowClosing(java.awt.event.WindowEvent e) {
                     rankManager.cancelLoad();
@@ -151,7 +151,7 @@ public class VictoryController {
             victoryAchieved = true; // 标记已经显示过胜利提示
 
             // 停止计时器
-            gameController.stopTimer();
+            gameController.getTimerManager().stopTimer();
 
             // 获取当前关卡模型，并立即提取关键信息以避免线程同步问题
             final MapModel model = gameController.getModel();
@@ -288,7 +288,7 @@ public class VictoryController {
 
             // 停止当前游戏的计时器
             if (gameController != null) {
-                gameController.stopTimer();
+                gameController.getTimerManager().stopTimer();
             }
 
             // 加载关卡到游戏窗口
@@ -303,7 +303,7 @@ public class VictoryController {
                 // 设置新的关卡索引
                 GameController controller = parentFrame.getController();
                 if (controller != null) {
-                    controller.resetTimer();
+                    controller.getTimerManager().resetTimer();
                 }
 
                 // 确保游戏面板获得焦点以接收键盘事件

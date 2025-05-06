@@ -24,26 +24,26 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
     // 游戏控制器，处理游戏逻辑
     private GameController controller;
     // 重新开始按钮
-    private JButton restartBtn;
+    private final JButton restartBtn;
     // 保存游戏按钮
-    private JButton saveBtn;
+    private final JButton saveBtn;
     // 步数显示标签
-    private JLabel stepLabel;
+    private final JLabel stepLabel;
     // 最短步数显示标签
-    private JLabel minStepsLabel;
+    private final JLabel minStepsLabel;
     // 用时显示标签
-    private JLabel timeLabel;
+    private final JLabel timeLabel;
     // 游戏主面板，显示游戏地图
     private GamePanel gamePanel;
     // 撤销按钮
-    private JButton undoBtn;
+    private final JButton undoBtn;
     // 重做按钮
-    private JButton redoBtn;
+    private final JButton redoBtn;
     // 返回主页面按钮
-    private JButton homeBtn;
+    private final JButton homeBtn;
 
     // 胜利界面
-    private VictoryFrame victoryFrame;
+    private final VictoryFrame victoryFrame;
 
     /**
      * 创建游戏窗口
@@ -215,7 +215,7 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
      */
     private void returnToHome() {
         if (controller != null) {
-            controller.stopTimer();
+            controller.getTimerManager().stopTimer();
         } else {
             System.err.println("Return to home called but controller is null.");
         }
@@ -231,7 +231,7 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
             FrameManager.getInstance().navigateFromGameToHome();
         } else {
             if (controller != null) {
-                controller.startTimer();
+                controller.getTimerManager().startTimer();
             }
         }
     }
@@ -250,7 +250,7 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
 
         try {
             if (controller != null) {
-                controller.stopTimer();
+                controller.getTimerManager().stopTimer();
             }
 
             if (gamePanel == null) {
@@ -299,7 +299,7 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
             gamePanel.requestFocusInWindow();
 
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("Failed to load level: " + e.getMessage() + " Exception details: " + e);
             JOptionPane.showMessageDialog(
                     this,
                     "Failed to load level: " + e.getMessage(),
@@ -365,7 +365,7 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
      */
     public void stopTimer() {
         if (controller != null) {
-            controller.stopTimer();
+            controller.getTimerManager().stopTimer();
         }
     }
 
@@ -374,7 +374,7 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
      */
     public void startTimer() {
         if (controller != null) {
-            controller.startTimer();
+            controller.getTimerManager().startTimer();
         }
     }
 
@@ -383,7 +383,7 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
      */
     public void resetTimer() {
         if (controller != null) {
-            controller.resetTimer();
+            controller.getTimerManager().resetTimer();
         }
     }
 }
