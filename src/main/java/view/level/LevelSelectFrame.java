@@ -5,8 +5,11 @@ import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.GridLayout;
 import java.awt.Image;
+import java.awt.Point;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
@@ -27,6 +30,7 @@ import javax.swing.UIManager;
 import javax.swing.WindowConstants;
 
 import controller.core.LevelSelectController;
+import model.MapModel;
 import view.util.FontManager;
 import view.util.FrameUtil;
 
@@ -40,9 +44,12 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
     private final Color NORMAL_CARD_BG = Color.WHITE;
     private final Color HOVER_CARD_BG = new Color(240, 248, 255); // 非常淡的蓝色
 
-    // 定义卡片默认和悬停边框颜色
-    private final Color DEFAULT_BORDER_COLOR = FrameUtil.PRIMARY_COLOR;
-    private final Color HOVER_BORDER_COLOR = new Color(30, 144, 255); // 更鲜艳的蓝色
+    // 游戏模式颜色
+    private final Color PRACTICE_MODE_COLOR = new Color(84, 173, 255, 180); // 练习模式 - 蓝色
+    private final Color SPEED_MODE_COLOR = new Color(255, 128, 0, 180);     // 竞速模式 - 橙色
+
+    // 定义卡片悬停边框颜色 - 使用主色调
+    private final Color CARD_BORDER_COLOR = FrameUtil.PRIMARY_COLOR;
 
     /**
      * 创建关卡选择窗口
@@ -173,7 +180,7 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
     private JPanel createLevelCard(LevelSelectController.LevelData level, int index) {
         // 创建卡片主面板，使用BorderLayout
         JPanel card = new JPanel(new BorderLayout());
-        card.setBorder(BorderFactory.createLineBorder(FrameUtil.PRIMARY_COLOR, 2));
+        card.setBorder(BorderFactory.createLineBorder(CARD_BORDER_COLOR, 2));
         card.setBackground(NORMAL_CARD_BG);
         card.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
@@ -247,7 +254,7 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
 
         // 关卡标题
         JLabel nameLabel = new JLabel(level.getName(), JLabel.CENTER);
-        nameLabel.setFont(FontManager.getTitleFont(15));
+        nameLabel.setFont(FontManager.getTitleFont(18)); // 增大字体从15到18
         nameLabel.setForeground(FrameUtil.TEXT_COLOR);
 
         // 关卡描述
@@ -266,76 +273,117 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
         // 将内容面板添加到卡片
         card.add(contentPanel, BorderLayout.CENTER);
 
-        // 添加"SELECT"悬停效果覆盖层
-        JPanel selectOverlay = new JPanel(new BorderLayout());
-        selectOverlay.setBackground(new Color(84, 173, 255, 180)); // 半透明主题色
-
-        JLabel selectLabel = new JLabel("SELECT", JLabel.CENTER);
-        selectLabel.setFont(FontManager.getTitleFont(24));
-        selectLabel.setForeground(Color.WHITE);
-        selectOverlay.add(selectLabel, BorderLayout.CENTER);
-
-        // 初始状态下不可见
-        selectOverlay.setVisible(false);
+        // 创建游戏模式选择覆盖层 - 使用专用的ModeOverlayPanel类
+        ModeOverlayPanel modeOverlay = new ModeOverlayPanel(
+                PRACTICE_MODE_COLOR,
+                SPEED_MODE_COLOR
+        );
+        modeOverlay.setVisible(false); // 默认不可见
 
         // 为卡片和覆盖层创建包装面板
         JPanel wrapperPanel = new JPanel();
         wrapperPanel.setLayout(new OverlayLayout(wrapperPanel));
 
         // 添加组件到包装面板 - 注意添加顺序很重要，后添加的会在上层显示
-        wrapperPanel.add(selectOverlay);
+        wrapperPanel.add(modeOverlay);
         wrapperPanel.add(card);
 
         // 添加鼠标事件监听器
-        card.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                if (controller != null) {
-                    controller.selectLevel(index);
-                }
-            }
-
+        MouseAdapter cardMouseAdapter = new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
                 // 显示悬停效果
-                card.setBorder(BorderFactory.createLineBorder(FrameUtil.PRIMARY_COLOR, 3));
+                card.setBorder(BorderFactory.createLineBorder(CARD_BORDER_COLOR, 3));
                 card.setBackground(HOVER_CARD_BG);
                 contentPanel.setBackground(HOVER_CARD_BG);
                 infoPanel.setBackground(HOVER_CARD_BG);
-                selectOverlay.setVisible(true);
+                previewContainer.setBackground(HOVER_CARD_BG); // 确保预览容器也更新颜色
+
+                // 显示模式选择覆盖层
+                modeOverlay.setVisible(true);
             }
 
             @Override
             public void mouseExited(MouseEvent e) {
                 // 隐藏悬停效果
-                card.setBorder(BorderFactory.createLineBorder(FrameUtil.PRIMARY_COLOR, 2));
+                card.setBorder(BorderFactory.createLineBorder(CARD_BORDER_COLOR, 2));
                 card.setBackground(NORMAL_CARD_BG);
                 contentPanel.setBackground(NORMAL_CARD_BG);
                 infoPanel.setBackground(NORMAL_CARD_BG);
-                selectOverlay.setVisible(false);
-            }
-        });
+                previewContainer.setBackground(NORMAL_CARD_BG); // 确保预览容器也恢复颜色
 
-        // 确保鼠标事件能够穿透selectOverlay传递给卡片
-        selectOverlay.addMouseListener(new MouseAdapter() {
+                // 隐藏模式选择覆盖层
+                modeOverlay.setVisible(false);
+            }
+        };
+
+        card.addMouseListener(cardMouseAdapter);
+
+        // 为模式覆盖层添加鼠标监听器，以处理点击事件和区域悬停效果
+        modeOverlay.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                // 转发点击事件给card
                 if (controller != null) {
-                    controller.selectLevel(index);
+                    Point clickPoint = e.getPoint();
+                    int gameMode;
+
+                    // 判断点击位置选择游戏模式 - 根据垂直位置判断
+                    if (clickPoint.y < modeOverlay.getHeight() / 2) {
+                        // 上半部分 - 教程模式
+                        gameMode = MapModel.PRACTICE_MODE;
+                    } else {
+                        // 下半部分 - 竞速模式
+                        gameMode = MapModel.SPEED_MODE;
+                    }
+
+                    // 调用控制器的selectLevel方法，传递关卡索引和游戏模式
+                    controller.selectLevel(index, gameMode);
                 }
             }
 
             @Override
             public void mouseEntered(MouseEvent e) {
-                // 保持悬停状态
-                selectOverlay.setVisible(true);
+                // 保持模式选择覆盖层可见
+                modeOverlay.setVisible(true);
+
+                // 保持卡片的悬停效果
+                card.setBorder(BorderFactory.createLineBorder(CARD_BORDER_COLOR, 3));
+                card.setBackground(HOVER_CARD_BG);
+                contentPanel.setBackground(HOVER_CARD_BG);
+                infoPanel.setBackground(HOVER_CARD_BG);
+                previewContainer.setBackground(HOVER_CARD_BG);
             }
 
             @Override
             public void mouseExited(MouseEvent e) {
-                // 转发离开事件给card
-                selectOverlay.setVisible(false);
+                // 检查鼠标是否真的离开了整个区域
+                Point p = e.getPoint();
+                if (p.x < 0 || p.y < 0 || p.x >= modeOverlay.getWidth() || p.y >= modeOverlay.getHeight()) {
+                    // 真正离开了区域，隐藏覆盖层并重置卡片样式
+                    modeOverlay.setVisible(false);
+                    card.setBorder(BorderFactory.createLineBorder(CARD_BORDER_COLOR, 2));
+                    card.setBackground(NORMAL_CARD_BG);
+                    contentPanel.setBackground(NORMAL_CARD_BG);
+                    infoPanel.setBackground(NORMAL_CARD_BG);
+                    previewContainer.setBackground(NORMAL_CARD_BG);
+
+                    // 重置悬停区域
+                    modeOverlay.setHoverSection(0);
+                }
+            }
+        });
+
+        // 添加鼠标移动监听器来跟踪不同区域的悬停效果
+        modeOverlay.addMouseMotionListener(new MouseAdapter() {
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                if (e.getY() < modeOverlay.getHeight() / 2) {
+                    // 鼠标在上半部分 - 教程模式
+                    modeOverlay.setHoverSection(1);
+                } else {
+                    // 鼠标在下半部分 - 竞速模式
+                    modeOverlay.setHoverSection(2);
+                }
             }
         });
 
@@ -396,5 +444,75 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
      */
     public LevelSelectController getController() {
         return controller;
+    }
+
+    /**
+     * 模式覆盖面板，用于显示游戏模式选择
+     */
+    private class ModeOverlayPanel extends JPanel {
+
+        // 跟踪鼠标当前位置：0=未悬停, 1=上半部分(Tutorial), 2=下半部分(Speedrun)
+        private int hoverSection = 0;
+        private final Color practiceColor;
+        private final Color speedColor;
+
+        public ModeOverlayPanel(Color practiceColor, Color speedColor) {
+            this.practiceColor = new Color(
+                    practiceColor.getRed(),
+                    practiceColor.getGreen(),
+                    practiceColor.getBlue(),
+                    150);
+            this.speedColor = new Color(
+                    speedColor.getRed(),
+                    speedColor.getGreen(),
+                    speedColor.getBlue(),
+                    150);
+            setOpaque(false);
+        }
+
+        public void setHoverSection(int section) {
+            if (this.hoverSection != section) {
+                this.hoverSection = section;
+                repaint();
+            }
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            Graphics2D g2d = (Graphics2D) g.create();
+
+            // 绘制上半部分 - 教程模式
+            if (hoverSection == 1) {
+                // 鼠标悬停在此区域时，使用更亮/更深的颜色
+                g2d.setColor(new Color(64, 153, 255, 210));
+            } else {
+                g2d.setColor(practiceColor);
+            }
+            g2d.fillRect(0, 0, getWidth(), getHeight() / 2);
+
+            // 绘制下半部分 - 竞速模式
+            if (hoverSection == 2) {
+                // 鼠标悬停在此区域时，使用更亮/更深的颜色
+                g2d.setColor(new Color(255, 128, 0, 210));
+            } else {
+                g2d.setColor(speedColor);
+            }
+            g2d.fillRect(0, getHeight() / 2, getWidth(), getHeight() / 2);
+
+            // 添加模式标签
+            g2d.setColor(Color.WHITE);
+            g2d.setFont(FontManager.getTitleFont(20)); // 增大字体从16到20
+
+            // 教程模式标签 - 上部居中
+            int tutorialY = getHeight() / 4 + 8;
+            g2d.drawString("Tutorial Mode", getWidth() / 2 - 70, tutorialY); // 调整位置以匹配更大的字体
+
+            // 竞速模式标签 - 下部居中
+            int speedrunY = getHeight() * 3 / 4 + 8;
+            g2d.drawString("Speedrun Mode", getWidth() / 2 - 70, speedrunY); // 调整位置以匹配更大的字体
+
+            g2d.dispose();
+        }
     }
 }

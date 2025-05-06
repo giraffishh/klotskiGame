@@ -63,11 +63,18 @@ public class LevelSelectController {
      * 选择并加载关卡
      *
      * @param levelIndex 关卡索引
+     * @param gameMode 游戏模式，0为练习模式，1为竞速模式
      */
-    public void selectLevel(int levelIndex) {
+    public void selectLevel(int levelIndex, int gameMode) {
         // 检查索引有效性
         if (levelIndex < 0 || levelIndex >= levels.size()) {
             levelSelectView.showStyledMessage("Invalid level selection", "Error", javax.swing.JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // 检查游戏模式有效性
+        if (gameMode != MapModel.PRACTICE_MODE && gameMode != MapModel.SPEED_MODE) {
+            levelSelectView.showStyledMessage("Invalid game mode", "Error", javax.swing.JOptionPane.ERROR_MESSAGE);
             return;
         }
 
@@ -92,6 +99,11 @@ public class LevelSelectController {
             MapModel mapModel = new MapModel(selected.getLayout());
             // 设置模型中的关卡索引
             mapModel.setCurrentLevelIndex(levelIndex);
+            // 设置游戏模式
+            mapModel.setGameMode(gameMode);
+
+            String modeText = (gameMode == MapModel.PRACTICE_MODE) ? "Practice Mode" : "Speed Mode";
+            System.out.println("Loading level " + levelIndex + " in " + modeText);
 
             // 停止任何可能运行的计时器
             if (gameFrame.getController() != null) {
@@ -126,6 +138,15 @@ public class LevelSelectController {
                     javax.swing.JOptionPane.ERROR_MESSAGE
             );
         }
+    }
+
+    /**
+     * 为兼容现有代码，保留原有的selectLevel方法，默认为练习模式
+     *
+     * @param levelIndex 关卡索引
+     */
+    public void selectLevel(int levelIndex) {
+        selectLevel(levelIndex, MapModel.PRACTICE_MODE);
     }
 
     /**
