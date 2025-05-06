@@ -22,7 +22,7 @@ import javax.swing.WindowConstants;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
-import controller.LoginController;
+import controller.core.LoginController;
 import view.util.FontManager;
 import view.util.FrameUtil;
 

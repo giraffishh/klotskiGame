@@ -29,6 +29,17 @@ public class MapModel {
     private boolean loadedFromSave = false;
 
     /**
+     * 游戏模式常量
+     */
+    public static final int PRACTICE_MODE = 0; // 练习模式
+    public static final int SPEED_MODE = 1;    // 竞速模式
+
+    /**
+     * 当前游戏模式
+     */
+    private int gameMode = PRACTICE_MODE; // 默认为练习模式
+
+    /**
      * 构造函数，初始化地图模型
      *
      * @param matrix 初始地图数据的二维整数数组
@@ -204,5 +215,26 @@ public class MapModel {
         }
 
         System.out.println("Initial matrix has been updated");
+    }
+
+    /**
+     * 获取当前游戏模式
+     *
+     * @return 当前游戏模式：PRACTICE_MODE 或 SPEED_MODE
+     */
+    public int getGameMode() {
+        return gameMode;
+    }
+
+    /**
+     * 设置游戏模式
+     *
+     * @param gameMode 游戏模式：PRACTICE_MODE 或 SPEED_MODE
+     */
+    public void setGameMode(int gameMode) {
+        if (gameMode != PRACTICE_MODE && gameMode != SPEED_MODE) {
+            throw new IllegalArgumentException("Invalid game mode");
+        }
+        this.gameMode = gameMode;
     }
 }

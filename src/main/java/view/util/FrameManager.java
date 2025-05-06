@@ -1,6 +1,6 @@
 package view.util;
 
-import controller.LevelSelectController;
+import controller.core.LevelSelectController;
 import view.game.GameFrame;
 import view.home.HomeFrame;
 import view.level.LevelSelectFrame;

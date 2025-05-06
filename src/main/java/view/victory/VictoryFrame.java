@@ -30,7 +30,7 @@ import javax.swing.table.DefaultTableModel;
 
 import org.bson.Document;
 
-import controller.rank.RankManager;
+import controller.storage.rank.RankManager;
 import view.util.FontManager;
 import view.util.FrameUtil;
 
@@ -63,6 +63,9 @@ public class VictoryFrame extends JFrame implements VictoryView {
     private ActionListener levelSelectListener;
     // 新增：存储当前游戏用时（毫秒），用于访客排名显示
     private long currentGameTimeMillis;
+
+    // 添加练习模式提示标签
+    private JLabel practiceModeLabel;
 
     /**
      * 构造方法，初始化胜利界面的UI组件
@@ -169,6 +172,17 @@ public class VictoryFrame extends JFrame implements VictoryView {
         loadingLabel.setFont(FontManager.getRegularFont(14));
         loadingLabel.setAlignmentX(CENTER_ALIGNMENT);
         leaderboardPanel.add(loadingLabel);
+
+        // 创建练习模式提示标签，初始时隐藏
+        practiceModeLabel = new JLabel();
+        practiceModeLabel.setForeground(new Color(255, 140, 0)); // 橙色警告
+        practiceModeLabel.setFont(FontManager.getRegularFont(14));
+        practiceModeLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        practiceModeLabel.setAlignmentX(CENTER_ALIGNMENT);
+        practiceModeLabel.setVisible(false); // 默认隐藏
+
+        // 在排行榜上方添加提示标签
+        leaderboardPanel.add(practiceModeLabel);
 
         // 创建表格模型
         String[] columnNames = {"Rank", "Player", "Steps", "Time", "Date"};
@@ -552,5 +566,16 @@ public class VictoryFrame extends JFrame implements VictoryView {
         int centiseconds = (int) ((timeInMillis % 1000) / 10);
 
         return String.format("%02d:%02d.%02d", minutes, seconds, centiseconds);
+    }
+
+    @Override
+    public void setPracticeModeTip(String tip) {
+        if (tip != null && !tip.isEmpty()) {
+            practiceModeLabel.setText(tip);
+            practiceModeLabel.setVisible(true);
+        } else {
+            practiceModeLabel.setText("");
+            practiceModeLabel.setVisible(false);
+        }
     }
 }
