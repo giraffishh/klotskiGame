@@ -196,6 +196,15 @@ public class SaveManager {
      * @return 保存是否成功
      */
     public boolean saveGameState() {
+        // 检查是否为竞速模式
+        if (model != null && model.getGameMode() == MapModel.SPEED_MODE) {
+            JOptionPane.showMessageDialog(view,
+                    "Saving is not allowed in speed mode.",
+                    "Save Disabled",
+                    JOptionPane.WARNING_MESSAGE);
+            return false;
+        }
+
         // 检查用户是否为访客
         if (UserSession.getInstance().isGuest()) {
             JOptionPane.showMessageDialog(view,

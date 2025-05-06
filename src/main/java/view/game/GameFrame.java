@@ -328,11 +328,14 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
     }
 
     /**
-     * 实现UserSessionListener接口方法，在用户会话状态变化时调用
+     * 设置保存按钮的可用状态
+     *
+     * @param enabled 是否可用
      */
-    @Override
-    public void onSessionStateChanged() {
-        SwingUtilities.invokeLater(this::updateButtonsState);
+    public void setSaveButtonEnabled(boolean enabled) {
+        if (saveBtn != null) {
+            saveBtn.setEnabled(enabled);
+        }
     }
 
     /**
@@ -342,7 +345,21 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         UserSession session = UserSession.getInstance();
         boolean isGuest = session.isGuest();
 
-        saveBtn.setEnabled(!isGuest);
+        // 检查游戏模式，如果是竞速模式则禁用保存按钮
+        boolean canSave = !isGuest;
+        if (controller != null && controller.getModel() != null) {
+            canSave = canSave && controller.getModel().getGameMode() != MapModel.SPEED_MODE;
+        }
+
+        saveBtn.setEnabled(canSave);
+    }
+
+    /**
+     * 实现UserSessionListener接口方法，在用户会话状态变化时调用
+     */
+    @Override
+    public void onSessionStateChanged() {
+        SwingUtilities.invokeLater(this::updateButtonsState);
     }
 
     /**
