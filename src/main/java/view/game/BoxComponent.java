@@ -23,6 +23,8 @@ public class BoxComponent extends JComponent {
     private boolean isSelected;
     // 鼠标悬停效果
     private boolean isHovered;
+    // 方块的图片
+    private Image image;
 
     /**
      * 创建一个游戏方块组件
@@ -90,6 +92,16 @@ public class BoxComponent extends JComponent {
     }
 
     /**
+     * 设置方块的图片。
+     *
+     * @param image 图片对象
+     */
+    public void setImage(Image image) {
+        this.image = image;
+        this.repaint();
+    }
+
+    /**
      * 重写绘制方法，绘制方块及其边框
      * 选中状态下显示红色边框，未选中状态显示细边框
      * 
@@ -122,6 +134,11 @@ public class BoxComponent extends JComponent {
         g2d.setColor(fillColor);
         g2d.fillRoundRect(margin, margin, getWidth() - margin*2, getHeight() - margin*2, arcSize, arcSize);
         
+        // 绘制图片（如果存在）
+        if (image != null) {
+            g.drawImage(image, 0, 0, getWidth(), getHeight(), this);
+        }
+
         // 简化边框绘制逻辑，避免多重边框叠加
         if (isSelected) {
             // 选中状态

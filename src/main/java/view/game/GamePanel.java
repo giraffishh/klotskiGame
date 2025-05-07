@@ -9,6 +9,7 @@ import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
@@ -18,6 +19,7 @@ import controller.core.GameController;
 import model.Direction;
 import model.MapModel;
 import view.util.FrameUtil;
+import view.util.ImageManager;
 
 /**
  * 游戏面板类，继承自ListenerPanel，实现了键盘和鼠标事件处理。 该类包含一个盒子组件列表，对应MapMatrix中的矩阵数据。
@@ -83,38 +85,56 @@ public class GamePanel extends ListenerPanel {
         }
 
         this.steps = 0;
-        //复制地图数据
+        Random random = new Random(); // 用于随机选择图片
+
+        // 复制地图数据
         int[][] map = new int[model.getHeight()][model.getWidth()];
         for (int i = 0; i < map.length; i++) {
             for (int j = 0; j < map[0].length; j++) {
                 map[i][j] = model.getId(i, j);
             }
         }
-        //构建盒子组件
+
+        // 构建盒子组件
         for (int i = 0; i < map.length; i++) {
             for (int j = 0; j < map[0].length; j++) {
                 BoxComponent box = null;
                 if (map[i][j] == 1) {
-                    // 创建1x1橙色盒子
+                    // 创建1x1橙色盒子并设置士兵图片
                     box = new BoxComponent(FrameUtil.ACCENT_COLOR, i, j);
                     box.setSize(GRID_SIZE, GRID_SIZE);
+                    box.setImage(ImageManager.getSoldierImage()); // 设置士兵图片
                     map[i][j] = 0;
                 } else if (map[i][j] == 2) {
-                    // 创建2x1紫色水平盒子
+                    // 创建2x1紫色水平盒子并随机设置关羽或张飞图片
                     box = new BoxComponent(FrameUtil.HORIZOTAL_BLOCK_COLOR, i, j);
                     box.setSize(GRID_SIZE * 2, GRID_SIZE);
+                    if (random.nextBoolean()) {
+                        box.setImage(ImageManager.getGuanYuImage()); // 设置关羽图片
+                    } else {
+                        box.setImage(ImageManager.getZhangFeiImage()); // 设置张飞图片
+                    }
                     map[i][j] = 0;
                     map[i][j + 1] = 0;
                 } else if (map[i][j] == 3) {
-                    // 创建1x2蓝色垂直盒子
+                    // 创建1x2蓝色垂直盒子并随机设置黄忠、马超或赵云图片
                     box = new BoxComponent(FrameUtil.VERTICAL_BLOCK_COLOR, i, j);
                     box.setSize(GRID_SIZE, GRID_SIZE * 2);
+                    int choice = random.nextInt(3);
+                    if (choice == 0) {
+                        box.setImage(ImageManager.getHuangZhongImage()); // 设置黄忠图片
+                    } else if (choice == 1) {
+                        box.setImage(ImageManager.getMaChaoImage()); // 设置马超图片
+                    } else {
+                        box.setImage(ImageManager.getZhaoYunImage()); // 设置赵云图片
+                    }
                     map[i][j] = 0;
                     map[i + 1][j] = 0;
                 } else if (map[i][j] == 4) {
-                    // 创建2x2绿色大盒子
+                    // 创建2x2绿色大盒子并设置曹操图片
                     box = new BoxComponent(FrameUtil.BIG_BLOCK_COLOR, i, j);
                     box.setSize(GRID_SIZE * 2, GRID_SIZE * 2);
+                    box.setImage(ImageManager.getCaoCaoImage()); // 设置曹操图片
                     map[i][j] = 0;
                     map[i + 1][j] = 0;
                     map[i][j + 1] = 0;
@@ -528,3 +548,4 @@ public class GamePanel extends ListenerPanel {
         return false;
     }
 }
+
