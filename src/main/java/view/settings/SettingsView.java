@@ -7,7 +7,7 @@ package view.settings;
 public interface SettingsView {
     /**
      * 显示主题设置
-     * @param themeName 主题名称 (例如 "Light", "Dark")
+     * @param themeName 主题名称
      */
     void displayThemeSetting(String themeName);
 
@@ -16,12 +16,21 @@ public interface SettingsView {
      * @return 选择的主题名称
      */
     String getSelectedTheme();
+    
+    /**
+     * 显示方块主题设置
+     * @param blockThemeName 方块主题名称
+     */
+    void displayBlockThemeSetting(String blockThemeName);
+
+    /**
+     * 获取当前选择的方块主题
+     * @return 选择的方块主题名称
+     */
+    String getSelectedBlockTheme();
 
     /**
      * 显示样式化消息对话框
-     * @param message 消息内容
-     * @param title 对话框标题
-     * @param messageType 消息类型 (如 JOptionPane.INFORMATION_MESSAGE)
      */
     void showStyledMessage(String message, String title, int messageType);
 

@@ -88,6 +88,18 @@ public class DatabaseService {
                     + "theme VARCHAR(50) NOT NULL DEFAULT 'Light', "
                     + "FOREIGN KEY (username) REFERENCES users(username))");
 
+            // 检查blockTheme列是否存在，如果不存在则添加
+            try {
+                ResultSet rs = conn.getMetaData().getColumns(null, null, "USER_SETTINGS", "BLOCKTHEME");
+                if (!rs.next()) {
+                    System.out.println("Adding blockTheme column to user_settings table");
+                    stmt.execute("ALTER TABLE user_settings ADD COLUMN blockTheme VARCHAR(50) DEFAULT 'Classic' NOT NULL");
+                }
+                rs.close();
+            } catch (SQLException e) {
+                System.err.println("Error checking or adding blockTheme column: " + e.getMessage());
+            }
+
             System.out.println("Database setup successfully");
         } catch (SQLException e) {
             e.printStackTrace();
@@ -488,12 +500,19 @@ public class DatabaseService {
             PreparedStatement stmt;
             boolean exists = rs.next();
 
+            // 使用一个临时Map来存储标准化的键值，避免重复列名
+            Map<String, String> normalizedSettings = new HashMap<>();
+            for (Map.Entry<String, String> entry : settings.entrySet()) {
+                String normalizedKey = entry.getKey().toLowerCase(); // 转为小写作为标准化键
+                normalizedSettings.put(normalizedKey, entry.getValue());
+            }
+
             if (exists) {
                 // 更新现有设置
                 StringBuilder updateSQL = new StringBuilder("UPDATE user_settings SET ");
                 boolean first = true;
 
-                for (Map.Entry<String, String> entry : settings.entrySet()) {
+                for (Map.Entry<String, String> entry : normalizedSettings.entrySet()) {
                     if (!first) {
                         updateSQL.append(", ");
                     }
@@ -503,19 +522,61 @@ public class DatabaseService {
 
                 updateSQL.append(" WHERE username = ?");
 
-                stmt = conn.prepareStatement(updateSQL.toString());
+                try {
+                    stmt = conn.prepareStatement(updateSQL.toString());
 
-                int paramIndex = 1;
-                for (String value : settings.values()) {
-                    stmt.setString(paramIndex++, value);
+                    int paramIndex = 1;
+                    for (String value : normalizedSettings.values()) {
+                        stmt.setString(paramIndex++, value);
+                    }
+                    stmt.setString(paramIndex, username);
+
+                    int result = stmt.executeUpdate();
+                    return result > 0;
+                } catch (SQLException e) {
+                    System.err.println("Error updating settings: " + e.getMessage());
+                    
+                    // 如果是列不存在的错误，尝试添加列并重试
+                    if (e.getMessage().contains("Column") && e.getMessage().contains("not found")) {
+                        // 为每个不存在的列添加列
+                        for (String key : normalizedSettings.keySet()) {
+                            try {
+                                ResultSet colCheck = conn.getMetaData().getColumns(null, null, "USER_SETTINGS", key.toUpperCase());
+                                if (!colCheck.next()) {
+                                    System.out.println("Adding missing column " + key + " to user_settings table");
+                                    Statement alterStmt = conn.createStatement();
+                                    alterStmt.execute("ALTER TABLE user_settings ADD COLUMN " + key + " VARCHAR(50) DEFAULT '' NOT NULL");
+                                    alterStmt.close();
+                                }
+                                colCheck.close();
+                            } catch (SQLException innerEx) {
+                                System.err.println("Error adding column " + key + ": " + innerEx.getMessage());
+                            }
+                        }
+                        
+                        // 重试更新操作
+                        try {
+                            stmt = conn.prepareStatement(updateSQL.toString());
+                            int paramIndex = 1;
+                            for (String value : normalizedSettings.values()) {
+                                stmt.setString(paramIndex++, value);
+                            }
+                            stmt.setString(paramIndex, username);
+                            int result = stmt.executeUpdate();
+                            return result > 0;
+                        } catch (SQLException retryEx) {
+                            System.err.println("Failed retry updating settings: " + retryEx.getMessage());
+                            return false;
+                        }
+                    }
+                    return false;
                 }
-                stmt.setString(paramIndex, username);
             } else {
                 // 插入新设置
                 StringBuilder insertSQL = new StringBuilder("INSERT INTO user_settings (username");
                 StringBuilder valuesSQL = new StringBuilder(") VALUES (?");
 
-                for (String key : settings.keySet()) {
+                for (String key : normalizedSettings.keySet()) {
                     insertSQL.append(", ").append(key);
                     valuesSQL.append(", ?");
                 }
@@ -526,7 +587,7 @@ public class DatabaseService {
 
                 stmt.setString(1, username);
                 int paramIndex = 2;
-                for (String value : settings.values()) {
+                for (String value : normalizedSettings.values()) {
                     stmt.setString(paramIndex++, value);
                 }
             }
@@ -581,6 +642,7 @@ public class DatabaseService {
             } else {
                 // 用户没有设置，返回默认值
                 settings.put("theme", "Light");
+                settings.put("blocktheme", "Classic"); // 使用小写，与AppSettings中的键名一致
             }
 
             return settings;
@@ -588,6 +650,7 @@ public class DatabaseService {
             e.printStackTrace();
             // 出错时返回默认设置
             settings.put("theme", "Light");
+            settings.put("blocktheme", "Classic"); // 使用小写，与AppSettings中的键名一致
             return settings;
         }
     }
