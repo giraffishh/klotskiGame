@@ -45,6 +45,12 @@ public class SettingsController {
         String selectedBlockTheme = settingsView.getSelectedBlockTheme();
         UserSession session = UserSession.getInstance();
 
+        // 检查设置是否变化
+        String currentTheme = appSettings.getCurrentTheme();
+        String currentBlockTheme = appSettings.getCurrentBlockTheme();
+        boolean settingsChanged = !currentTheme.equals(selectedTheme) || 
+                                 !currentBlockTheme.equals(selectedBlockTheme);
+
         // 应用设置
         boolean themeApplied = appSettings.setCurrentTheme(selectedTheme);
         boolean blockThemeApplied = appSettings.setCurrentBlockTheme(selectedBlockTheme);
@@ -74,6 +80,11 @@ public class SettingsController {
             showSaveFailedMessage();
         } else {
             showSuccessMessage();
+        }
+
+        // 如果图片主题改变了，刷新游戏界面
+        if (settingsChanged) {
+            FrameManager.getInstance().refreshGameInterface();
         }
 
         // 返回主页

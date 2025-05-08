@@ -101,27 +101,27 @@ public class GamePanel extends ListenerPanel {
                 BoxComponent box = null;
                 if (map[i][j] == 1) {
                     // 创建1x1橙色盒子并设置士兵图片
-                    box = new BoxComponent(FrameUtil.ACCENT_COLOR, i, j);
+                    box = new BoxComponent(FrameUtil.ACCENT_COLOR, i, j, 1);
                     box.setSize(GRID_SIZE, GRID_SIZE);
                     box.setImage(ImageManager.getSoldierImage());
                     map[i][j] = 0;
                 } else if (map[i][j] == 2) {
                     // 创建2x1紫色水平盒子并设置关羽图片
-                    box = new BoxComponent(FrameUtil.HORIZOTAL_BLOCK_COLOR, i, j);
+                    box = new BoxComponent(FrameUtil.HORIZOTAL_BLOCK_COLOR, i, j, 2);
                     box.setSize(GRID_SIZE * 2, GRID_SIZE);
                     box.setImage(ImageManager.getHorizontalBlockImage());
                     map[i][j] = 0;
                     map[i][j + 1] = 0;
                 } else if (map[i][j] == 3) {
                     // 创建1x2蓝色垂直盒子并设置黄忠图片
-                    box = new BoxComponent(FrameUtil.VERTICAL_BLOCK_COLOR, i, j);
+                    box = new BoxComponent(FrameUtil.VERTICAL_BLOCK_COLOR, i, j, 3);
                     box.setSize(GRID_SIZE, GRID_SIZE * 2);
                     box.setImage(ImageManager.getVerticalBlockImage());
                     map[i][j] = 0;
                     map[i + 1][j] = 0;
                 } else if (map[i][j] == 4) {
                     // 创建2x2绿色大盒子并设置曹操图片
-                    box = new BoxComponent(FrameUtil.BIG_BLOCK_COLOR, i, j);
+                    box = new BoxComponent(FrameUtil.BIG_BLOCK_COLOR, i, j, 4);
                     box.setSize(GRID_SIZE * 2, GRID_SIZE * 2);
                     box.setImage(ImageManager.getCaoCaoImage());
                     map[i][j] = 0;

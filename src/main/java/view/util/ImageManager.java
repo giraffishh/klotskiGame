@@ -68,31 +68,48 @@ public class ImageManager {
     }
     
     /**
+     * 判断当前是否使用无图片模式
+     * @return 是否为无图片模式
+     */
+    private static boolean isNoImageMode() {
+        return "NoImage".equals(getCurrentBlockTheme());
+    }
+    
+    /**
      * 根据当前主题获取图片路径
      * @param classicName 经典主题图片文件名
      * @param cartoonName 卡通主题图片文件名
-     * @return 当前主题对应的完整图片路径
+     * @return 当前主题对应的完整图片路径，无图片模式返回null
      */
     private static String getThemedImagePath(String classicName, String cartoonName) {
+        // 无图片模式返回null
+        if (isNoImageMode()) {
+            return null;
+        }
+        
         return "Cartoon".equals(getCurrentBlockTheme()) 
                ? CARTOON_PATH + cartoonName 
                : CLASSIC_PATH + classicName;
     }
 
     public static Image getCaoCaoImage() {
-        return getImage(getThemedImagePath(CHARACTER_IMAGES[0][0], CHARACTER_IMAGES[0][1]));
+        String path = getThemedImagePath(CHARACTER_IMAGES[0][0], CHARACTER_IMAGES[0][1]);
+        return path == null ? null : getImage(path);
     }
 
     public static Image getGuanYuImage() {
-        return getImage(getThemedImagePath(CHARACTER_IMAGES[1][0], CHARACTER_IMAGES[1][1]));
+        String path = getThemedImagePath(CHARACTER_IMAGES[1][0], CHARACTER_IMAGES[1][1]);
+        return path == null ? null : getImage(path);
     }
 
     public static Image getHuangZhongImage() {
-        return getImage(getThemedImagePath(CHARACTER_IMAGES[2][0], CHARACTER_IMAGES[2][1]));
+        String path = getThemedImagePath(CHARACTER_IMAGES[2][0], CHARACTER_IMAGES[2][1]);
+        return path == null ? null : getImage(path);
     }
 
     public static Image getSoldierImage() {
-        return getImage(getThemedImagePath(CHARACTER_IMAGES[3][0], CHARACTER_IMAGES[3][1]));
+        String path = getThemedImagePath(CHARACTER_IMAGES[3][0], CHARACTER_IMAGES[3][1]);
+        return path == null ? null : getImage(path);
     }
     
     /**

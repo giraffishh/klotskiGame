@@ -506,6 +506,17 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
     }
 
     /**
+     * 刷新关卡选择界面
+     * 当方块主题改变时调用
+     */
+    public void refreshDisplay() {
+        if (this.isVisible()) {
+            // 刷新关卡列表，触发重新加载预览图
+            populateLevelList();
+        }
+    }
+
+    /**
      * 模式覆盖面板，用于显示游戏模式选择
      */
     private class ModeOverlayPanel extends JPanel {

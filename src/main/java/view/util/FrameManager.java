@@ -291,4 +291,23 @@ public class FrameManager {
         hideSettingsFrame();
         hideLoginFrame();
     }
+
+    /**
+     * 刷新游戏界面
+     * 当方块主题设置改变时调用
+     */
+    public void refreshGameInterface() {
+        // 重置图片缓存
+        ImageManager.resetImageCache();
+        
+        // 刷新游戏界面（如果正在显示）
+        if (gameFrame != null && gameFrame.isVisible()) {
+            gameFrame.refreshGamePanel();
+        }
+        
+        // 刷新关卡选择界面（如果正在显示）
+        if (levelSelectFrame != null && levelSelectFrame.isVisible()) {
+            levelSelectFrame.refreshDisplay();
+        }
+    }
 }

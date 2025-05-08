@@ -14,6 +14,7 @@ import model.MapModel;
 import service.UserSession;
 import view.util.FrameManager;
 import view.util.FrameUtil;
+import view.util.ImageManager;
 import view.victory.VictoryFrame;
 
 /**
@@ -413,5 +414,38 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         if (controller != null) {
             controller.getTimerManager().resetTimer();
         }
+    }
+
+    /**
+     * 刷新游戏面板
+     * 当设置改变时需要重新加载图片资源
+     */
+    public void refreshGamePanel() {
+        // 如果游戏面板为空，无需刷新
+        if (gamePanel == null) {
+            return;
+        }
+        
+        // 刷新面板中的所有方块图像
+        for (BoxComponent box : gamePanel.getBoxes()) {
+            // 根据方块类型重新加载对应图片
+            switch (box.getBlockType()) {
+                case 4: // 曹操
+                    box.setImage(ImageManager.getCaoCaoImage());
+                    break;
+                case 3: // 黄忠（垂直方块）
+                    box.setImage(ImageManager.getVerticalBlockImage());
+                    break;
+                case 2: // 关羽（水平方块）
+                    box.setImage(ImageManager.getHorizontalBlockImage());
+                    break;
+                case 1: // 士兵
+                    box.setImage(ImageManager.getSoldierImage());
+                    break;
+            }
+        }
+        
+        // 重绘游戏面板
+        gamePanel.repaint();
     }
 }

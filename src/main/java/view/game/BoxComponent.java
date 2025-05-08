@@ -25,6 +25,8 @@ public class BoxComponent extends JComponent {
     private boolean isHovered;
     // 方块的图片
     private Image image;
+    // 方块类型：1(1x1), 2(2x1水平), 3(1x2垂直), 4(2x2曹操)
+    private int blockType;
 
     /**
      * 创建一个游戏方块组件
@@ -32,11 +34,13 @@ public class BoxComponent extends JComponent {
      * @param color 方块的颜色
      * @param row 方块所在的行
      * @param col 方块所在的列
+     * @param blockType 方块类型
      */
-    public BoxComponent(Color color, int row, int col) {
+    public BoxComponent(Color color, int row, int col, int blockType) {
         this.color = color;
         this.row = row;
         this.col = col;
+        this.blockType = blockType;
         isSelected = false;
         isHovered = false;
 
@@ -92,6 +96,17 @@ public class BoxComponent extends JComponent {
     }
 
     /**
+     * 创建一个游戏方块组件（兼容旧版构造器）
+     * 
+     * @param color 方块的颜色
+     * @param row 方块所在的行
+     * @param col 方块所在的列
+     */
+    public BoxComponent(Color color, int row, int col) {
+        this(color, row, col, 0);
+    }
+
+    /**
      * 设置方块的图片。
      *
      * @param image 图片对象
@@ -138,6 +153,7 @@ public class BoxComponent extends JComponent {
         if (image != null) {
             g.drawImage(image, 0, 0, getWidth(), getHeight(), this);
         }
+        // 无图片模式下不显示任何标识
 
         // 简化边框绘制逻辑，避免多重边框叠加
         if (isSelected) {
@@ -167,6 +183,11 @@ public class BoxComponent extends JComponent {
             g2d.drawLine(4, 4, getWidth() - 5, 4);
             g2d.drawLine(4, 4, 4, getHeight() - 5);
         }
+    }
+
+    // 保留方法定义以维持代码结构，但不实现任何标识绘制
+    private void drawBlockTypeIndicator(Graphics2D g2d) {
+        // 无图片模式下不需要绘制任何标识
     }
 
     /**
@@ -241,6 +262,23 @@ public class BoxComponent extends JComponent {
      */
     public void setCol(int col) {
         this.col = col;
+    }
+
+    /**
+     * 获取方块类型
+     * @return 方块类型
+     */
+    public int getBlockType() {
+        return blockType;
+    }
+    
+    /**
+     * 设置方块类型
+     * @param blockType 方块类型
+     */
+    public void setBlockType(int blockType) {
+        this.blockType = blockType;
+        repaint();
     }
 }
 

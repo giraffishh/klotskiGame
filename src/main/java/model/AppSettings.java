@@ -153,10 +153,19 @@ public class AppSettings implements UserSessionListener {
         return applyCurrentTheme();
     }
     
+    /**
+     * 获取当前方块主题
+     * @return 当前方块主题名称
+     */
     public String getCurrentBlockTheme() {
         return getSetting(BLOCK_THEME_KEY, DEFAULT_BLOCK_THEME);
     }
-    
+
+    /**
+     * 设置当前方块主题
+     * @param blockThemeName 方块主题名称
+     * @return 是否成功应用
+     */
     public boolean setCurrentBlockTheme(String blockThemeName) {
         currentSettings.put(BLOCK_THEME_KEY, blockThemeName);
         settingsChanged = true;
