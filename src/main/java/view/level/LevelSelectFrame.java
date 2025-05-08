@@ -261,7 +261,7 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
         // 尝试加载预览图片
         JLabel previewLabel;
         try {
-            String imagePath = "/levelPreview/level" + (index + 1) + ".png";
+            String imagePath = "/images/levelPreview/level" + (index + 1) + ".png";
             ImageIcon originalIcon = new ImageIcon(getClass().getResource(imagePath));
 
             // 确认图片已正确加载

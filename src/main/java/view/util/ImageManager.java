@@ -5,6 +5,7 @@ import java.awt.Image;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 
 import model.AppSettings;
 
@@ -14,16 +15,21 @@ import model.AppSettings;
 public class ImageManager {
     private static final Map<String, Image> imageCache = new HashMap<>();
     
+    // 图片路径常量
+    private static final String SKINS_BASE_PATH = "/images/skins/";
+    private static final String CLASSIC_PATH = SKINS_BASE_PATH + "classic/";
+    private static final String CARTOON_PATH = SKINS_BASE_PATH + "cartoon/";
+    
     // 角色图片常量
     private static final String[][] CHARACTER_IMAGES = {
-        {"caocao.jpg", "cartoon_caocao.jpg"},
-        {"guanyu.jpg", "cartoon_guanyu.jpg"},
-        {"zhangfei.jpg", "cartoon_zhangfei.jpg"},
-        {"huangzhong.jpg", "cartoon_huangzhong.jpg"},
-        {"machao.jpg", "cartoon_machao.jpg"},
-        {"zhaoyun.jpg", "cartoon_zhaoyun.jpg"},
-        {"soldier.jpg", "cartoon_soldier.jpg"}
+        {"caocao.jpg", "cartoon_caocao.jpg"},     // 曹操 (2x2)
+        {"guanyu.jpg", "cartoon_guanyu.jpg"},     // 关羽 (2x1水平)
+        {"huangzhong.jpg", "cartoon_huangzhong.jpg"}, // 黄忠 (1x2垂直)
+        {"soldier.jpg", "cartoon_soldier.jpg"}    // 士兵 (1x1)
     };
+    
+    // 创建一个Random实例用于生成随机数
+    private static final Random RANDOM = new Random();
     
     /**
      * 重置图片缓存，用于切换主题时刷新资源
@@ -38,14 +44,14 @@ public class ImageManager {
      * @param imageName 图片文件名
      * @return 加载的图片对象
      */
-    public static Image getImage(String imageName) {
-        if (imageCache.containsKey(imageName)) {
-            return imageCache.get(imageName);
+    public static Image getImage(String imagePath) {
+        if (imageCache.containsKey(imagePath)) {
+            return imageCache.get(imagePath);
         }
 
         try {
-            Image image = ImageIO.read(ImageManager.class.getResource("/images/" + imageName));
-            imageCache.put(imageName, image);
+            Image image = ImageIO.read(ImageManager.class.getResource(imagePath));
+            imageCache.put(imagePath, image);
             return image;
         } catch (IOException | IllegalArgumentException e) {
             e.printStackTrace();
@@ -62,40 +68,48 @@ public class ImageManager {
     }
     
     /**
-     * 根据当前主题获取图片文件名
+     * 根据当前主题获取图片路径
      * @param classicName 经典主题图片文件名
      * @param cartoonName 卡通主题图片文件名
-     * @return 当前主题对应的图片文件名
+     * @return 当前主题对应的完整图片路径
      */
-    private static String getThemedImageName(String classicName, String cartoonName) {
-        return "Cartoon".equals(getCurrentBlockTheme()) ? cartoonName : classicName;
+    private static String getThemedImagePath(String classicName, String cartoonName) {
+        return "Cartoon".equals(getCurrentBlockTheme()) 
+               ? CARTOON_PATH + cartoonName 
+               : CLASSIC_PATH + classicName;
     }
 
     public static Image getCaoCaoImage() {
-        return getImage(getThemedImageName(CHARACTER_IMAGES[0][0], CHARACTER_IMAGES[0][1]));
+        return getImage(getThemedImagePath(CHARACTER_IMAGES[0][0], CHARACTER_IMAGES[0][1]));
     }
 
     public static Image getGuanYuImage() {
-        return getImage(getThemedImageName(CHARACTER_IMAGES[1][0], CHARACTER_IMAGES[1][1]));
-    }
-
-    public static Image getZhangFeiImage() {
-        return getImage(getThemedImageName(CHARACTER_IMAGES[2][0], CHARACTER_IMAGES[2][1]));
+        return getImage(getThemedImagePath(CHARACTER_IMAGES[1][0], CHARACTER_IMAGES[1][1]));
     }
 
     public static Image getHuangZhongImage() {
-        return getImage(getThemedImageName(CHARACTER_IMAGES[3][0], CHARACTER_IMAGES[3][1]));
-    }
-
-    public static Image getMaChaoImage() {
-        return getImage(getThemedImageName(CHARACTER_IMAGES[4][0], CHARACTER_IMAGES[4][1]));
-    }
-
-    public static Image getZhaoYunImage() {
-        return getImage(getThemedImageName(CHARACTER_IMAGES[5][0], CHARACTER_IMAGES[5][1]));
+        return getImage(getThemedImagePath(CHARACTER_IMAGES[2][0], CHARACTER_IMAGES[2][1]));
     }
 
     public static Image getSoldierImage() {
-        return getImage(getThemedImageName(CHARACTER_IMAGES[6][0], CHARACTER_IMAGES[6][1]));
+        return getImage(getThemedImagePath(CHARACTER_IMAGES[3][0], CHARACTER_IMAGES[3][1]));
+    }
+    
+    /**
+     * 获取水平方块人物图像(2x1)
+     * 固定使用关羽图像
+     * @return 关羽图像
+     */
+    public static Image getHorizontalBlockImage() {
+        return getGuanYuImage();
+    }
+    
+    /**
+     * 获取垂直方块人物图像(1x2)
+     * 固定使用黄忠图像
+     * @return 黄忠图像
+     */
+    public static Image getVerticalBlockImage() {
+        return getHuangZhongImage();
     }
 }
