@@ -42,6 +42,12 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
     private final JButton redoBtn;
     // 返回主页面按钮
     private final JButton homeBtn;
+    
+    // 方向控制按钮
+    private final JButton upBtn;
+    private final JButton downBtn;
+    private final JButton leftBtn;
+    private final JButton rightBtn;
 
     // 胜利界面
     private final VictoryFrame victoryFrame;
@@ -139,6 +145,36 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         redoBtn.setBounds(controlX + buttonWidth + 20, controlY, buttonWidth, 45);
         redoBtn.setEnabled(false); // 初始时禁用
         this.add(redoBtn);
+        controlY += 65;
+        
+        // 添加方向控制按钮
+        int dirButtonSize = 40; // 方向按钮大小
+        int dirButtonGap = 4;  // 按钮之间的间隙
+        
+        // 计算方向按钮的位置
+        int centerX = controlX + controlWidth/2 - dirButtonSize/2;
+        
+        // 上方向按钮 - 使用新方法创建
+        this.upBtn = FrameUtil.createDirectionButton("↑");
+        upBtn.setBounds(centerX, controlY, dirButtonSize, dirButtonSize);
+        this.add(upBtn);
+        
+        controlY += dirButtonSize + dirButtonGap;
+        
+        // 左、右方向按钮 - 使用新方法创建
+        this.leftBtn = FrameUtil.createDirectionButton("←");
+        leftBtn.setBounds(centerX - dirButtonSize - dirButtonGap, controlY, dirButtonSize, dirButtonSize);
+        this.add(leftBtn);
+        
+        this.rightBtn = FrameUtil.createDirectionButton("→");
+        rightBtn.setBounds(centerX + dirButtonSize + dirButtonGap, controlY, dirButtonSize, dirButtonSize);
+        this.add(rightBtn);
+        
+        // 下方向按钮 - 使用新方法创建
+        controlY += dirButtonSize + dirButtonGap;
+        this.downBtn = FrameUtil.createDirectionButton("↓");
+        downBtn.setBounds(centerX, controlY, dirButtonSize, dirButtonSize);
+        this.add(downBtn);
 
         // 初始化胜利界面
         this.victoryFrame = new VictoryFrame(this);
