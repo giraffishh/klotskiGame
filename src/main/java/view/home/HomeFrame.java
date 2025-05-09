@@ -85,8 +85,8 @@ public class HomeFrame extends JFrame implements HomeView {
         contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
         FrameUtil.setPadding(contentPanel, 30, 0, 0, 0);
 
-        // 新游戏按钮 (合并原有的New Game和Level Selection功能)
-        newGameButton = FrameUtil.createStyledButton("New Game", true);
+        // 闯关模式按钮
+        newGameButton = FrameUtil.createStyledButton("Challenge Mode", true);
         newGameButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         newGameButton.setMaximumSize(new Dimension(200, 50));
         newGameButton.setPreferredSize(new Dimension(200, 50));

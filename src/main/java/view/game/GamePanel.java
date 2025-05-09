@@ -9,7 +9,6 @@ import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
@@ -85,7 +84,6 @@ public class GamePanel extends ListenerPanel {
         }
 
         this.steps = 0;
-        Random random = new Random(); // 用于随机选择图片
 
         // 复制地图数据
         int[][] map = new int[model.getHeight()][model.getWidth()];
