@@ -105,7 +105,7 @@ public class SettingsFrame extends JFrame implements SettingsView {
         JLabel label = new JLabel("Block Theme:");
         label.setFont(FontManager.getRegularFont(16));
         
-        blockThemeComboBox = new JComboBox<>(new String[]{"Classic", "Cartoon", "NoImage"});
+        blockThemeComboBox = new JComboBox<>(new String[]{"Default", "Cartoon", "Classic"});
         blockThemeComboBox.setFont(FontManager.getRegularFont(16));
         blockThemeComboBox.setPreferredSize(new Dimension(150, 30));
         

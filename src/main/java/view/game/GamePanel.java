@@ -109,14 +109,14 @@ public class GamePanel extends ListenerPanel {
                     // 创建2x1紫色水平盒子并设置关羽图片
                     box = new BoxComponent(FrameUtil.HORIZOTAL_BLOCK_COLOR, i, j, 2);
                     box.setSize(GRID_SIZE * 2, GRID_SIZE);
-                    box.setImage(ImageManager.getHorizontalBlockImage());
+                    box.setImage(ImageManager.getGuanYuImage());
                     map[i][j] = 0;
                     map[i][j + 1] = 0;
                 } else if (map[i][j] == 3) {
                     // 创建1x2蓝色垂直盒子并设置黄忠图片
                     box = new BoxComponent(FrameUtil.VERTICAL_BLOCK_COLOR, i, j, 3);
                     box.setSize(GRID_SIZE, GRID_SIZE * 2);
-                    box.setImage(ImageManager.getVerticalBlockImage());
+                    box.setImage(ImageManager.getHuangZhongImage());
                     map[i][j] = 0;
                     map[i + 1][j] = 0;
                 } else if (map[i][j] == 4) {

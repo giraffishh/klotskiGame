@@ -24,7 +24,7 @@ public class AppSettings implements UserSessionListener {
     
     // 设置相关常量
     private static final String DEFAULT_THEME = "Light";
-    private static final String DEFAULT_BLOCK_THEME = "Classic";
+    private static final String DEFAULT_BLOCK_THEME = "Default";
     private static final String THEME_KEY = "theme";
     private static final String BLOCK_THEME_KEY = "blocktheme";
     

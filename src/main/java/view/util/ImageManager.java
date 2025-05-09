@@ -5,7 +5,6 @@ import java.awt.Image;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Random;
 
 import model.AppSettings;
 
@@ -16,7 +15,7 @@ public class ImageManager {
     private static final Map<String, Image> imageCache = new HashMap<>();
     
     // 图片路径常量
-    private static final String SKINS_BASE_PATH = "/images/skins/";
+    private static final String SKINS_BASE_PATH = "/images/blockSkins/";
     private static final String CLASSIC_PATH = SKINS_BASE_PATH + "classic/";
     private static final String CARTOON_PATH = SKINS_BASE_PATH + "cartoon/";
     
@@ -28,9 +27,6 @@ public class ImageManager {
         {"soldier.jpg", "cartoon_soldier.jpg"}    // 士兵 (1x1)
     };
     
-    // 创建一个Random实例用于生成随机数
-    private static final Random RANDOM = new Random();
-    
     /**
      * 重置图片缓存，用于切换主题时刷新资源
      */
@@ -41,7 +37,7 @@ public class ImageManager {
     /**
      * 获取指定名称的图片。
      *
-     * @param imageName 图片文件名
+     * @param imagePath 图片文件名
      * @return 加载的图片对象
      */
     public static Image getImage(String imagePath) {
@@ -72,7 +68,7 @@ public class ImageManager {
      * @return 是否为无图片模式
      */
     private static boolean isNoImageMode() {
-        return "NoImage".equals(getCurrentBlockTheme());
+        return "Default".equals(getCurrentBlockTheme());
     }
     
     /**
@@ -97,12 +93,12 @@ public class ImageManager {
         return path == null ? null : getImage(path);
     }
 
-    public static Image getGuanYuImage() {
+    public static Image getHorizontalBlockImage() {
         String path = getThemedImagePath(CHARACTER_IMAGES[1][0], CHARACTER_IMAGES[1][1]);
         return path == null ? null : getImage(path);
     }
 
-    public static Image getHuangZhongImage() {
+    public static Image getVerticalBlockImage() {
         String path = getThemedImagePath(CHARACTER_IMAGES[2][0], CHARACTER_IMAGES[2][1]);
         return path == null ? null : getImage(path);
     }
@@ -117,8 +113,8 @@ public class ImageManager {
      * 固定使用关羽图像
      * @return 关羽图像
      */
-    public static Image getHorizontalBlockImage() {
-        return getGuanYuImage();
+    public static Image getGuanYuImage() {
+        return getHorizontalBlockImage();
     }
     
     /**
@@ -126,7 +122,7 @@ public class ImageManager {
      * 固定使用黄忠图像
      * @return 黄忠图像
      */
-    public static Image getVerticalBlockImage() {
-        return getHuangZhongImage();
+    public static Image getHuangZhongImage(){
+        return getVerticalBlockImage();
     }
 }

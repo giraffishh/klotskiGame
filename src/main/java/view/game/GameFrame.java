@@ -209,6 +209,35 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
                 gamePanel.requestFocusInWindow();
             }
         });
+        
+        // 为方向按钮添加事件监听器
+        this.upBtn.addActionListener(e -> {
+            if (gamePanel != null) {
+                gamePanel.doMoveUp();
+                gamePanel.requestFocusInWindow();
+            }
+        });
+        
+        this.downBtn.addActionListener(e -> {
+            if (gamePanel != null) {
+                gamePanel.doMoveDown();
+                gamePanel.requestFocusInWindow();
+            }
+        });
+        
+        this.leftBtn.addActionListener(e -> {
+            if (gamePanel != null) {
+                gamePanel.doMoveLeft();
+                gamePanel.requestFocusInWindow();
+            }
+        });
+        
+        this.rightBtn.addActionListener(e -> {
+            if (gamePanel != null) {
+                gamePanel.doMoveRight();
+                gamePanel.requestFocusInWindow();
+            }
+        });
     }
 
     /**
@@ -434,10 +463,10 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
                     box.setImage(ImageManager.getCaoCaoImage());
                     break;
                 case 3: // 黄忠（垂直方块）
-                    box.setImage(ImageManager.getVerticalBlockImage());
+                    box.setImage(ImageManager.getHuangZhongImage());
                     break;
                 case 2: // 关羽（水平方块）
-                    box.setImage(ImageManager.getHorizontalBlockImage());
+                    box.setImage(ImageManager.getGuanYuImage());
                     break;
                 case 1: // 士兵
                     box.setImage(ImageManager.getSoldierImage());

@@ -642,7 +642,7 @@ public class DatabaseService {
             } else {
                 // 用户没有设置，返回默认值
                 settings.put("theme", "Light");
-                settings.put("blocktheme", "Classic"); // 使用小写，与AppSettings中的键名一致
+                settings.put("blocktheme", "Default"); // 使用小写，与AppSettings中的键名一致
             }
 
             return settings;
@@ -650,7 +650,7 @@ public class DatabaseService {
             e.printStackTrace();
             // 出错时返回默认设置
             settings.put("theme", "Light");
-            settings.put("blocktheme", "Classic"); // 使用小写，与AppSettings中的键名一致
+            settings.put("blocktheme", "Default"); // 使用小写，与AppSettings中的键名一致
             return settings;
         }
     }
