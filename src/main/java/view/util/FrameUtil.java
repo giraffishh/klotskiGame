@@ -167,6 +167,33 @@ public class FrameUtil {
     }
     
     /**
+     * 创建一个美化的方向控制按钮
+     * @param direction 方向("↑", "↓", "←", "→")
+     * @return 美化后的方向按钮
+     */
+    public static JButton createDirectionButton(String direction) {
+        JButton button = new JButton(direction);
+        // 使用更大更粗的字体显示箭头
+        button.setFont(new Font("Dialog", Font.BOLD, 20));
+        button.setBackground(SECONDARY_COLOR);
+        button.setForeground(TEXT_COLOR);
+        button.setFocusPainted(false);
+        
+        // 为方向按钮添加悬停效果
+        button.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                button.setBackground(new Color(220, 220, 220)); // 悬停颜色
+            }
+            
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                button.setBackground(SECONDARY_COLOR); // 恢复原色
+            }
+        });
+        
+        return button;
+    }
+    
+    /**
      * 创建一个美化的文本输入框
      * @param columns 输入框列数
      * @return 美化后的文本输入框

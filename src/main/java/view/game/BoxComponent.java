@@ -23,6 +23,10 @@ public class BoxComponent extends JComponent {
     private boolean isSelected;
     // 鼠标悬停效果
     private boolean isHovered;
+    // 方块的图片
+    private Image image;
+    // 方块类型：1(1x1), 2(2x1水平), 3(1x2垂直), 4(2x2曹操)
+    private int blockType;
 
     /**
      * 创建一个游戏方块组件
@@ -30,11 +34,13 @@ public class BoxComponent extends JComponent {
      * @param color 方块的颜色
      * @param row 方块所在的行
      * @param col 方块所在的列
+     * @param blockType 方块类型
      */
-    public BoxComponent(Color color, int row, int col) {
+    public BoxComponent(Color color, int row, int col, int blockType) {
         this.color = color;
         this.row = row;
         this.col = col;
+        this.blockType = blockType;
         isSelected = false;
         isHovered = false;
 
@@ -90,6 +96,27 @@ public class BoxComponent extends JComponent {
     }
 
     /**
+     * 创建一个游戏方块组件（兼容旧版构造器）
+     * 
+     * @param color 方块的颜色
+     * @param row 方块所在的行
+     * @param col 方块所在的列
+     */
+    public BoxComponent(Color color, int row, int col) {
+        this(color, row, col, 0);
+    }
+
+    /**
+     * 设置方块的图片。
+     *
+     * @param image 图片对象
+     */
+    public void setImage(Image image) {
+        this.image = image;
+        this.repaint();
+    }
+
+    /**
      * 重写绘制方法，绘制方块及其边框
      * 选中状态下显示红色边框，未选中状态显示细边框
      * 
@@ -122,34 +149,78 @@ public class BoxComponent extends JComponent {
         g2d.setColor(fillColor);
         g2d.fillRoundRect(margin, margin, getWidth() - margin*2, getHeight() - margin*2, arcSize, arcSize);
         
+        // 绘制图片（如果存在）
+        if (image != null) {
+            // 保存原始裁剪区域
+            Shape oldClip = g2d.getClip();
+            Composite oldComposite = g2d.getComposite();
+            
+            // 设置裁剪区域为方块的圆角矩形，确保图片不会超出方块边界
+            g2d.clip(new java.awt.geom.RoundRectangle2D.Float(
+                margin, margin, 
+                getWidth() - margin*2, 
+                getHeight() - margin*2, 
+                arcSize, arcSize
+            ));
+            
+            // 绘制图片，使用与方块相同的尺寸和位置
+            g.drawImage(image, margin, margin, getWidth() - margin*2, getHeight() - margin*2, this);
+            
+            // 根据悬停状态或选中状态添加半透明叠加层
+            if (isHovered || isSelected) {
+                // 创建悬停或选中效果的半透明叠加层
+                if (isHovered) {
+                    // 悬停状态：添加白色半透明叠加层，使图片变亮
+                    g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.2f));
+                    g2d.setColor(Color.WHITE);
+                    g2d.fillRoundRect(margin, margin, getWidth() - margin*2, getHeight() - margin*2, arcSize, arcSize);
+                } else if (isSelected) {
+                    // 选中状态：添加更强烈的白色半透明叠加层
+                    g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.15f));
+                    g2d.setColor(new Color(255, 255, 255));
+                    g2d.fillRoundRect(margin, margin, getWidth() - margin*2, getHeight() - margin*2, arcSize, arcSize);
+                }
+            }
+            
+            // 恢复原始设置
+            g2d.setClip(oldClip);
+            g2d.setComposite(oldComposite);
+        }
+        
         // 简化边框绘制逻辑，避免多重边框叠加
         if (isSelected) {
             // 选中状态
             g2d.setColor(FrameUtil.SELECTED_BORDER_COLOR);
-            g2d.setStroke(new BasicStroke(3.0f));
+            g2d.setStroke(new BasicStroke(3.5f));
             g2d.drawRoundRect(2, 2, getWidth() - 5, getHeight() - 5, arcSize, arcSize);
         } else if (isHovered) {
             // 悬停状态：金色边框
             g2d.setColor(FrameUtil.HOVER_BORDER_COLOR);
-            g2d.setStroke(new BasicStroke(2.5f));
+            g2d.setStroke(new BasicStroke(3.0f));
             g2d.drawRoundRect(2, 2, getWidth() - 5, getHeight() - 5, arcSize, arcSize);
             
             // 添加轻微的外发光效果
             g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f));
             g2d.setColor(FrameUtil.HOVER_GLOW);
-            g2d.setStroke(new BasicStroke(4.0f));
+            g2d.setStroke(new BasicStroke(4.5f));
             g2d.drawRoundRect(1, 1, getWidth() - 3, getHeight() - 3, arcSize+1, arcSize+1);
         } else {
-            // 普通状态：简单的深灰色细边框
+            // 普通状态：深灰色边框
             g2d.setColor(FrameUtil.NORMAL_BORDER_COLOR);
-            g2d.setStroke(new BasicStroke(1.0f));
+            g2d.setStroke(new BasicStroke(2.0f));
             g2d.drawRoundRect(1, 1, getWidth() - 3, getHeight() - 3, arcSize, arcSize);
 
-            // 添加微妙的高光效果
+            // 添加微妙的高光效果，增强立体感
             g2d.setColor(FrameUtil.HIGHLIGHT_COLOR);
+            g2d.setStroke(new BasicStroke(1.2f));
             g2d.drawLine(4, 4, getWidth() - 5, 4);
             g2d.drawLine(4, 4, 4, getHeight() - 5);
         }
+    }
+
+    // 保留方法定义以维持代码结构，但不实现任何标识绘制
+    private void drawBlockTypeIndicator(Graphics2D g2d) {
+        // 无图片模式下不需要绘制任何标识
     }
 
     /**
@@ -224,6 +295,23 @@ public class BoxComponent extends JComponent {
      */
     public void setCol(int col) {
         this.col = col;
+    }
+
+    /**
+     * 获取方块类型
+     * @return 方块类型
+     */
+    public int getBlockType() {
+        return blockType;
+    }
+    
+    /**
+     * 设置方块类型
+     * @param blockType 方块类型
+     */
+    public void setBlockType(int blockType) {
+        this.blockType = blockType;
+        repaint();
     }
 }
 

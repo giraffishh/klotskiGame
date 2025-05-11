@@ -6,19 +6,18 @@ import model.AppSettings;
 import service.UserSession;
 import view.settings.SettingsView;
 import view.util.FrameManager;
+import view.util.ImageManager;
 
 /**
- * Settings页面控制器 处理Settings页面的业务逻辑，如加载和保存设置
+ * Settings页面控制器
+ * 处理Settings页面的业务逻辑，如加载和保存设置
  */
 public class SettingsController {
-
     private final SettingsView settingsView;
     private final AppSettings appSettings;
 
     /**
      * 创建SettingsController
-     *
-     * @param settingsView Settings页面视图
      */
     public SettingsController(SettingsView settingsView) {
         this.settingsView = settingsView;
@@ -26,31 +25,47 @@ public class SettingsController {
     }
 
     /**
-     * 加载设置 从AppSettings加载设置并更新视图
+     * 从AppSettings加载设置并更新视图
      */
     public void loadSettings() {
-        // 显示当前主题设置
+        // 加载并显示当前设置
         String currentTheme = appSettings.getCurrentTheme();
+        String currentBlockTheme = appSettings.getCurrentBlockTheme();
+        
         settingsView.displayThemeSetting(currentTheme);
-        System.out.println("Loading settings, current theme: " + currentTheme);
+        settingsView.displayBlockThemeSetting(currentBlockTheme);
     }
 
     /**
-     * 保存设置 获取视图中的设置值并保存
+     * 保存设置并处理结果
      */
     public void saveSettings() {
-        // 从视图获取当前选择的主题
+        // 获取用户选择的设置
         String selectedTheme = settingsView.getSelectedTheme();
+        String selectedBlockTheme = settingsView.getSelectedBlockTheme();
         UserSession session = UserSession.getInstance();
 
-        // 更新AppSettings中的主题设置并应用
+        // 检查设置是否变化
+        String currentTheme = appSettings.getCurrentTheme();
+        String currentBlockTheme = appSettings.getCurrentBlockTheme();
+        boolean settingsChanged = !currentTheme.equals(selectedTheme) || 
+                                 !currentBlockTheme.equals(selectedBlockTheme);
+
+        // 应用设置
         boolean themeApplied = appSettings.setCurrentTheme(selectedTheme);
+        boolean blockThemeApplied = appSettings.setCurrentBlockTheme(selectedBlockTheme);
+        
+        // 重置图片缓存
+        ImageManager.resetImageCache();
 
-        // 尝试保存设置（如果用户已登录）
-        boolean settingsSaved = appSettings.saveSetting("theme", selectedTheme);
+        // 保存设置到数据库
+        boolean allSettingsSaved = false;
+        if (session.isLoggedIn() && !session.isGuest()) {
+            allSettingsSaved = appSettings.saveAllSettings();
+        }
 
+        // 处理结果
         if (!themeApplied) {
-            // 主题应用失败
             settingsView.showStyledMessage(
                     "Failed to apply theme. Please try again.",
                     "Error",
@@ -58,36 +73,50 @@ public class SettingsController {
             return;
         }
 
+        // 显示适当的消息
         if (session.isGuest() || !session.isLoggedIn()) {
-            // 访客模式或未登录
-            settingsView.showStyledMessage(
-                    "<html>Settings has been temporarily applied.<br>Create an account to permanently save settings.</html>",
-                    "Notice",
-                    JOptionPane.INFORMATION_MESSAGE);
-        } else if (!settingsSaved) {
-            // 设置保存失败
-            settingsView.showStyledMessage(
-                    "Theme applied but failed to save settings to your profile.",
-                    "Warning",
-                    JOptionPane.WARNING_MESSAGE);
+            showGuestMessage();
+        } else if (!allSettingsSaved) {
+            showSaveFailedMessage();
         } else {
-            // 保存成功
-            settingsView.showStyledMessage(
-                    "Settings saved successfully.",
-                    "Success",
-                    JOptionPane.INFORMATION_MESSAGE);
+            showSuccessMessage();
         }
 
-        // 使用FrameManager返回主页
+        // 如果图片主题改变了，刷新游戏界面
+        if (settingsChanged) {
+            FrameManager.getInstance().refreshGameInterface();
+        }
+
+        // 返回主页
         FrameManager.getInstance().navigateFromSettingsToHome();
+    }
+    
+    // 提取显示消息的方法
+    private void showGuestMessage() {
+        settingsView.showStyledMessage(
+                "<html>Settings has been temporarily applied.<br>Create an account to permanently save settings.</html>",
+                "Notice",
+                JOptionPane.INFORMATION_MESSAGE);
+    }
+    
+    private void showSaveFailedMessage() {
+        settingsView.showStyledMessage(
+                "Settings applied but failed to save to your profile.",
+                "Warning",
+                JOptionPane.WARNING_MESSAGE);
+    }
+    
+    private void showSuccessMessage() {
+        settingsView.showStyledMessage(
+                "Settings saved successfully.",
+                "Success",
+                JOptionPane.INFORMATION_MESSAGE);
     }
 
     /**
-     * 取消设置 关闭设置窗口，不保存任何更改
+     * 取消设置并返回主页
      */
     public void cancelSettings() {
-        System.out.println("Cancelling settings...");
-        // 使用FrameManager返回主页
         FrameManager.getInstance().navigateFromSettingsToHome();
     }
 }

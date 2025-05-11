@@ -1,6 +1,7 @@
 package view.util;
 
 import controller.core.LevelSelectController;
+import model.AppSettings;
 import view.game.GameFrame;
 import view.home.HomeFrame;
 import view.level.LevelSelectFrame;
@@ -246,6 +247,11 @@ public class FrameManager {
      * 从设置界面返回主页界面
      */
     public void navigateFromSettingsToHome() {
+        // 确保设置已保存
+        if (AppSettings.getInstance().hasUnsavedChanges()) {
+            AppSettings.getInstance().saveAllSettings();
+        }
+        
         hideSettingsFrame();
         showHomeFrame();
     }
@@ -254,6 +260,11 @@ public class FrameManager {
      * 关闭所有窗口并显示登录窗口(登出时使用)
      */
     public void logoutToLoginScreen() {
+        // 确保在登出前保存设置
+        if (AppSettings.getInstance().hasUnsavedChanges()) {
+            AppSettings.getInstance().saveAllSettings();
+        }
+        
         hideHomeFrame();
         hideGameFrame();
         hideLevelSelectFrame();
@@ -262,6 +273,41 @@ public class FrameManager {
         if (loginFrame != null) {
             loginFrame.resetForm(); // 重置登录表单
             showLoginFrame();
+        }
+    }
+
+    /**
+     * 关闭所有窗口
+     */
+    public void closeAllFrames() {
+        // 保存未保存的设置
+        if (AppSettings.getInstance().hasUnsavedChanges()) {
+            AppSettings.getInstance().saveAllSettings();
+        }
+        
+        hideHomeFrame();
+        hideGameFrame();
+        hideLevelSelectFrame();
+        hideSettingsFrame();
+        hideLoginFrame();
+    }
+
+    /**
+     * 刷新游戏界面
+     * 当方块主题设置改变时调用
+     */
+    public void refreshGameInterface() {
+        // 重置图片缓存
+        ImageManager.resetImageCache();
+        
+        // 刷新游戏界面（如果正在显示）
+        if (gameFrame != null && gameFrame.isVisible()) {
+            gameFrame.refreshGamePanel();
+        }
+        
+        // 刷新关卡选择界面（如果正在显示）
+        if (levelSelectFrame != null && levelSelectFrame.isVisible()) {
+            levelSelectFrame.refreshDisplay();
         }
     }
 }

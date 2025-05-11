@@ -261,7 +261,7 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
         // 尝试加载预览图片
         JLabel previewLabel;
         try {
-            String imagePath = "/levelPreview/level" + (index + 1) + ".png";
+            String imagePath = "/images/levelPreview/level" + (index + 1) + ".png";
             ImageIcon originalIcon = new ImageIcon(getClass().getResource(imagePath));
 
             // 确认图片已正确加载
@@ -503,6 +503,17 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
      */
     public LevelSelectController getController() {
         return controller;
+    }
+
+    /**
+     * 刷新关卡选择界面
+     * 当方块主题改变时调用
+     */
+    public void refreshDisplay() {
+        if (this.isVisible()) {
+            // 刷新关卡列表，触发重新加载预览图
+            populateLevelList();
+        }
     }
 
     /**

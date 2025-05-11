@@ -19,10 +19,14 @@ public class AppSettings implements UserSessionListener {
     private static AppSettings instance;
     private final DatabaseService dbService;
     private final Map<String, String> currentSettings;
+    private boolean settingsChanged = false;
+    private String lastAppliedTheme = null;
     
-    // 默认设置值
+    // 设置相关常量
     private static final String DEFAULT_THEME = "Light";
-    // 可以在此处添加更多默认设置...
+    private static final String DEFAULT_BLOCK_THEME = "Default";
+    private static final String THEME_KEY = "theme";
+    private static final String BLOCK_THEME_KEY = "blocktheme";
     
     /**
      * 私有构造方法
@@ -38,15 +42,21 @@ public class AppSettings implements UserSessionListener {
         UserSession.getInstance().addListener(this);
         
         // 如果用户已经登录，加载其设置
-        if (UserSession.getInstance().isLoggedIn() && 
-            !UserSession.getInstance().isGuest()) {
+        if (UserSession.getInstance().isLoggedIn() && !UserSession.getInstance().isGuest()) {
             loadSettingsForUser();
         }
+        
+        // 添加程序退出钩子保存设置
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            if (settingsChanged) {
+                System.out.println("应用程序关闭中，保存设置...");
+                saveAllSettings();
+            }
+        }));
     }
     
     /**
      * 获取单例实例
-     * @return AppSettings实例
      */
     public static synchronized AppSettings getInstance() {
         if (instance == null) {
@@ -60,8 +70,8 @@ public class AppSettings implements UserSessionListener {
      */
     public void resetToDefault() {
         currentSettings.clear();
-        currentSettings.put("theme", DEFAULT_THEME);
-        // 可以在此处添加更多默认设置...
+        currentSettings.put(THEME_KEY, DEFAULT_THEME);
+        currentSettings.put(BLOCK_THEME_KEY, DEFAULT_BLOCK_THEME);
         
         // 应用默认主题
         applyCurrentTheme();
@@ -87,73 +97,92 @@ public class AppSettings implements UserSessionListener {
     }
     
     /**
-     * 将当前设置保存到数据库（仅适用于已登录用户）
+     * 保存所有设置到数据库
      * @return 是否保存成功
      */
-    public boolean saveCurrentSettings() {
+    public boolean saveAllSettings() {
         UserSession session = UserSession.getInstance();
         if (!session.isLoggedIn() || session.getCurrentUser() == null || session.isGuest()) {
+            settingsChanged = false;
             return false;
         }
         
         String username = session.getCurrentUser().getUsername();
-        return dbService.saveUserSettings(username, currentSettings);
+        boolean result = dbService.saveUserSettings(username, currentSettings);
+        
+        if (result) {
+            settingsChanged = false;
+            System.out.println("所有设置已成功保存到数据库");
+        }
+        
+        return result;
     }
     
     /**
      * 保存单个设置
-     * @param key 设置键
-     * @param value 设置值
-     * @return 是否成功（非登录用户返回false）
+     * @return 是否成功
      */
     public boolean saveSetting(String key, String value) {
-        // 更新内存中的设置
         currentSettings.put(key, value);
+        settingsChanged = true;
         
-        // 尝试保存到数据库（如果已登录）
         UserSession session = UserSession.getInstance();
         if (!session.isLoggedIn() || session.getCurrentUser() == null || session.isGuest()) {
             return false;
         }
         
-        String username = session.getCurrentUser().getUsername();
-        return dbService.saveUserSetting(username, key, value);
+        return dbService.saveUserSetting(session.getCurrentUser().getUsername(), key, value);
     }
     
     /**
      * 获取设置值
-     * @param key 设置键
-     * @param defaultValue 默认值
-     * @return 设置值，如果不存在则返回默认值
      */
     public String getSetting(String key, String defaultValue) {
         return currentSettings.getOrDefault(key, defaultValue);
     }
     
-    /**
-     * 获取当前主题
-     * @return 当前主题名称
-     */
+    // 主题相关方法
     public String getCurrentTheme() {
-        return getSetting("theme", DEFAULT_THEME);
+        return getSetting(THEME_KEY, DEFAULT_THEME);
     }
     
-    /**
-     * 设置当前主题
-     * @param themeName 主题名称
-     * @return 是否成功应用
-     */
     public boolean setCurrentTheme(String themeName) {
-        currentSettings.put("theme", themeName);
+        currentSettings.put(THEME_KEY, themeName);
+        settingsChanged = true;
+        saveSetting(THEME_KEY, themeName);
         return applyCurrentTheme();
     }
     
     /**
-     * 应用当前设置的主题
+     * 获取当前方块主题
+     * @return 当前方块主题名称
+     */
+    public String getCurrentBlockTheme() {
+        return getSetting(BLOCK_THEME_KEY, DEFAULT_BLOCK_THEME);
+    }
+
+    /**
+     * 设置当前方块主题
+     * @param blockThemeName 方块主题名称
      * @return 是否成功应用
+     */
+    public boolean setCurrentBlockTheme(String blockThemeName) {
+        currentSettings.put(BLOCK_THEME_KEY, blockThemeName);
+        settingsChanged = true;
+        return saveSetting(BLOCK_THEME_KEY, blockThemeName);
+    }
+    
+    /**
+     * 应用当前设置的主题
      */
     public boolean applyCurrentTheme() {
         String themeName = getCurrentTheme();
+        
+        // 避免重复应用相同的主题
+        if (themeName.equals(lastAppliedTheme)) {
+            return true;
+        }
+        
         try {
             if ("Dark".equalsIgnoreCase(themeName)) {
                 UIManager.setLookAndFeel(new FlatDarkLaf());
@@ -163,10 +192,12 @@ public class AppSettings implements UserSessionListener {
                 System.out.println("Applied Light Theme");
             }
             
-            // 更新所有打开的窗口以应用新主题
+            // 更新所有窗口
             for (Window window : Window.getWindows()) {
                 SwingUtilities.updateComponentTreeUI(window);
             }
+            
+            lastAppliedTheme = themeName;
             return true;
         } catch (UnsupportedLookAndFeelException e) {
             System.err.println("Failed to apply theme: " + themeName);
@@ -176,18 +207,35 @@ public class AppSettings implements UserSessionListener {
     }
     
     /**
+     * 强制重新应用当前主题
+     */
+    public boolean forceApplyCurrentTheme() {
+        lastAppliedTheme = null;
+        return applyCurrentTheme();
+    }
+    
+    /**
      * 用户会话状态变化处理方法
-     * 当用户登录或退出时自动调用
      */
     @Override
     public void onSessionStateChanged() {
         UserSession session = UserSession.getInstance();
         if (session.isLoggedIn() && !session.isGuest()) {
-            // 用户登录，加载其设置
             loadSettingsForUser();
         } else {
-            // 用户退出或切换为访客，恢复默认设置
+            // 先保存未保存的设置
+            if (settingsChanged && UserSession.getInstance().getCurrentUser() != null 
+                    && !UserSession.getInstance().isGuest()) {
+                saveAllSettings();
+            }
             resetToDefault();
         }
+    }
+    
+    /**
+     * 检查是否有未保存的设置
+     */
+    public boolean hasUnsavedChanges() {
+        return settingsChanged;
     }
 }
