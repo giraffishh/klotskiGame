@@ -15,7 +15,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.awt.image.BufferedImage;
 import java.util.List;
 
 import javax.swing.BorderFactory;
@@ -33,7 +32,6 @@ import javax.swing.WindowConstants;
 
 import controller.core.LevelSelectController;
 import model.MapModel;
-import service.UserSession;
 import view.util.FontManager;
 import view.util.FrameUtil;
 
@@ -46,8 +44,6 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
     private LevelSelectController controller;
     private final Color NORMAL_CARD_BG = Color.WHITE;
     private final Color HOVER_CARD_BG = new Color(240, 248, 255); // 非常淡的蓝色
-    private final Color LOCKED_CARD_BG = new Color(220, 220, 220); // 锁定关卡的背景色
-    private ImageIcon lockIcon; // 锁定图标
 
     // 游戏模式颜色
     private final Color PRACTICE_MODE_COLOR = new Color(84, 173, 255, 180); // 练习模式 - 蓝色
@@ -78,18 +74,6 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
                 }
             }
         });
-
-        // 加载锁定图标
-        try {
-            lockIcon = new ImageIcon(getClass().getResource("/images/icons/lock.png"));
-            // 调整锁图标大小
-            Image img = lockIcon.getImage();
-            Image newImg = img.getScaledInstance(48, 48, Image.SCALE_SMOOTH);
-            lockIcon = new ImageIcon(newImg);
-        } catch (Exception e) {
-            System.err.println("Failed to load lock icon: " + e.getMessage());
-            lockIcon = null; // 确保即使加载失败也不会出现空引用
-        }
 
         // 初始化UI组件
         initializeUI();
@@ -253,14 +237,11 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
      * @return 关卡卡片面板
      */
     private JPanel createLevelCard(LevelSelectController.LevelData level, int index) {
-        // 检查关卡是否已解锁
-        boolean isUnlocked = UserSession.getInstance().isLevelUnlocked(index);
-
         // 创建卡片主面板，使用BorderLayout
         JPanel card = new JPanel(new BorderLayout());
         card.setBorder(BorderFactory.createLineBorder(CARD_BORDER_COLOR, 2));
-        card.setBackground(isUnlocked ? NORMAL_CARD_BG : LOCKED_CARD_BG);
-        card.setCursor(isUnlocked ? new Cursor(Cursor.HAND_CURSOR) : new Cursor(Cursor.DEFAULT_CURSOR));
+        card.setBackground(NORMAL_CARD_BG);
+        card.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         // 保持卡片尺寸以适应更大的预览图
         card.setPreferredSize(new Dimension(190, 290));
@@ -268,16 +249,11 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
         // 创建内容面板，减小内边距以增加预览图占比
         JPanel contentPanel = new JPanel(new BorderLayout(0, 8));
         contentPanel.setBorder(BorderFactory.createEmptyBorder(5, 3, 5, 3)); // 减小左右内边距
-        contentPanel.setBackground(isUnlocked ? NORMAL_CARD_BG : LOCKED_CARD_BG);
+        contentPanel.setBackground(NORMAL_CARD_BG);
 
         // 预览图面板
         JPanel previewPanel = new JPanel(new BorderLayout());
         previewPanel.setBackground(FrameUtil.SECONDARY_COLOR);
-
-        // 锁定的关卡显示灰色预览
-        if (!isUnlocked) {
-            previewPanel.setBackground(new Color(180, 180, 180));
-        }
 
         // 卡片可用宽度（考虑边框和内边距）
         int availableWidth = 180;
@@ -303,12 +279,6 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
                 // 缩放图片保持原始比例
                 Image img = originalIcon.getImage();
                 Image resizedImg = img.getScaledInstance(availableWidth, scaledHeight, Image.SCALE_SMOOTH);
-
-                // 如果关卡未解锁，使图片变灰
-                if (!isUnlocked) {
-                    resizedImg = makeImageGray(resizedImg);
-                }
-
                 ImageIcon scaledIcon = new ImageIcon(resizedImg);
 
                 previewLabel = new JLabel(scaledIcon);
@@ -321,15 +291,11 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
             }
         } catch (Exception e) {
             // 图片加载失败，显示默认文本
-            previewLabel = new JLabel("Level " + (index + 1), JLabel.CENTER);
-            previewLabel.setFont(FontManager.getRegularFont(18));
-            previewLabel.setForeground(isUnlocked ? FrameUtil.TEXT_COLOR : Color.GRAY);
+            previewLabel = new JLabel("Level Preview", JLabel.CENTER);
+            previewLabel.setFont(FontManager.getRegularFont(14));
+            previewLabel.setForeground(FrameUtil.TEXT_COLOR);
             previewPanel.setPreferredSize(new Dimension(availableWidth, 200));
-            
-            // 为锁定的关卡不显示错误信息
-            if (isUnlocked) {
-                System.out.println("Failed to load preview image for level " + (index + 1) + ": " + e.getMessage());
-            }
+            System.out.println("Failed to load preview image for level " + (index + 1) + ": " + e.getMessage());
         }
 
         // 将预览标签添加到预览面板
@@ -337,23 +303,23 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
 
         // 使用FlowLayout容器包装预览面板，以确保居中对齐
         JPanel previewContainer = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
-        previewContainer.setBackground(isUnlocked ? NORMAL_CARD_BG : LOCKED_CARD_BG);
+        previewContainer.setBackground(NORMAL_CARD_BG);
         previewContainer.add(previewPanel);
 
         // 信息面板 - 移到预览图下方
         JPanel infoPanel = new JPanel(new BorderLayout(0, 2));
-        infoPanel.setBackground(isUnlocked ? NORMAL_CARD_BG : LOCKED_CARD_BG);
+        infoPanel.setBackground(NORMAL_CARD_BG);
         infoPanel.setBorder(BorderFactory.createEmptyBorder(3, 0, 0, 0));
 
         // 关卡标题
         JLabel nameLabel = new JLabel(level.getName(), JLabel.CENTER);
         nameLabel.setFont(FontManager.getTitleFont(18)); // 增大字体从15到18
-        nameLabel.setForeground(isUnlocked ? FrameUtil.TEXT_COLOR : Color.GRAY);
+        nameLabel.setForeground(FrameUtil.TEXT_COLOR);
 
         // 关卡描述
-        JLabel descLabel = new JLabel(isUnlocked ? level.getDescription() : "Locked", JLabel.CENTER);
+        JLabel descLabel = new JLabel(level.getDescription(), JLabel.CENTER);
         descLabel.setFont(FontManager.getRegularFont(12));
-        descLabel.setForeground(isUnlocked ? new Color(100, 100, 100) : Color.GRAY);
+        descLabel.setForeground(new Color(100, 100, 100));
 
         // 组装信息面板
         infoPanel.add(nameLabel, BorderLayout.NORTH);
@@ -365,27 +331,6 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
 
         // 将内容面板添加到卡片
         card.add(contentPanel, BorderLayout.CENTER);
-
-        // 如果关卡被锁定，添加锁图标
-        if (!isUnlocked && lockIcon != null) {
-            JLabel lockLabel = new JLabel(lockIcon);
-            lockLabel.setHorizontalAlignment(JLabel.CENTER);
-
-            // 创建半透明的暗色叠加层
-            JPanel overlayPanel = new JPanel() {
-                @Override
-                protected void paintComponent(Graphics g) {
-                    super.paintComponent(g);
-                    g.setColor(new Color(0, 0, 0, 120)); // 半透明黑色
-                    g.fillRect(0, 0, getWidth(), getHeight());
-                }
-            };
-            overlayPanel.setLayout(new BorderLayout());
-            overlayPanel.setOpaque(false);
-            overlayPanel.add(lockLabel, BorderLayout.CENTER);
-
-            card.add(overlayPanel, BorderLayout.CENTER);
-        }
 
         // 创建游戏模式选择覆盖层 - 使用专用的ModeOverlayPanel类
         ModeOverlayPanel modeOverlay = new ModeOverlayPanel(
@@ -402,158 +347,106 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
         wrapperPanel.add(modeOverlay);
         wrapperPanel.add(card);
 
-        // 只有解锁关卡才添加鼠标事件监听器
-        if (isUnlocked) {
-            MouseAdapter cardMouseAdapter = new MouseAdapter() {
-                @Override
-                public void mouseEntered(MouseEvent e) {
-                    // 显示悬停效果
-                    card.setBorder(BorderFactory.createLineBorder(CARD_BORDER_COLOR, 3));
-                    card.setBackground(HOVER_CARD_BG);
-                    contentPanel.setBackground(HOVER_CARD_BG);
-                    infoPanel.setBackground(HOVER_CARD_BG);
-                    previewContainer.setBackground(HOVER_CARD_BG); // 确保预览容器也更新颜色
+        // 添加鼠标事件监听器
+        MouseAdapter cardMouseAdapter = new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                // 显示悬停效果
+                card.setBorder(BorderFactory.createLineBorder(CARD_BORDER_COLOR, 3));
+                card.setBackground(HOVER_CARD_BG);
+                contentPanel.setBackground(HOVER_CARD_BG);
+                infoPanel.setBackground(HOVER_CARD_BG);
+                previewContainer.setBackground(HOVER_CARD_BG); // 确保预览容器也更新颜色
 
-                    // 显示模式选择覆盖层
-                    modeOverlay.setVisible(true);
+                // 显示模式选择覆盖层
+                modeOverlay.setVisible(true);
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                // 隐藏悬停效果
+                card.setBorder(BorderFactory.createLineBorder(CARD_BORDER_COLOR, 2));
+                card.setBackground(NORMAL_CARD_BG);
+                contentPanel.setBackground(NORMAL_CARD_BG);
+                infoPanel.setBackground(NORMAL_CARD_BG);
+                previewContainer.setBackground(NORMAL_CARD_BG); // 确保预览容器也恢复颜色
+
+                // 隐藏模式选择覆盖层
+                modeOverlay.setVisible(false);
+            }
+        };
+
+        card.addMouseListener(cardMouseAdapter);
+
+        // 为模式覆盖层添加鼠标监听器，以处理点击事件和区域悬停效果
+        modeOverlay.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (controller != null) {
+                    Point clickPoint = e.getPoint();
+                    int gameMode;
+
+                    // 判断点击位置选择游戏模式 - 根据垂直位置判断
+                    if (clickPoint.y < modeOverlay.getHeight() / 2) {
+                        // 上半部分 - 教程模式
+                        gameMode = MapModel.PRACTICE_MODE;
+                    } else {
+                        // 下半部分 - 竞速模式
+                        gameMode = MapModel.SPEED_MODE;
+                    }
+
+                    // 调用控制器的selectLevel方法，传递关卡索引和游戏模式
+                    controller.selectLevel(index, gameMode);
                 }
+            }
 
-                @Override
-                public void mouseExited(MouseEvent e) {
-                    // 隐藏悬停效果
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                // 保持模式选择覆盖层可见
+                modeOverlay.setVisible(true);
+
+                // 保持卡片的悬停效果
+                card.setBorder(BorderFactory.createLineBorder(CARD_BORDER_COLOR, 3));
+                card.setBackground(HOVER_CARD_BG);
+                contentPanel.setBackground(HOVER_CARD_BG);
+                infoPanel.setBackground(HOVER_CARD_BG);
+                previewContainer.setBackground(HOVER_CARD_BG);
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                // 检查鼠标是否真的离开了整个区域
+                Point p = e.getPoint();
+                if (p.x < 0 || p.y < 0 || p.x >= modeOverlay.getWidth() || p.y >= modeOverlay.getHeight()) {
+                    // 真正离开了区域，隐藏覆盖层并重置卡片样式
+                    modeOverlay.setVisible(false);
                     card.setBorder(BorderFactory.createLineBorder(CARD_BORDER_COLOR, 2));
                     card.setBackground(NORMAL_CARD_BG);
                     contentPanel.setBackground(NORMAL_CARD_BG);
                     infoPanel.setBackground(NORMAL_CARD_BG);
-                    previewContainer.setBackground(NORMAL_CARD_BG); // 确保预览容器也恢复颜色
+                    previewContainer.setBackground(NORMAL_CARD_BG);
 
-                    // 隐藏模式选择覆盖层
-                    modeOverlay.setVisible(false);
+                    // 重置悬停区域
+                    modeOverlay.setHoverSection(0);
                 }
-            };
+            }
+        });
 
-            card.addMouseListener(cardMouseAdapter);
-
-            // 为模式覆盖层添加鼠标监听器，以处理点击事件和区域悬停效果
-            modeOverlay.addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseClicked(MouseEvent e) {
-                    if (controller != null) {
-                        Point clickPoint = e.getPoint();
-                        int gameMode;
-
-                        // 判断点击位置选择游戏模式 - 根据垂直位置判断
-                        if (clickPoint.y < modeOverlay.getHeight() / 2) {
-                            // 上半部分 - 教程模式
-                            gameMode = MapModel.PRACTICE_MODE;
-                        } else {
-                            // 下半部分 - 竞速模式
-                            gameMode = MapModel.SPEED_MODE;
-                        }
-
-                        // 调用控制器的selectLevel方法，传递关卡索引和游戏模式
-                        controller.selectLevel(index, gameMode);
-                    }
+        // 添加鼠标移动监听器来跟踪不同区域的悬停效果
+        modeOverlay.addMouseMotionListener(new MouseAdapter() {
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                if (e.getY() < modeOverlay.getHeight() / 2) {
+                    // 鼠标在上半部分 - 教程模式
+                    modeOverlay.setHoverSection(1);
+                } else {
+                    // 鼠标在下半部分 - 竞速模式
+                    modeOverlay.setHoverSection(2);
                 }
-
-                @Override
-                public void mouseEntered(MouseEvent e) {
-                    // 保持模式选择覆盖层可见
-                    modeOverlay.setVisible(true);
-
-                    // 保持卡片的悬停效果
-                    card.setBorder(BorderFactory.createLineBorder(CARD_BORDER_COLOR, 3));
-                    card.setBackground(HOVER_CARD_BG);
-                    contentPanel.setBackground(HOVER_CARD_BG);
-                    infoPanel.setBackground(HOVER_CARD_BG);
-                    previewContainer.setBackground(HOVER_CARD_BG);
-                }
-
-                @Override
-                public void mouseExited(MouseEvent e) {
-                    // 检查鼠标是否真的离开了整个区域
-                    Point p = e.getPoint();
-                    if (p.x < 0 || p.y < 0 || p.x >= modeOverlay.getWidth() || p.y >= modeOverlay.getHeight()) {
-                        // 真正离开了区域，隐藏覆盖层并重置卡片样式
-                        modeOverlay.setVisible(false);
-                        card.setBorder(BorderFactory.createLineBorder(CARD_BORDER_COLOR, 2));
-                        card.setBackground(NORMAL_CARD_BG);
-                        contentPanel.setBackground(NORMAL_CARD_BG);
-                        infoPanel.setBackground(NORMAL_CARD_BG);
-                        previewContainer.setBackground(NORMAL_CARD_BG);
-
-                        // 重置悬停区域
-                        modeOverlay.setHoverSection(0);
-                    }
-                }
-            });
-
-            // 添加鼠标移动监听器来跟踪不同区域的悬停效果
-            modeOverlay.addMouseMotionListener(new MouseAdapter() {
-                @Override
-                public void mouseMoved(MouseEvent e) {
-                    if (e.getY() < modeOverlay.getHeight() / 2) {
-                        // 鼠标在上半部分 - 教程模式
-                        modeOverlay.setHoverSection(1);
-                    } else {
-                        // 鼠标在下半部分 - 竞速模式
-                        modeOverlay.setHoverSection(2);
-                    }
-                }
-            });
-        } else {
-            // 为锁定的关卡添加特殊点击监听器，显示提示信息
-            card.addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseClicked(MouseEvent e) {
-                    showStyledMessage(
-                            "Complete previous levels to unlock this level!",
-                            "Level Locked",
-                            javax.swing.JOptionPane.INFORMATION_MESSAGE
-                    );
-                }
-            });
-        }
+            }
+        });
 
         return wrapperPanel;
-    }
-
-    /**
-     * 将图像转换为灰色
-     *
-     * @param sourceImage 原始图像
-     * @return 灰度图像
-     */
-    private Image makeImageGray(Image sourceImage) {
-        BufferedImage bufferedImage = new BufferedImage(
-                sourceImage.getWidth(null),
-                sourceImage.getHeight(null),
-                BufferedImage.TYPE_INT_ARGB
-        );
-
-        Graphics g = bufferedImage.createGraphics();
-        g.drawImage(sourceImage, 0, 0, null);
-        g.dispose();
-
-        // 应用灰度滤镜
-        for (int x = 0; x < bufferedImage.getWidth(); x++) {
-            for (int y = 0; y < bufferedImage.getHeight(); y++) {
-                int rgb = bufferedImage.getRGB(x, y);
-                int a = (rgb >> 24) & 0xff;
-                int r = (rgb >> 16) & 0xff;
-                int g2 = (rgb >> 8) & 0xff;
-                int b = rgb & 0xff;
-
-                // 计算灰度值
-                int grayValue = (int) (r * 0.299 + g2 * 0.587 + b * 0.114);
-
-                // 创建新的灰度像素
-                int gray = (a << 24) | (grayValue << 16) | (grayValue << 8) | grayValue;
-                bufferedImage.setRGB(x, y, gray);
-            }
-        }
-
-        return bufferedImage;
     }
 
     @Override

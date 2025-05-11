@@ -10,7 +10,6 @@ import model.MapModel;
 import view.game.GameFrame;
 import view.level.LevelSelectView;
 import view.util.FrameManager;
-import service.UserSession;
 
 /**
  * 关卡选择控制器 管理华容道游戏的预设关卡，提供选择和加载功能
@@ -50,12 +49,6 @@ public class LevelSelectController {
             ObjectMapper mapper = new ObjectMapper();
             levelList = mapper.readValue(inputStream, new TypeReference<List<LevelData>>() {
             });
-            
-            // 设置每个关卡的索引
-            for (int i = 0; i < levelList.size(); i++) {
-                LevelData level = levelList.get(i);
-                level.setLevelIndex(i);
-            }
 
             System.out.println("Successfully loaded " + levelList.size() + " levels from JSON");
         } catch (Exception e) {
@@ -76,16 +69,6 @@ public class LevelSelectController {
         // 检查索引有效性
         if (levelIndex < 0 || levelIndex >= levels.size()) {
             levelSelectView.showStyledMessage("Invalid level selection", "Error", javax.swing.JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        // 检查关卡是否已解锁
-        if (!UserSession.getInstance().isLevelUnlocked(levelIndex)) {
-            levelSelectView.showStyledMessage(
-                "This level is locked! Complete previous levels to unlock it.",
-                "Level Locked",
-                javax.swing.JOptionPane.INFORMATION_MESSAGE
-            );
             return;
         }
 
@@ -200,8 +183,6 @@ public class LevelSelectController {
         private String name;
         private String description;
         private int[][] layout;
-        private boolean unlocked; // 关卡是否解锁
-        private int levelIndex;   // 关卡索引
 
         // 无参构造函数，用于Jackson反序列化
         public LevelData() {
@@ -211,14 +192,6 @@ public class LevelSelectController {
             this.name = name;
             this.description = description;
             this.layout = layout;
-        }
-        
-        // 构造函数，包含levelIndex参数
-        public LevelData(String name, String description, int[][] layout, int levelIndex) {
-            this.name = name;
-            this.description = description;
-            this.layout = layout;
-            this.levelIndex = levelIndex;
         }
 
         public String getName() {
@@ -243,18 +216,6 @@ public class LevelSelectController {
 
         public void setLayout(int[][] layout) {
             this.layout = layout;
-        }
-        
-        public boolean isUnlocked() {
-            return UserSession.getInstance().isLevelUnlocked(levelIndex);
-        }
-        
-        public int getLevelIndex() {
-            return levelIndex;
-        }
-        
-        public void setLevelIndex(int levelIndex) {
-            this.levelIndex = levelIndex;
         }
     }
 }

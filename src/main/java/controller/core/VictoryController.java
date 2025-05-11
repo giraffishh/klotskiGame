@@ -172,12 +172,6 @@ public class VictoryController {
                     : (UserSession.getInstance().getCurrentUser() != null
                     ? UserSession.getInstance().getCurrentUser().getUsername() : "ErrorUser"); // 添加null检查
 
-            // 解锁下一关（如果不是最后一关且不是访客）
-            if (!isGuest && !isLastLevel()) {
-                UserSession.getInstance().unlockNextLevel();
-                System.out.println("Unlocked next level for user: " + username);
-            }
-
             // 显示胜利界面 - 在EDT中执行
             SwingUtilities.invokeLater(() -> {
                 if (victoryView != null) {
@@ -271,17 +265,6 @@ public class VictoryController {
         try {
             // 获取下一关索引
             int nextLevelIndex = getNextLevelIndex();
-
-            // 检查是否已解锁该关卡
-            if (!UserSession.getInstance().isLevelUnlocked(nextLevelIndex)) {
-                JOptionPane.showMessageDialog(
-                    parentFrame,
-                    "You need to unlock this level first!",
-                    "Level Locked",
-                    JOptionPane.INFORMATION_MESSAGE
-                );
-                return;
-            }
 
             if (nextLevelIndex == -1) {
                 // 理论上这里不会执行到，因为前面的isLastLevel()已经处理了这种情况

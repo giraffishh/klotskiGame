@@ -54,24 +54,11 @@ public class DatabaseService {
         try (Connection conn = getConnection()) {
             Statement stmt = conn.createStatement();
 
-            // 创建用户表(如果不存在)，包含密码哈希和盐值列，添加max_unlocked_level列
+            // 创建用户表(如果不存在)，包含密码哈希和盐值列
             stmt.execute("CREATE TABLE IF NOT EXISTS users ("
                     + "username VARCHAR(255) PRIMARY KEY, "
                     + "password_hash VARCHAR(255) NOT NULL, "
-                    + "salt VARCHAR(255) NOT NULL, "
-                    + "max_unlocked_level INT DEFAULT 0)"); // 添加解锁关卡记录
-
-            // 检查max_unlocked_level列是否存在，如果不存在则添加
-            try {
-                ResultSet rs = conn.getMetaData().getColumns(null, null, "USERS", "MAX_UNLOCKED_LEVEL");
-                if (!rs.next()) {
-                    System.out.println("Adding max_unlocked_level column to users table");
-                    stmt.execute("ALTER TABLE users ADD COLUMN max_unlocked_level INT DEFAULT 0 NOT NULL");
-                }
-                rs.close();
-            } catch (SQLException e) {
-                System.err.println("Error checking or adding max_unlocked_level column: " + e.getMessage());
-            }
+                    + "salt VARCHAR(255) NOT NULL)");
 
             // 创建游戏保存记录表(如果不存在)，增加data_hash列用于数据完整性验证
             // 增加game_time列用于存储游戏用时（毫秒）
@@ -204,7 +191,7 @@ public class DatabaseService {
         try (Connection conn = getConnection()) {
             // 检查用户是否存在
             PreparedStatement checkStmt = conn.prepareStatement(
-                    "SELECT password_hash, salt, max_unlocked_level FROM users WHERE username = ?");
+                    "SELECT password_hash, salt FROM users WHERE username = ?");
             checkStmt.setString(1, username);
             ResultSet rs = checkStmt.executeQuery();
 
@@ -212,11 +199,10 @@ public class DatabaseService {
                 // 用户存在，检查密码
                 String storedHash = rs.getString("password_hash");
                 String salt = rs.getString("salt");
-                int maxUnlockedLevel = rs.getInt("max_unlocked_level");
 
                 if (verifyPassword(password, storedHash, salt)) {
-                    // 创建User对象表示登录成功的用户，包含解锁关卡信息
-                    User user = new User(username, null, maxUnlockedLevel); // 不保存明文密码
+                    // 创建User对象表示登录成功的用户
+                    User user = new User(username, null); // 不保存明文密码
                     // 将用户信息存入会话
                     UserSession.getInstance().setCurrentUser(user);
                     return 0; // 登录成功
@@ -229,14 +215,14 @@ public class DatabaseService {
                 String passwordHash = hashPassword(password, salt);
 
                 PreparedStatement insertStmt = conn.prepareStatement(
-                        "INSERT INTO users (username, password_hash, salt, max_unlocked_level) VALUES (?, ?, ?, 0)");
+                        "INSERT INTO users (username, password_hash, salt) VALUES (?, ?, ?)");
                 insertStmt.setString(1, username);
                 insertStmt.setString(2, passwordHash);
                 insertStmt.setString(3, salt);
                 insertStmt.executeUpdate();
 
                 // 创建User对象表示注册成功的用户
-                User user = new User(username, null, 0); // 不保存明文密码，新用户只解锁第一关
+                User user = new User(username, null); // 不保存明文密码
                 // 将用户信息存入会话
                 UserSession.getInstance().setCurrentUser(user);
                 return 1; // 注册成功
@@ -260,42 +246,18 @@ public class DatabaseService {
 
         try (Connection conn = getConnection()) {
             PreparedStatement stmt = conn.prepareStatement(
-                    "SELECT username, max_unlocked_level FROM users WHERE username = ?");
+                    "SELECT username FROM users WHERE username = ?");
             stmt.setString(1, username);
             ResultSet rs = stmt.executeQuery();
 
             if (rs.next()) {
-                int maxUnlockedLevel = rs.getInt("max_unlocked_level");
-                return new User(rs.getString("username"), null, maxUnlockedLevel); // 不返回密码
+                return new User(rs.getString("username"), null); // 不返回密码
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
 
         return null;
-    }
-    
-    /**
-     * 更新用户解锁的关卡
-     * 
-     * @param username 用户名
-     * @param levelIndex 解锁的最高关卡索引
-     * @return 是否更新成功
-     */
-    public boolean updateUserUnlockedLevel(String username, int levelIndex) {
-        try (Connection conn = getConnection()) {
-            PreparedStatement stmt = conn.prepareStatement(
-                    "UPDATE users SET max_unlocked_level = ? WHERE username = ? AND max_unlocked_level < ?");
-            stmt.setInt(1, levelIndex);
-            stmt.setString(2, username);
-            stmt.setInt(3, levelIndex); // 只有当当前解锁关卡小于新关卡时才更新
-            
-            int affected = stmt.executeUpdate();
-            return affected > 0;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return false;
-        }
     }
 
     /**
