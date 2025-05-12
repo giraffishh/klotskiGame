@@ -36,6 +36,7 @@ public class GamePanel extends ListenerPanel {
     private int steps;                       // 当前步数
     private final int GRID_SIZE = 70;        // 网格大小（像素），调整为更大尺寸
     private BoxComponent selectedBox;        // 当前选中的盒子
+    private BoxComponent currentlyHintedBox = null; // 当前高亮的提示方块
 
     /**
      * 构造函数，初始化游戏面板
@@ -525,6 +526,66 @@ public class GamePanel extends ListenerPanel {
     }
 
     /**
+     * 高亮显示指定位置的棋子作为提示。
+     *
+     * @param hintRow 提示棋子所在行的任意一个单元格
+     * @param hintCol 提示棋子所在列的任意一个单元格
+     */
+    public void highlightPieceForHint(int hintRow, int hintCol) {
+        clearHint(); // 清除上一个提示
+
+        for (BoxComponent box : boxes) {
+            int boxR = box.getRow(); // BoxComponent 的左上角行
+            int boxC = box.getCol(); // BoxComponent 的左上角列
+            int boxType = box.getBlockType();
+
+            int boxWidthInCells = 1;
+            int boxHeightInCells = 1;
+
+            // 根据方块类型确定其在网格中的尺寸
+            switch (boxType) {
+                case 1: // 1x1 方块
+                    boxWidthInCells = 1;
+                    boxHeightInCells = 1;
+                    break;
+                case 2: // 2x1 水平方块
+                    boxWidthInCells = 2;
+                    boxHeightInCells = 1;
+                    break;
+                case 3: // 1x2 垂直方块
+                    boxWidthInCells = 1;
+                    boxHeightInCells = 2;
+                    break;
+                case 4: // 2x2 大方块
+                    boxWidthInCells = 2;
+                    boxHeightInCells = 2;
+                    break;
+                default:
+                    // 未知类型的方块，跳过
+                    continue;
+            }
+
+            // 检查提示的坐标 (hintRow, hintCol) 是否落在此 BoxComponent 覆盖的区域内
+            if (hintRow >= boxR && hintRow < (boxR + boxHeightInCells)
+                    && hintCol >= boxC && hintCol < (boxC + boxWidthInCells)) {
+                currentlyHintedBox = box;
+                currentlyHintedBox.setHinted(true);
+                break; // 找到了对应的 BoxComponent，停止搜索
+            }
+        }
+    }
+
+    /**
+     * 清除当前的提示高亮。
+     */
+    public void clearHint() {
+        if (currentlyHintedBox != null) {
+            currentlyHintedBox.setHinted(false);
+            currentlyHintedBox = null;
+        }
+    }
+
+    /**
      * 保存游戏状态，在保存前暂停计时器
      *
      * @return 保存是否成功
@@ -537,4 +598,3 @@ public class GamePanel extends ListenerPanel {
         return false;
     }
 }
-

@@ -164,6 +164,7 @@ public class GameController {
             parentFrame.setMinStepsLabelVisible(isPracticeMode);
             // 竞速模式下禁用保存功能
             parentFrame.setSaveButtonEnabled(isPracticeMode);
+            parentFrame.setHintButtonVisible(isPracticeMode); // 根据模式显示/隐藏提示按钮
         }
 
         gameStateManager.initializeGame();
@@ -184,8 +185,8 @@ public class GameController {
         if (parentFrame != null) {
             boolean isPracticeMode = newModel.getGameMode() == MapModel.PRACTICE_MODE;
             parentFrame.setMinStepsLabelVisible(isPracticeMode);
-            // 竞速模式下禁用保存功能
             parentFrame.setSaveButtonEnabled(isPracticeMode);
+            parentFrame.setHintButtonVisible(isPracticeMode); // 根据模式显示/隐藏提示按钮
         }
 
         gameStateManager.resetWithNewModel(newModel, newView);
@@ -254,8 +255,11 @@ public class GameController {
             // 记录移动操作到历史管理器
             historyManager.recordMove(beforeState, originalRow, originalCol, selectedBox, blockId, direction);
 
-            // 更新最短步数显示
+            // 更新最短步数显示 (此方法内部已包含提示的计算和存储)
             solverManager.updateMinStepsDisplay(timerManager.getGameTimeInMillis(), view.getSteps());
+            if (view != null) {
+                view.clearHint(); // 移动后清除旧提示
+            }
         }
 
         return moved;
@@ -269,8 +273,11 @@ public class GameController {
     public boolean undoMove() {
         boolean success = historyManager.undoMove();
         if (success) {
-            // 更新最短步数显示
+            // 更新最短步数显示 (此方法内部已包含提示的计算和存储)
             solverManager.updateMinStepsDisplay(timerManager.getGameTimeInMillis(), view.getSteps());
+            if (view != null) {
+                view.clearHint(); // 撤销后清除旧提示
+            }
         }
         return success;
     }
@@ -283,8 +290,11 @@ public class GameController {
     public boolean redoMove() {
         boolean success = historyManager.redoMove();
         if (success) {
-            // 更新最短步数显示
+            // 更新最短步数显示 (此方法内部已包含提示的计算和存储)
             solverManager.updateMinStepsDisplay(timerManager.getGameTimeInMillis(), view.getSteps());
+            if (view != null) {
+                view.clearHint(); // 重做后清除旧提示
+            }
         }
         return success;
     }
@@ -339,6 +349,43 @@ public class GameController {
      */
     public void setLoadedGameTime(long gameTime) {
         timerManager.setLoadedGameTime(gameTime);
+    }
+
+    /**
+     * 请求并显示下一步的移动提示。 提示的计算和存储由 SolverManager 在棋盘状态更新时完成。 此方法仅获取该提示并通知视图进行显示。
+     */
+    public void showNextMoveHint() {
+        if (model == null || model.getGameMode() != MapModel.PRACTICE_MODE) {
+            System.out.println("Hint feature is only available in Practice Mode.");
+            if (view != null) {
+                view.clearHint(); // 清除任何可能存在的旧提示
+            }
+            // 可选：通过弹窗或状态栏告知用户
+            // JOptionPane.showMessageDialog(parentFrame, "Hints are only available in Practice Mode.", "Hint Unavailable", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        if (solverManager == null) {
+            System.err.println("SolverManager is not initialized. Cannot show hint.");
+            return;
+        }
+        if (view == null) {
+            System.err.println("GamePanel (view) is not initialized. Cannot display hint.");
+            return;
+        }
+
+        int[] hintCoordinates = solverManager.getNextMoveHint();
+
+        if (hintCoordinates != null && hintCoordinates.length == 2) {
+            System.out.println("Hint: Suggested piece to move is at (" + hintCoordinates[0] + ", " + hintCoordinates[1] + ")");
+            // 调用 GamePanel 的方法来高亮显示这个棋子
+            // 假设 GamePanel 有一个 highlightPieceForHint(int row, int col) 方法
+            view.highlightPieceForHint(hintCoordinates[0], hintCoordinates[1]);
+        } else {
+            System.out.println("No hint available (already solved, unsolvable, or error).");
+            // 可以选择通知 GamePanel 清除任何现有的提示高亮
+            view.clearHint();
+        }
     }
 
     /**

@@ -42,7 +42,9 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
     private final JButton redoBtn;
     // 返回主页面按钮
     private final JButton homeBtn;
-    
+    // 提示按钮
+    private JButton hintBtn; // 新增提示按钮
+
     // 方向控制按钮
     private final JButton upBtn;
     private final JButton downBtn;
@@ -146,30 +148,36 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         redoBtn.setEnabled(false); // 初始时禁用
         this.add(redoBtn);
         controlY += 65;
-        
+
+        // 新增提示按钮 - 放在撤销/重做下方
+        this.hintBtn = FrameUtil.createStyledButton("Hint", true); // 初始可见，但可能根据模式禁用
+        hintBtn.setBounds(controlX, controlY, buttonWidth, 45); // 放在原来撤销按钮的位置下方或旁边
+        this.add(hintBtn);
+        controlY += 65;
+
         // 添加方向控制按钮
         int dirButtonSize = 40; // 方向按钮大小
         int dirButtonGap = 4;  // 按钮之间的间隙
-        
+
         // 计算方向按钮的位置
-        int centerX = controlX + controlWidth/2 - dirButtonSize/2;
-        
+        int centerX = controlX + controlWidth / 2 - dirButtonSize / 2;
+
         // 上方向按钮 - 使用新方法创建
         this.upBtn = FrameUtil.createDirectionButton("↑");
         upBtn.setBounds(centerX, controlY, dirButtonSize, dirButtonSize);
         this.add(upBtn);
-        
+
         controlY += dirButtonSize + dirButtonGap;
-        
+
         // 左、右方向按钮 - 使用新方法创建
         this.leftBtn = FrameUtil.createDirectionButton("←");
         leftBtn.setBounds(centerX - dirButtonSize - dirButtonGap, controlY, dirButtonSize, dirButtonSize);
         this.add(leftBtn);
-        
+
         this.rightBtn = FrameUtil.createDirectionButton("→");
         rightBtn.setBounds(centerX + dirButtonSize + dirButtonGap, controlY, dirButtonSize, dirButtonSize);
         this.add(rightBtn);
-        
+
         // 下方向按钮 - 使用新方法创建
         controlY += dirButtonSize + dirButtonGap;
         this.downBtn = FrameUtil.createDirectionButton("↓");
@@ -186,10 +194,23 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         UserSession.getInstance().addListener(this);
 
         // 窗口关闭时取消注册监听器
+        this.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE); // 阻止默认关闭行为
         this.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                UserSession.getInstance().removeListener(GameFrame.this);
+                // 调用 returnToHome 方法，该方法包含确认对话框
+                // 如果用户确认返回主页，returnToHome 会处理导航
+                // 如果用户取消，则不执行任何操作，窗口保持打开
+                boolean shouldClose = returnToHomeAndConfirm();
+                if (shouldClose) {
+                    // 如果 returnToHomeAndConfirm 返回 true (用户确认且导航成功)
+                    // 那么 FrameManager 已经隐藏了 GameFrame
+                    // 我们还需要确保监听器被移除
+                    UserSession.getInstance().removeListener(GameFrame.this);
+                    // GameFrame 已经被 FrameManager.navigateFromGameToHome() 隐藏
+                    // dispose(); // 如果需要释放资源，可以取消注释，但通常 setVisible(false) 就够了
+                }
+                // 如果 shouldClose 为 false，则不执行任何操作，窗口保持打开
             }
         });
     }
@@ -240,12 +261,22 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
 
         // 为返回主页面按钮添加点击事件监听器
         this.homeBtn.addActionListener(e -> {
-            returnToHome();
+            returnToHomeAndConfirm(); // 修改为调用新的确认方法
             if (gamePanel != null) {
                 gamePanel.requestFocusInWindow();
             }
         });
-        
+
+        // 为提示按钮添加点击事件监听器
+        this.hintBtn.addActionListener(e -> {
+            if (controller != null) {
+                controller.showNextMoveHint(); // 调用 GameController 中的方法
+                gamePanel.requestFocusInWindow();
+            } else {
+                System.err.println("Hint button clicked but controller is null.");
+            }
+        });
+
         // 为方向按钮添加事件监听器
         this.upBtn.addActionListener(e -> {
             if (gamePanel != null) {
@@ -253,21 +284,21 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
                 gamePanel.requestFocusInWindow();
             }
         });
-        
+
         this.downBtn.addActionListener(e -> {
             if (gamePanel != null) {
                 gamePanel.doMoveDown();
                 gamePanel.requestFocusInWindow();
             }
         });
-        
+
         this.leftBtn.addActionListener(e -> {
             if (gamePanel != null) {
                 gamePanel.doMoveLeft();
                 gamePanel.requestFocusInWindow();
             }
         });
-        
+
         this.rightBtn.addActionListener(e -> {
             if (gamePanel != null) {
                 gamePanel.doMoveRight();
@@ -277,9 +308,11 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
     }
 
     /**
-     * 返回主页面
+     * 返回主页面，并处理用户的确认。
+     *
+     * @return 如果用户确认返回并且导航成功，则返回 true；否则返回 false。
      */
-    private void returnToHome() {
+    private boolean returnToHomeAndConfirm() {
         if (controller != null) {
             controller.getTimerManager().stopTimer();
         } else {
@@ -295,10 +328,12 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
 
         if (result == JOptionPane.YES_OPTION) {
             FrameManager.getInstance().navigateFromGameToHome();
+            return true; // 用户确认，导航已执行
         } else {
             if (controller != null) {
-                controller.getTimerManager().startTimer();
+                controller.getTimerManager().startTimer(); // 用户取消，恢复计时器
             }
+            return false; // 用户取消
         }
     }
 
@@ -455,6 +490,17 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
     }
 
     /**
+     * 设置提示按钮的可见性。
+     *
+     * @param visible 是否可见
+     */
+    public void setHintButtonVisible(boolean visible) {
+        if (hintBtn != null) {
+            hintBtn.setVisible(visible);
+        }
+    }
+
+    /**
      * 停止计时器
      */
     public void stopTimer() {
@@ -482,15 +528,14 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
     }
 
     /**
-     * 刷新游戏面板
-     * 当设置改变时需要重新加载图片资源
+     * 刷新游戏面板 当设置改变时需要重新加载图片资源
      */
     public void refreshGamePanel() {
         // 如果游戏面板为空，无需刷新
         if (gamePanel == null) {
             return;
         }
-        
+
         // 刷新面板中的所有方块图像
         for (BoxComponent box : gamePanel.getBoxes()) {
             // 根据方块类型重新加载对应图片
@@ -509,7 +554,7 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
                     break;
             }
         }
-        
+
         // 重绘游戏面板
         gamePanel.repaint();
     }
