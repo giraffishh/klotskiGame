@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <defs>
+    <linearGradient id="homeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7B9EFF"/>
+      <stop offset="70%" stop-color="#4775E3"/>
+      <stop offset="100%" stop-color="#3366CC"/>
+    </linearGradient>
+  </defs>
+  <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8h5z" 
+        fill="url(#homeGradient)" 
+        stroke="#3366CC" 
+        stroke-width="0.35" 
+        stroke-linejoin="round"
+        stroke-linecap="round"/>
+  
+  <!-- 添加更精致的窗户效果 -->
+  <rect x="11" y="14" width="2" height="2" rx="0.5" fill="#FFFFFF" opacity="0.85"/>
+  <rect x="14" y="16" width="2" height="2" rx="0.5" fill="#FFFFFF" opacity="0.85"/>
+</svg>

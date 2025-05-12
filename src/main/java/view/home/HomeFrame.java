@@ -12,6 +12,7 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.SwingConstants;
 import javax.swing.UIManager;
 import javax.swing.WindowConstants;
 
@@ -19,6 +20,7 @@ import controller.core.HomeController;
 import service.UserSession;
 import view.util.FontManager;
 import view.util.FrameUtil;
+import view.util.SvgIconManager;
 
 /**
  * Home页面窗口 显示欢迎信息、用户信息和功能按钮
@@ -85,31 +87,42 @@ public class HomeFrame extends JFrame implements HomeView {
         contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
         FrameUtil.setPadding(contentPanel, 30, 0, 0, 0);
 
+        // 设置按钮样式和位置
+        int buttonPadding = 30; // 按钮文本向右统一偏移量
+
         // 新游戏按钮 (合并原有的New Game和Level Selection功能)
-        newGameButton = FrameUtil.createStyledButton("New Game", true);
+        newGameButton = FrameUtil.createStyledButton("New Game", true, SvgIconManager.getNewGameIcon());
         newGameButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         newGameButton.setMaximumSize(new Dimension(200, 50));
         newGameButton.setPreferredSize(new Dimension(200, 50));
+        // 设置图标和文本间距，使文本向右移动
+        newGameButton.setIconTextGap(buttonPadding);
 
         // 加载游戏按钮
-        loadGameButton = FrameUtil.createStyledButton("Load Game", true);
+        loadGameButton = FrameUtil.createStyledButton("Load Game", true, SvgIconManager.getLoadGameIcon());
         loadGameButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         loadGameButton.setMaximumSize(new Dimension(200, 50));
         loadGameButton.setPreferredSize(new Dimension(200, 50));
+        // 设置图标和文本间距，使文本向右移动
+        loadGameButton.setIconTextGap(buttonPadding);
         // 访客模式下禁用加载按钮
         loadGameButton.setEnabled(!UserSession.getInstance().isGuest());
 
         // 设置按钮
-        settingsButton = FrameUtil.createStyledButton("Settings", false);
+        settingsButton = FrameUtil.createStyledButton("Settings", false, SvgIconManager.getSettingsIcon());
         settingsButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         settingsButton.setMaximumSize(new Dimension(200, 50));
         settingsButton.setPreferredSize(new Dimension(200, 50));
+        // 设置图标和文本间距，使文本向右移动
+        settingsButton.setIconTextGap(buttonPadding);
 
         // 退出登录按钮
-        logoutButton = FrameUtil.createStyledButton("Logout", false);
+        logoutButton = FrameUtil.createStyledButton("Logout", false, SvgIconManager.getLogoutIcon());
         logoutButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         logoutButton.setMaximumSize(new Dimension(200, 50));
         logoutButton.setPreferredSize(new Dimension(200, 50));
+        // 设置图标和文本间距，使文本向右移动
+        logoutButton.setIconTextGap(buttonPadding);
 
         // 添加按钮到内容面板
         contentPanel.add(newGameButton);

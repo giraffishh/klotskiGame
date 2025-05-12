@@ -110,23 +110,6 @@ public class FrameUtil {
         frame.add(jTextField);
         return jTextField;
     }
-
-    /**
-     * 创建按钮
-     * @param frame 父窗口，按钮将被添加到此窗口中
-     * @param name 按钮显示的文本
-     * @param location 按钮在窗口中的位置坐标
-     * @param width 按钮宽度
-     * @param height 按钮高度
-     * @return 创建的JButton实例
-     */
-    public static JButton createButton(JFrame frame, String name, Point location, int width, int height) {
-        JButton button = new JButton(name);
-        button.setLocation(location);
-        button.setSize(width, height);
-        frame.add(button);
-        return button;
-    }
     
     /**
      * 创建一个美化的标题标签
@@ -148,6 +131,17 @@ public class FrameUtil {
      * @return 美化后的按钮
      */
     public static JButton createStyledButton(String text, boolean isPrimary) {
+        return createStyledButton(text, isPrimary, null);
+    }
+    
+    /**
+     * 创建一个美化的带图标的按钮
+     * @param text 按钮文本
+     * @param isPrimary 是否为主要按钮（使用主要颜色）
+     * @param icon 按钮左侧图标
+     * @return 美化后的按钮
+     */
+    public static JButton createStyledButton(String text, boolean isPrimary, Icon icon) {
         JButton button = new JButton(text);
         button.setFont(FontManager.getButtonFont());
         
@@ -157,6 +151,16 @@ public class FrameUtil {
         } else {
             button.setBackground(SECONDARY_COLOR);
             button.setForeground(TEXT_COLOR);
+        }
+        
+        // 设置图标
+        if (icon != null) {
+            button.setIcon(icon);
+            button.setIconTextGap(8); // 设置图标和文本之间的间距
+            button.setHorizontalAlignment(SwingConstants.LEFT);
+            // 使文本居中显示
+            button.setHorizontalTextPosition(SwingConstants.RIGHT);
+            button.setVerticalTextPosition(SwingConstants.CENTER);
         }
         
         // 设置按钮首选大小
@@ -172,9 +176,36 @@ public class FrameUtil {
      * @return 美化后的方向按钮
      */
     public static JButton createDirectionButton(String direction) {
-        JButton button = new JButton(direction);
-        // 使用更大更粗的字体显示箭头
-        button.setFont(new Font("Dialog", Font.BOLD, 20));
+        JButton button = new JButton();
+        
+        // 根据方向设置对应的SVG图标
+        Icon directionIcon = null;
+        switch(direction) {
+            case "↑":
+                directionIcon = SvgIconManager.getUpArrowIcon();
+                break;
+            case "↓":
+                directionIcon = SvgIconManager.getDownArrowIcon();
+                break;
+            case "←":
+                directionIcon = SvgIconManager.getLeftArrowIcon();
+                break;
+            case "→":
+                directionIcon = SvgIconManager.getRightArrowIcon();
+                break;
+            default:
+                // 如果没有匹配的方向，使用文本
+                button.setText(direction);
+                button.setFont(new Font("Dialog", Font.BOLD, 20));
+        }
+        
+        // 设置图标
+        if (directionIcon != null) {
+            button.setIcon(directionIcon);
+            button.setHorizontalAlignment(SwingConstants.CENTER);
+            button.setVerticalAlignment(SwingConstants.CENTER);
+        }
+        
         button.setBackground(SECONDARY_COLOR);
         button.setForeground(TEXT_COLOR);
         button.setFocusPainted(false);

@@ -25,6 +25,7 @@ import javax.swing.event.DocumentListener;
 import controller.core.LoginController;
 import view.util.FontManager;
 import view.util.FrameUtil;
+import view.util.SvgIconManager;
 
 /**
  * 登录界面窗口，提供用户名和密码输入功能 登录成功后可跳转到Home主界面 使用 FlatLaf 浅色主题
@@ -142,9 +143,9 @@ public class LoginFrame extends JFrame implements LoginView {
         confirmPasswordErrorPanel.setVisible(false); // 初始隐藏
 
         // 创建按钮
-        submitBtn = FrameUtil.createStyledButton("Login / Register", true);
+        submitBtn = FrameUtil.createStyledButton("Log / Reg", true, SvgIconManager.getLoginIcon());
         // 访客登录按钮
-        guestLoginBtn = FrameUtil.createStyledButton("Guest Login", false);
+        guestLoginBtn = FrameUtil.createStyledButton("Guest Login", false, SvgIconManager.getGuestIcon());
 
         // 创建按钮面板
         JButton[] buttons = {submitBtn, guestLoginBtn};
@@ -187,16 +188,19 @@ public class LoginFrame extends JFrame implements LoginView {
                     if (userExists) {
                         submitBtn.setText("Login");
                         submitBtn.setBackground(FrameUtil.LOGIN_COLOR);
+                        submitBtn.setMargin(new java.awt.Insets(5, 25, 5, 15)); // 增加左侧内边距，使Login文本右移
                         setRegistrationMode(false); // 隐藏确认密码区域
                     } else {
                         submitBtn.setText("Register");
                         submitBtn.setBackground(FrameUtil.REGISTER_COLOR);
+                        submitBtn.setMargin(new java.awt.Insets(5, 15, 5, 15)); // 使用默认内边距
                         setRegistrationMode(true); // 显示确认密码区域
                     }
                 } else {
                     // 如果用户名为空，恢复原按钮文本和颜色
                     submitBtn.setText("Login / Register");
                     submitBtn.setBackground(FrameUtil.PRIMARY_COLOR);
+                    submitBtn.setMargin(new java.awt.Insets(5, 15, 5, 15)); // 使用默认内边距
                     setRegistrationMode(false); // 隐藏确认密码区域
                 }
             }
@@ -238,12 +242,18 @@ public class LoginFrame extends JFrame implements LoginView {
         if (isRegistration) {
             // 注册模式，使用预定义的注册窗口尺寸
             this.setSize(REGISTER_MODE_SIZE);
+            // 更新按钮文本和图标
+            submitBtn.setText("Register");
+            submitBtn.setMargin(new java.awt.Insets(5, 15, 5, 15)); // 使用默认内边距
         } else {
             // 登录模式，使用预定义的登录窗口尺寸
             this.setSize(LOGIN_MODE_SIZE);
             // 清除确认密码字段和错误提示
             confirmPassword.setText("");
             setConfirmPasswordError(false);
+            // 更新按钮文本和图标，并增加左侧内边距使文本向右移动
+            submitBtn.setText("Login");
+            submitBtn.setMargin(new java.awt.Insets(5, 35, 5, 15)); // 增加左侧内边距，文本右移
         }
 
         // 刷新窗口布局
@@ -300,6 +310,7 @@ public class LoginFrame extends JFrame implements LoginView {
         clearAllErrors();    // 清除所有错误状态
         submitBtn.setText("Login / Register");
         submitBtn.setBackground(FrameUtil.PRIMARY_COLOR);
+        submitBtn.setMargin(new java.awt.Insets(5, 15, 5, 15)); // 重置为默认内边距
         setRegistrationMode(false); // 恢复登录模式
     }
 

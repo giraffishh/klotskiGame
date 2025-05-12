@@ -34,6 +34,7 @@ import controller.core.LevelSelectController;
 import model.MapModel;
 import view.util.FontManager;
 import view.util.FrameUtil;
+import view.util.SvgIconManager;
 
 /**
  * 关卡选择界面 显示所有可用的华容道关卡布局供玩家选择
@@ -133,7 +134,7 @@ public class LevelSelectFrame extends JFrame implements LevelSelectView {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 0));
         // 减小按钮面板上边距
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
-        JButton backButton = FrameUtil.createStyledButton("Home", false);
+        JButton backButton = FrameUtil.createStyledButton("Home", false, SvgIconManager.getHomeIcon());
         // 增大按钮尺寸
         backButton.setPreferredSize(new Dimension(120, 40));
         backButton.setFont(FontManager.getButtonFont().deriveFont(16f));
