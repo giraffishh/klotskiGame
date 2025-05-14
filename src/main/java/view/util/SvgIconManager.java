@@ -12,7 +12,6 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
@@ -29,16 +28,14 @@ public class SvgIconManager {
     // SVG资源基础路径 - 修改为images/icons目录
     private static final String SVG_BASE_PATH = "/images/icons/";
     
-    // 定义标准图标尺寸
-    private static final int SMALL_ICON_SIZE = 16;
-    private static final int MEDIUM_ICON_SIZE = 24;
-    private static final int LARGE_ICON_SIZE = 32;
-    
     // 按钮图标尺寸
     private static final int BUTTON_ICON_SIZE = 20;
     
     // 方向按钮图标尺寸
     private static final int DIRECTION_ICON_SIZE = 26;
+    
+    // 超采样因子 - 提高到4使线条更饱满
+    private static final int SUPERSAMPLING_FACTOR = 4;
     
     /**
      * 获取主页图标
@@ -46,6 +43,14 @@ public class SvgIconManager {
      */
     public static ImageIcon getHomeIcon() {
         return getSvgIcon("home.svg", BUTTON_ICON_SIZE);
+    }
+    
+    /**
+     * 获取返回主页图标（专用于胜利界面）
+     * @return 返回主页图标
+     */
+    public static ImageIcon getBackToHomeIcon() {
+        return getSvgIcon("back_to_home.svg", BUTTON_ICON_SIZE);
     }
     
     /**
@@ -178,6 +183,7 @@ public class SvgIconManager {
     
     /**
      * 加载SVG并转换为ImageIcon
+     * 使用超采样技术提高清晰度
      * @param svgFileName SVG文件名
      * @param size 图标尺寸
      * @return 转换后的ImageIcon，如果加载失败则返回空图标
@@ -192,33 +198,41 @@ public class SvgIconManager {
             String path = SVG_BASE_PATH + svgFileName;
             URL url = SvgIconManager.class.getResource(path);
             if (url == null) {
-                System.err.println("SVG resource not found: " + path);
+                System.err.println("SVG资源未找到: " + path);
                 return createEmptyIcon(size);
             }
+            
+            // 使用更高精度的超采样技术
+            int supersampledSize = size * SUPERSAMPLING_FACTOR;
             
             // 加载SVG文档
             String parser = XMLResourceDescriptor.getXMLParserClassName();
             SAXSVGDocumentFactory factory = new SAXSVGDocumentFactory(parser);
             SVGDocument document = factory.createSVGDocument(url.toString());
             
-            // 转换为图像
-            BufferedImageTranscoder transcoder = new BufferedImageTranscoder();
-            transcoder.addTranscodingHint(ImageTranscoder.KEY_WIDTH, (float) size);
-            transcoder.addTranscodingHint(ImageTranscoder.KEY_HEIGHT, (float) size);
+            // 转换为更大的图像
+            BufferedImageTranscoder transcoder = new EnhancedImageTranscoder();
+            transcoder.addTranscodingHint(ImageTranscoder.KEY_WIDTH, (float) supersampledSize);
+            transcoder.addTranscodingHint(ImageTranscoder.KEY_HEIGHT, (float) supersampledSize);
             transcoder.transcode(new TranscoderInput(document), null);
             
-            BufferedImage image = transcoder.getBufferedImage();
-            ImageIcon icon = new ImageIcon(image);
+            // 获取超采样图像
+            BufferedImage supersampledImage = transcoder.getBufferedImage();
+            
+            // 使用增强的缩放方法
+            BufferedImage finalImage = enhancedScaling(supersampledImage, size);
+            
+            ImageIcon icon = new ImageIcon(finalImage);
             
             // 缓存图标
             iconCache.put(cacheKey, icon);
             
             return icon;
         } catch (IOException e) {
-            System.err.println("Error loading SVG: " + e.getMessage());
+            System.err.println("SVG加载错误: " + e.getMessage());
             return createEmptyIcon(size);
         } catch (TranscoderException e) {
-            System.err.println("Error transcoding SVG: " + e.getMessage());
+            System.err.println("SVG转换错误: " + e.getMessage());
             return createEmptyIcon(size);
         }
     }
@@ -233,31 +247,59 @@ public class SvgIconManager {
         return new ImageIcon(emptyImage);
     }
     
+
     /**
-     * 缓存并返回特定尺寸的SVG图标（从输入流读取）
+     * 增强的图像缩放方法，使线条更饱满平滑
      */
-    public static ImageIcon getSvgIconFromStream(InputStream inputStream, int size) {
-        try {
-            // 加载SVG文档
-            String parser = XMLResourceDescriptor.getXMLParserClassName();
-            SAXSVGDocumentFactory factory = new SAXSVGDocumentFactory(parser);
-            SVGDocument document = factory.createSVGDocument(null, inputStream);
+    private static BufferedImage enhancedScaling(BufferedImage source, int targetSize) {
+        // 创建目标图像
+        BufferedImage target = new BufferedImage(targetSize, targetSize, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2d = target.createGraphics();
+        
+        // 应用高质量渲染提示
+        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2d.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
+        g2d.setRenderingHint(RenderingHints.KEY_COLOR_RENDERING, RenderingHints.VALUE_COLOR_RENDER_QUALITY);
+        g2d.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
+        g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        
+        // 绘制图像，稍微扩大0.5像素以增加饱满度
+        int padding = 1;
+        g2d.drawImage(source, -padding, -padding, 
+                      targetSize + padding*2, targetSize + padding*2, null);
+        g2d.dispose();
+        
+        // 应用轻微模糊以使线条更加平滑
+        return applyLightBlur(target);
+    }
+    
+    /**
+     * 应用轻微模糊，增强线条平滑度
+     */
+    private static BufferedImage applyLightBlur(BufferedImage image) {
+        float[] blurKernel = {
+            0.01f, 0.02f, 0.01f,
+            0.02f, 0.88f, 0.02f,
+            0.01f, 0.02f, 0.01f
+        };
+        
+        java.awt.image.ConvolveOp blurOp = new java.awt.image.ConvolveOp(
+            new java.awt.image.Kernel(3, 3, blurKernel),
+            java.awt.image.ConvolveOp.EDGE_NO_OP, null);
             
-            // 转换为图像
-            BufferedImageTranscoder transcoder = new BufferedImageTranscoder();
-            transcoder.addTranscodingHint(ImageTranscoder.KEY_WIDTH, (float) size);
-            transcoder.addTranscodingHint(ImageTranscoder.KEY_HEIGHT, (float) size);
-            transcoder.transcode(new TranscoderInput(document), null);
-            
-            BufferedImage image = transcoder.getBufferedImage();
-            return new ImageIcon(image);
-            
-        } catch (IOException e) {
-            System.err.println("Error loading SVG: " + e.getMessage());
-            return null;
-        } catch (TranscoderException e) {
-            System.err.println("Error transcoding SVG: " + e.getMessage());
-            return null;
+        return blurOp.filter(image, null);
+    }
+    
+    /**
+     * 增强版的图像转码器，提供更精细的渲染控制
+     */
+    private static class EnhancedImageTranscoder extends BufferedImageTranscoder {
+        @Override
+        public BufferedImage createImage(int width, int height) {
+            // 使用预乘Alpha的ARGB格式，提高渲染质量
+            return new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB_PRE);
         }
     }
     

@@ -1,22 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-  <defs>
-    <linearGradient id="saveGradient" x1="0%" y1="0%" x2="100%">
-      <stop offset="0%" stop-color="#23B9FF"/>
-      <stop offset="50%" stop-color="#0695D6"/>
-      <stop offset="100%" stop-color="#0277BD"/>
-    </linearGradient>
-    <radialGradient id="diskGradient" cx="50%" cy="50%" r="70%">
-      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="1"/>
-      <stop offset="100%" stop-color="#E6E6E6" stop-opacity="0.8"/>
-    </radialGradient>
-  </defs>
-  <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z" 
-        fill="url(#saveGradient)" 
-        stroke="#0277BD" 
-        stroke-width="0.35" 
-        stroke-linejoin="round"
-        stroke-linecap="round"/>
-  
-  <!-- 改进磁盘效果 -->
-  <circle cx="12" cy="16" r="2" fill="url(#diskGradient)"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32" height="32" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M5 8C5 6.89543 5.89543 6 7 6H19L24 12H41C42.1046 12 43 12.8954 43 14V40C43 41.1046 42.1046 42 41 42H7C5.89543 42 5 41.1046 5 40V8Z" fill="none" stroke="#ffffff" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M30 28L23.9933 34L18 28.0134" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M24 20V34" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

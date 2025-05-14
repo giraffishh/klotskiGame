@@ -38,4 +38,16 @@ public interface SettingsView {
      * 关闭设置页面
      */
     void closeSettings();
+
+    /**
+     * 显示控制按钮设置
+     * @param enabled 是否启用控制按钮
+     */
+    void displayControlButtonsSetting(boolean enabled);
+
+    /**
+     * 获取当前控制按钮设置
+     * @return 是否启用控制按钮
+     */
+    boolean isControlButtonsEnabled();
 }

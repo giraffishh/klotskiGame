@@ -228,7 +228,7 @@ public class VictoryFrame extends JFrame implements VictoryView {
         mainPanel.add(Box.createRigidArea(new Dimension(0, 15)));
 
         // 创建按钮，添加相应的图标
-        homeButton = FrameUtil.createStyledButton("Back to Home", true, SvgIconManager.getHomeIcon());
+        homeButton = FrameUtil.createStyledButton("Back to Home", true, SvgIconManager.getBackToHomeIcon());
         levelSelectButton = FrameUtil.createStyledButton("Level Select", true, SvgIconManager.getBackIcon());
         restartButton = FrameUtil.createStyledButton("Play Again", true, SvgIconManager.getRestartIcon());
         nextLevelButton = FrameUtil.createStyledButton("Next Level", true, SvgIconManager.getNewGameIcon());

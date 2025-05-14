@@ -1,15 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-  <defs>
-    <linearGradient id="loginGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#23D9FF"/>
-      <stop offset="50%" stop-color="#14A9F4"/>
-      <stop offset="100%" stop-color="#1c74e7"/>
-    </linearGradient>
-  </defs>
-  <path d="M11 7L9.6 8.4c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L12.17 8H2c-.55 0-1 .45-1 1v6c0 .55.45 1 1 1h10.17l-1.58 1.59c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0l4-4c.39-.39.39-1.02 0-1.41l-4-4c-.39-.39-1.02-.39-1.41 0zM20 3h-8c-1.1 0-2 .9-2 2v4h2V5h8v14h-8v-4h-2v4c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z" 
-        fill="url(#loginGradient)" 
-        stroke="#1c74e7" 
-        stroke-width="0.35" 
-        stroke-linejoin="round"
-        stroke-linecap="round"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32" height="32" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M23.9917 6H6V42H24" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M25 33L16 24L25 15" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M42 23.9917H16" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

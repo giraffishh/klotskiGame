@@ -5,6 +5,7 @@ import com.formdev.flatlaf.FlatLightLaf;
 import service.DatabaseService;
 import service.UserSession;
 import service.UserSession.UserSessionListener;
+import view.util.FrameManager;
 
 import javax.swing.*;
 import java.awt.*;
@@ -25,8 +26,10 @@ public class AppSettings implements UserSessionListener {
     // 设置相关常量
     private static final String DEFAULT_THEME = "Light";
     private static final String DEFAULT_BLOCK_THEME = "Default";
+    private static final String DEFAULT_CONTROL_BUTTONS_ENABLED = "false"; // 默认为不启用
     private static final String THEME_KEY = "theme";
     private static final String BLOCK_THEME_KEY = "blocktheme";
+    private static final String CONTROL_BUTTONS_KEY = "controlbuttons";
     
     /**
      * 私有构造方法
@@ -72,6 +75,7 @@ public class AppSettings implements UserSessionListener {
         currentSettings.clear();
         currentSettings.put(THEME_KEY, DEFAULT_THEME);
         currentSettings.put(BLOCK_THEME_KEY, DEFAULT_BLOCK_THEME);
+        currentSettings.put(CONTROL_BUTTONS_KEY, DEFAULT_CONTROL_BUTTONS_ENABLED);
         
         // 应用默认主题
         applyCurrentTheme();
@@ -170,6 +174,33 @@ public class AppSettings implements UserSessionListener {
         currentSettings.put(BLOCK_THEME_KEY, blockThemeName);
         settingsChanged = true;
         return saveSetting(BLOCK_THEME_KEY, blockThemeName);
+    }
+    
+    /**
+     * 获取是否启用控制按钮
+     * @return 是否启用控制按钮
+     */
+    public boolean isControlButtonsEnabled() {
+        return Boolean.parseBoolean(getSetting(CONTROL_BUTTONS_KEY, DEFAULT_CONTROL_BUTTONS_ENABLED));
+    }
+
+    /**
+     * 设置是否启用控制按钮
+     * @param enabled 是否启用
+     * @return 是否成功应用设置
+     */
+    public boolean setControlButtonsEnabled(boolean enabled) {
+        boolean oldValue = isControlButtonsEnabled();
+        currentSettings.put(CONTROL_BUTTONS_KEY, String.valueOf(enabled));
+        settingsChanged = true;
+        boolean result = saveSetting(CONTROL_BUTTONS_KEY, String.valueOf(enabled));
+        
+        // 如果值发生了变化，通知界面管理器刷新
+        if (oldValue != enabled) {
+            FrameManager.getInstance().refreshGameInterface();
+        }
+        
+        return result;
     }
     
     /**
