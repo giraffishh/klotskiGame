@@ -186,22 +186,22 @@ public class LoginFrame extends JFrame implements LoginView {
                     boolean userExists = controller.checkUserExists(usernameText);
                     // 根据检查结果更新按钮文本和颜色
                     if (userExists) {
+                        setRegistrationMode(false); // 登录模式
                         submitBtn.setText("Login");
                         submitBtn.setBackground(FrameUtil.LOGIN_COLOR);
-                        submitBtn.setMargin(new java.awt.Insets(5, 25, 5, 15)); // 增加左侧内边距，使Login文本右移
-                        setRegistrationMode(false); // 隐藏确认密码区域
+                        submitBtn.setMargin(new java.awt.Insets(5, 35, 5, 15));
                     } else {
+                        setRegistrationMode(true); // 注册模式
                         submitBtn.setText("Register");
                         submitBtn.setBackground(FrameUtil.REGISTER_COLOR);
-                        submitBtn.setMargin(new java.awt.Insets(5, 15, 5, 15)); // 使用默认内边距
-                        setRegistrationMode(true); // 显示确认密码区域
+                        submitBtn.setMargin(new java.awt.Insets(5, 20, 5, 15));
                     }
                 } else {
                     // 如果用户名为空，恢复原按钮文本和颜色
-                    submitBtn.setText("Login / Register");
-                    submitBtn.setBackground(FrameUtil.PRIMARY_COLOR);
-                    submitBtn.setMargin(new java.awt.Insets(5, 15, 5, 15)); // 使用默认内边距
                     setRegistrationMode(false); // 隐藏确认密码区域
+                    submitBtn.setText("Log / Reg");
+                    submitBtn.setBackground(FrameUtil.PRIMARY_COLOR);
+                    submitBtn.setMargin(new java.awt.Insets(5, 15, 5, 15));
                 }
             }
         });
@@ -242,18 +242,12 @@ public class LoginFrame extends JFrame implements LoginView {
         if (isRegistration) {
             // 注册模式，使用预定义的注册窗口尺寸
             this.setSize(REGISTER_MODE_SIZE);
-            // 更新按钮文本和图标
-            submitBtn.setText("Register");
-            submitBtn.setMargin(new java.awt.Insets(5, 15, 5, 15)); // 使用默认内边距
         } else {
             // 登录模式，使用预定义的登录窗口尺寸
             this.setSize(LOGIN_MODE_SIZE);
             // 清除确认密码字段和错误提示
             confirmPassword.setText("");
             setConfirmPasswordError(false);
-            // 更新按钮文本和图标，并增加左侧内边距使文本向右移动
-            submitBtn.setText("Login");
-            submitBtn.setMargin(new java.awt.Insets(5, 35, 5, 15)); // 增加左侧内边距，文本右移
         }
 
         // 刷新窗口布局
@@ -308,9 +302,9 @@ public class LoginFrame extends JFrame implements LoginView {
         password.setText(""); // 清空密码
         confirmPassword.setText(""); // 清空确认密码
         clearAllErrors();    // 清除所有错误状态
-        submitBtn.setText("Login / Register");
+        submitBtn.setText("Log / Reg");
         submitBtn.setBackground(FrameUtil.PRIMARY_COLOR);
-        submitBtn.setMargin(new java.awt.Insets(5, 15, 5, 15)); // 重置为默认内边距
+        submitBtn.setMargin(new java.awt.Insets(5, 15, 5, 15));
         setRegistrationMode(false); // 恢复登录模式
     }
 
