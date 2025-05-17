@@ -25,6 +25,7 @@ import javax.swing.event.DocumentListener;
 import controller.core.LoginController;
 import view.util.FontManager;
 import view.util.FrameUtil;
+import view.util.SvgIconManager;
 
 /**
  * 登录界面窗口，提供用户名和密码输入功能 登录成功后可跳转到Home主界面 使用 FlatLaf 浅色主题
@@ -142,9 +143,9 @@ public class LoginFrame extends JFrame implements LoginView {
         confirmPasswordErrorPanel.setVisible(false); // 初始隐藏
 
         // 创建按钮
-        submitBtn = FrameUtil.createStyledButton("Login / Register", true);
+        submitBtn = FrameUtil.createStyledButton("Log / Reg", true, SvgIconManager.getLoginIcon());
         // 访客登录按钮
-        guestLoginBtn = FrameUtil.createStyledButton("Guest Login", false);
+        guestLoginBtn = FrameUtil.createStyledButton("Guest Login", false, SvgIconManager.getGuestIcon());
 
         // 创建按钮面板
         JButton[] buttons = {submitBtn, guestLoginBtn};
@@ -185,19 +186,22 @@ public class LoginFrame extends JFrame implements LoginView {
                     boolean userExists = controller.checkUserExists(usernameText);
                     // 根据检查结果更新按钮文本和颜色
                     if (userExists) {
+                        setRegistrationMode(false); // 登录模式
                         submitBtn.setText("Login");
                         submitBtn.setBackground(FrameUtil.LOGIN_COLOR);
-                        setRegistrationMode(false); // 隐藏确认密码区域
+                        submitBtn.setMargin(new java.awt.Insets(5, 35, 5, 15));
                     } else {
+                        setRegistrationMode(true); // 注册模式
                         submitBtn.setText("Register");
                         submitBtn.setBackground(FrameUtil.REGISTER_COLOR);
-                        setRegistrationMode(true); // 显示确认密码区域
+                        submitBtn.setMargin(new java.awt.Insets(5, 20, 5, 15));
                     }
                 } else {
                     // 如果用户名为空，恢复原按钮文本和颜色
-                    submitBtn.setText("Login / Register");
-                    submitBtn.setBackground(FrameUtil.PRIMARY_COLOR);
                     setRegistrationMode(false); // 隐藏确认密码区域
+                    submitBtn.setText("Log / Reg");
+                    submitBtn.setBackground(FrameUtil.PRIMARY_COLOR);
+                    submitBtn.setMargin(new java.awt.Insets(5, 15, 5, 15));
                 }
             }
         });
@@ -298,8 +302,9 @@ public class LoginFrame extends JFrame implements LoginView {
         password.setText(""); // 清空密码
         confirmPassword.setText(""); // 清空确认密码
         clearAllErrors();    // 清除所有错误状态
-        submitBtn.setText("Login / Register");
+        submitBtn.setText("Log / Reg");
         submitBtn.setBackground(FrameUtil.PRIMARY_COLOR);
+        submitBtn.setMargin(new java.awt.Insets(5, 15, 5, 15));
         setRegistrationMode(false); // 恢复登录模式
     }
 

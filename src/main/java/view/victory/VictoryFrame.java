@@ -33,6 +33,7 @@ import org.bson.Document;
 import controller.storage.rank.RankManager;
 import view.util.FontManager;
 import view.util.FrameUtil;
+import view.util.SvgIconManager;
 
 /**
  * 游戏胜利界面，显示胜利消息和提供不同的后续操作按钮
@@ -226,12 +227,18 @@ public class VictoryFrame extends JFrame implements VictoryView {
         mainPanel.add(leaderboardPanel);
         mainPanel.add(Box.createRigidArea(new Dimension(0, 15)));
 
-        // 创建按钮
-        homeButton = FrameUtil.createStyledButton("Back to Home", true);
-        levelSelectButton = FrameUtil.createStyledButton("Level Select", true);
-        restartButton = FrameUtil.createStyledButton("Play Again", true);
-        nextLevelButton = FrameUtil.createStyledButton("Next Level", true);
-
+        // 创建按钮，添加相应的图标
+        homeButton = FrameUtil.createStyledButton("Back to Home", true, SvgIconManager.getBackToHomeIcon());
+        levelSelectButton = FrameUtil.createStyledButton("Level Select", true, SvgIconManager.getBackIcon());
+        restartButton = FrameUtil.createStyledButton("Play Again", true, SvgIconManager.getRestartIcon());
+        nextLevelButton = FrameUtil.createStyledButton("Next Level", true, SvgIconManager.getNewGameIcon());
+        
+        // 设置按钮文本居中
+        homeButton.setHorizontalAlignment(SwingConstants.CENTER);
+        levelSelectButton.setHorizontalAlignment(SwingConstants.CENTER);
+        restartButton.setHorizontalAlignment(SwingConstants.CENTER);
+        nextLevelButton.setHorizontalAlignment(SwingConstants.CENTER);
+        
         // 创建按钮面板
         JPanel buttonPanel = new JPanel(new GridLayout(2, 2, 15, 15));
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(5, 10, 10, 10)); // 减少顶部边距

@@ -31,9 +31,11 @@ public class SettingsController {
         // 加载并显示当前设置
         String currentTheme = appSettings.getCurrentTheme();
         String currentBlockTheme = appSettings.getCurrentBlockTheme();
+        boolean controlButtonsEnabled = appSettings.isControlButtonsEnabled();
         
         settingsView.displayThemeSetting(currentTheme);
         settingsView.displayBlockThemeSetting(currentBlockTheme);
+        settingsView.displayControlButtonsSetting(controlButtonsEnabled);
     }
 
     /**
@@ -43,17 +45,21 @@ public class SettingsController {
         // 获取用户选择的设置
         String selectedTheme = settingsView.getSelectedTheme();
         String selectedBlockTheme = settingsView.getSelectedBlockTheme();
+        boolean controlButtonsEnabled = settingsView.isControlButtonsEnabled();
         UserSession session = UserSession.getInstance();
 
         // 检查设置是否变化
         String currentTheme = appSettings.getCurrentTheme();
         String currentBlockTheme = appSettings.getCurrentBlockTheme();
+        boolean currentControlButtonsEnabled = appSettings.isControlButtonsEnabled();
         boolean settingsChanged = !currentTheme.equals(selectedTheme) || 
-                                 !currentBlockTheme.equals(selectedBlockTheme);
+                                 !currentBlockTheme.equals(selectedBlockTheme) ||
+                                 currentControlButtonsEnabled != controlButtonsEnabled;
 
         // 应用设置
         boolean themeApplied = appSettings.setCurrentTheme(selectedTheme);
         boolean blockThemeApplied = appSettings.setCurrentBlockTheme(selectedBlockTheme);
+        boolean controlButtonsApplied = appSettings.setControlButtonsEnabled(controlButtonsEnabled);
         
         // 重置图片缓存
         ImageManager.resetImageCache();

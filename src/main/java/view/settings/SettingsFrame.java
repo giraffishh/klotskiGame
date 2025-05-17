@@ -16,6 +16,7 @@ public class SettingsFrame extends JFrame implements SettingsView {
     private JLabel titleLabel;
     private JComboBox<String> themeComboBox;
     private JComboBox<String> blockThemeComboBox;
+    private JComboBox<String> controlButtonsComboBox; 
     private JButton saveButton;
     private JButton cancelButton;
     
@@ -70,6 +71,8 @@ public class SettingsFrame extends JFrame implements SettingsView {
         settingsPanel.add(createThemePanel());
         settingsPanel.add(Box.createVerticalStrut(10));
         settingsPanel.add(createBlockThemePanel());
+        settingsPanel.add(Box.createVerticalStrut(10));
+        settingsPanel.add(createControlButtonsPanel()); // 新增控制按钮面板
         
         // 添加按钮面板
         mainPanel.add(createButtonPanel(), BorderLayout.SOUTH);
@@ -111,6 +114,26 @@ public class SettingsFrame extends JFrame implements SettingsView {
         
         panel.add(label);
         panel.add(blockThemeComboBox);
+        
+        return panel;
+    }
+    
+    /**
+     * 创建控制按钮设置面板
+     */
+    private JPanel createControlButtonsPanel() {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        JLabel label = new JLabel("Control Buttons:");
+        label.setFont(FontManager.getRegularFont(16));
+        
+        controlButtonsComboBox = new JComboBox<>(new String[]{"Disabled", "Enabled"});
+        controlButtonsComboBox.setFont(FontManager.getRegularFont(16));
+        controlButtonsComboBox.setPreferredSize(new Dimension(150, 30));
+        
+        panel.add(label);
+        panel.add(controlButtonsComboBox);
         
         return panel;
     }
@@ -187,6 +210,19 @@ public class SettingsFrame extends JFrame implements SettingsView {
     @Override
     public String getSelectedBlockTheme() {
         return blockThemeComboBox != null ? (String) blockThemeComboBox.getSelectedItem() : null;
+    }
+
+    @Override
+    public void displayControlButtonsSetting(boolean enabled) {
+        if (controlButtonsComboBox != null) {
+            controlButtonsComboBox.setSelectedItem(enabled ? "Enabled" : "Disabled");
+        }
+    }
+
+    @Override
+    public boolean isControlButtonsEnabled() {
+        return controlButtonsComboBox != null && 
+               "Enabled".equals(controlButtonsComboBox.getSelectedItem());
     }
 
     @Override

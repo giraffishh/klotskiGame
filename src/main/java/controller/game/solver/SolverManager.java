@@ -101,8 +101,8 @@ public class SolverManager {
         this.lastCalculatedHint = null; // 每次更新前重置提示
         try {
             // 获取当前游戏布局的序列化表示
-            long currentLayout = model.getSerializedLayout();
-            BoardState currentState = new BoardState(currentLayout);
+            long currentActualLayout = model.getSerializedLayout(); // 当前实际布局
+            BoardState currentState = new BoardState(currentActualLayout);
 
             // 记录求解开始时间
             long solverStartTime = System.currentTimeMillis();
@@ -121,15 +121,35 @@ public class SolverManager {
                 // 输出当前求解信息
                 System.out.println("[findPathFrom] Current layout solved in: " + (endTime - solverStartTime) + " ms");
                 System.out.println("[findPathFrom] A* nodes explored: " + solver.getNodesExploredAStar());
-                System.out.println("[findPathFrom] Minimum steps: " + minSteps);
+                System.out.println("[findPathFrom] Minimum steps from current state: " + minSteps);
 
                 // 如果路径足够长，计算下一步提示
                 if (path.size() >= 2) {
-                    long currentLayoutLong = path.get(0).getLayout();
-                    long nextLayoutLong = path.get(1).getLayout();
-                    this.lastCalculatedHint = findMovedPieceCoordinates(currentLayoutLong, nextLayoutLong);
+                    long pathStep0Layout = path.get(0).getLayout();
+                    long nextOptimalStepLayout = path.get(1).getLayout();
+
+                    // 检查路径的第0步是否与当前实际布局对称
+                    if (pathStep0Layout != currentActualLayout) {
+                        System.out.println("Hint: Path is based on the symmetric form of the current layout. Adjusting next step for hint.");
+                        // 对称反转 nextOptimalStepLayout 以匹配当前实际棋盘
+                        nextOptimalStepLayout = KlotskiSolver.getSymmetricLayout(nextOptimalStepLayout);
+                        // 验证：反转后的 pathStep0 应该等于 currentActualLayout
+                        if (KlotskiSolver.getSymmetricLayout(pathStep0Layout) != currentActualLayout) {
+                            System.err.println("Symmetry logic error: Flipped pathStep0Layout does not match currentActualLayout.");
+                        }
+                    }
+
+                    // 使用 currentActualLayout 和（可能已调整的）nextOptimalStepLayout 来生成提示
+                    this.lastCalculatedHint = findMovedPieceCoordinates(currentActualLayout, nextOptimalStepLayout);
+
+                    if (this.lastCalculatedHint != null) {
+                        System.out.println("Hint generated for piece at: (" + this.lastCalculatedHint[0] + ", " + this.lastCalculatedHint[1] + ") based on optimal path from current state.");
+                    } else {
+                        System.out.println("Hint could not be generated from path step.");
+                    }
                 } else {
                     this.lastCalculatedHint = null; // 路径不足以生成提示
+                    System.out.println("Path from current state is too short to generate a hint.");
                 }
 
                 // 使用胜利控制器检查胜利条件

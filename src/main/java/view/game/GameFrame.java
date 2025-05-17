@@ -10,12 +10,14 @@ import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
 import controller.core.GameController;
+import model.AppSettings;
 import model.MapModel;
 import service.UserSession;
 import view.util.FrameManager;
 import view.util.FrameUtil;
 import view.util.ImageManager;
 import view.victory.VictoryFrame;
+import view.util.SvgIconManager;
 
 /**
  * 游戏主窗口类 包含游戏面板和控制按钮等组件 负责显示游戏界面和处理用户交互
@@ -45,11 +47,11 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
     // 提示按钮
     private JButton hintBtn; // 新增提示按钮
 
-    // 方向控制按钮
-    private final JButton upBtn;
-    private final JButton downBtn;
-    private final JButton leftBtn;
-    private final JButton rightBtn;
+    // 方向控制按钮 
+    private JButton upBtn;
+    private JButton downBtn;
+    private JButton leftBtn;
+    private JButton rightBtn;
 
     // 胜利界面
     private final VictoryFrame victoryFrame;
@@ -68,11 +70,11 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         this.setLayout(null);
 
         // 添加返回主页按钮到左上角
-        this.homeBtn = FrameUtil.createStyledButton("Home", false);
-        homeBtn.setBounds(10, 10, 80, 35); // 位置在左上角，大小为80x35
+        this.homeBtn = FrameUtil.createStyledButton("Home", false, SvgIconManager.getHomeIcon());
+        homeBtn.setBounds(10, 10, 100, 35); // 位置在左上角，大小为100x35
         this.add(homeBtn);
 
-        // 创建游戏面板（可以传入null模型，稍后再设置）
+        // 创建游戏面板（可以传入null模型，稍后再设置） 
         gamePanel = new GamePanel(null); // Pass null, model will be set in initializeGamePanel
 
         // 使用默认大小计算窗口尺寸
@@ -93,28 +95,28 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         this.add(gamePanel);
 
         // 计算右侧控制区域的起始位置和尺寸
-        int controlX = panelX + panelWidth + 20;
-        int controlY = panelY + 20;
+        int controlX = panelX + panelWidth - 10;
+        int controlY = panelY ;
         int controlWidth = windowWidth - controlX - 50; // 右边距从40增加到50
-        int buttonWidth = Math.min((controlWidth - 20) / 2, 110); // 限制按钮最大宽度
+        int buttonWidth = Math.min((controlWidth -20) / 2 + 20, 120); // 限制按钮最大宽度
 
         // 用时显示标签 - 放在最上方
         this.timeLabel = FrameUtil.createTitleLabel("Time: 00:00.00", JLabel.CENTER);
         timeLabel.setBounds(controlX, controlY, controlWidth, 30);
         this.add(timeLabel);
-        controlY += 40;
+        controlY += 35;
 
         // 步数显示标签 - 放在中间
         this.stepLabel = FrameUtil.createTitleLabel("Steps: 0", JLabel.CENTER);
         stepLabel.setBounds(controlX, controlY, controlWidth, 30);
         this.add(stepLabel);
-        controlY += 40;
+        controlY += 35;
 
         // 最短步数显示标签 - 放在最下方
         this.minStepsLabel = FrameUtil.createTitleLabel("Min Steps: --", JLabel.CENTER);
         minStepsLabel.setBounds(controlX, controlY, controlWidth, 30);
         this.add(minStepsLabel);
-        controlY += 50;
+        controlY += 40;
 
         // 将步数标签、最短步数标签和时间标签设置到游戏面板中
         if (stepLabel != null) {
@@ -128,61 +130,35 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         }
 
         // 第一行按钮：左侧重启，右侧保存
-        this.restartBtn = FrameUtil.createStyledButton("Restart", true);
+        this.restartBtn = FrameUtil.createStyledButton("Restart", true, SvgIconManager.getRestartIcon());
         restartBtn.setBounds(controlX, controlY, buttonWidth, 45);
         this.add(restartBtn);
 
-        this.saveBtn = FrameUtil.createStyledButton("Save", true);
+        this.saveBtn = FrameUtil.createStyledButton("Save", true, SvgIconManager.getSaveIcon());
         saveBtn.setBounds(controlX + buttonWidth + 20, controlY, buttonWidth, 45);
         this.add(saveBtn);
-        controlY += 65;
+        controlY += 55;
 
         // 第二行按钮：左侧撤销，右侧重做
-        this.undoBtn = FrameUtil.createStyledButton("Undo", false);
+        this.undoBtn = FrameUtil.createStyledButton("Undo", false, SvgIconManager.getUndoIcon());
         undoBtn.setBounds(controlX, controlY, buttonWidth, 45);
         undoBtn.setEnabled(false); // 初始时禁用
         this.add(undoBtn);
 
-        this.redoBtn = FrameUtil.createStyledButton("Redo", false);
+        this.redoBtn = FrameUtil.createStyledButton("Redo", false, SvgIconManager.getRedoIcon());
         redoBtn.setBounds(controlX + buttonWidth + 20, controlY, buttonWidth, 45);
         redoBtn.setEnabled(false); // 初始时禁用
         this.add(redoBtn);
-        controlY += 65;
+        controlY += 55;
 
-        // 新增提示按钮 - 放在撤销/重做下方
-        this.hintBtn = FrameUtil.createStyledButton("Hint", true); // 初始可见，但可能根据模式禁用
-        hintBtn.setBounds(controlX, controlY, buttonWidth, 45); // 放在原来撤销按钮的位置下方或旁边
+        // 提示按钮 - 放在撤销/重做下方
+        this.hintBtn = FrameUtil.createStyledButton("Hint", true, SvgIconManager.getHintIcon()); // 添加图标
+        hintBtn.setBounds(controlX + buttonWidth/2 +10, controlY, buttonWidth, 45); 
         this.add(hintBtn);
-        controlY += 65;
+        controlY += 55;
 
-        // 添加方向控制按钮
-        int dirButtonSize = 40; // 方向按钮大小
-        int dirButtonGap = 4;  // 按钮之间的间隙
-
-        // 计算方向按钮的位置
-        int centerX = controlX + controlWidth / 2 - dirButtonSize / 2;
-
-        // 上方向按钮 - 使用新方法创建
-        this.upBtn = FrameUtil.createDirectionButton("↑");
-        upBtn.setBounds(centerX, controlY, dirButtonSize, dirButtonSize);
-        this.add(upBtn);
-
-        controlY += dirButtonSize + dirButtonGap;
-
-        // 左、右方向按钮 - 使用新方法创建
-        this.leftBtn = FrameUtil.createDirectionButton("←");
-        leftBtn.setBounds(centerX - dirButtonSize - dirButtonGap, controlY, dirButtonSize, dirButtonSize);
-        this.add(leftBtn);
-
-        this.rightBtn = FrameUtil.createDirectionButton("→");
-        rightBtn.setBounds(centerX + dirButtonSize + dirButtonGap, controlY, dirButtonSize, dirButtonSize);
-        this.add(rightBtn);
-
-        // 下方向按钮 - 使用新方法创建
-        controlY += dirButtonSize + dirButtonGap;
-        this.downBtn = FrameUtil.createDirectionButton("↓");
-        downBtn.setBounds(centerX, controlY, dirButtonSize, dirButtonSize);
-        this.add(downBtn);
+        // 使用新方法添加方向控制按钮
+        addDirectionButtons(controlX, controlY, controlWidth, buttonWidth);
 
         // 初始化胜利界面
         this.victoryFrame = new VictoryFrame(this);
@@ -399,6 +375,9 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
 
             gamePanel.requestFocusInWindow();
 
+            // 在初始化完成后更新控制按钮可见性
+            updateControlButtonsVisibility();
+
         } catch (Exception e) {
             System.err.println("Failed to load level: " + e.getMessage() + " Exception details: " + e);
             JOptionPane.showMessageDialog(
@@ -557,5 +536,62 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
 
         // 重绘游戏面板
         gamePanel.repaint();
+        
+        // 更新控制按钮的可见性
+        updateControlButtonsVisibility();
+    }
+
+    // 添加方向控制按钮
+    private void addDirectionButtons(int controlX, int controlY, int controlWidth, int buttonWidth) {
+        // 检查是否启用控制按钮
+        AppSettings appSettings = AppSettings.getInstance();
+        boolean controlButtonsEnabled = appSettings.isControlButtonsEnabled();
+        
+        // 创建按钮
+        int dirButtonSize = 40; // 方向按钮大小
+        int dirButtonGap = 15;  // 按钮之间的间隙
+
+        // 计算方向按钮的位置
+        int centerX = controlX + controlWidth / 2 - dirButtonSize / 2;
+
+        // 上方向按钮
+        this.upBtn = FrameUtil.createDirectionButton("↑");
+        upBtn.setBounds(centerX, controlY, dirButtonSize, dirButtonSize);
+        upBtn.setVisible(controlButtonsEnabled);
+        this.add(upBtn);
+
+        controlY += dirButtonSize + dirButtonGap;
+
+        // 左、右方向按钮
+        this.leftBtn = FrameUtil.createDirectionButton("←");
+        leftBtn.setBounds(centerX - dirButtonSize - dirButtonGap, controlY, dirButtonSize, dirButtonSize);
+        leftBtn.setVisible(controlButtonsEnabled);
+        this.add(leftBtn);
+
+        this.rightBtn = FrameUtil.createDirectionButton("→");
+        rightBtn.setBounds(centerX + dirButtonSize + dirButtonGap, controlY, dirButtonSize, dirButtonSize);
+        rightBtn.setVisible(controlButtonsEnabled);
+        this.add(rightBtn);
+
+        // 下方向按钮
+        this.downBtn = FrameUtil.createDirectionButton("↓");
+        downBtn.setBounds(centerX, controlY, dirButtonSize, dirButtonSize);
+        downBtn.setVisible(controlButtonsEnabled);
+        this.add(downBtn);
+    }
+
+    /**
+     * 更新控制按钮的可见性
+     */
+    public void updateControlButtonsVisibility() {
+        boolean controlButtonsEnabled = AppSettings.getInstance().isControlButtonsEnabled();
+        
+        if (upBtn != null) upBtn.setVisible(controlButtonsEnabled);
+        if (downBtn != null) downBtn.setVisible(controlButtonsEnabled); // 修正变量名
+        if (leftBtn != null) leftBtn.setVisible(controlButtonsEnabled); // 修正变量名
+        if (rightBtn != null) rightBtn.setVisible(controlButtonsEnabled); // 修正变量名
+        
+        this.revalidate();
+        this.repaint();
     }
 }

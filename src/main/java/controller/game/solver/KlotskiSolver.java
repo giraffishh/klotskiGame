@@ -132,7 +132,7 @@ public class KlotskiSolver {
     /**
      * Calculates the symmetric layout (mirrored horizontally).
      */
-    private static long getSymmetricLayout(long layout) {
+    protected static long getSymmetricLayout(long layout) {
         long symmetricLayout = 0L;
         for (int r = 0; r < ROWS; r++) {
             for (int c = 0; c < COLS; c++) {
