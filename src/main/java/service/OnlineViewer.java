@@ -392,9 +392,15 @@ public class OnlineViewer {
     }
 
     /**
-     * 更新特定会话的游戏模型
+     * 更新特定会话的游戏模型和统计数据
+     *
+     * @param sessionId 会话ID
+     * @param model 游戏模型
+     * @param steps 当前步数
+     * @param gameTime 当前游戏时间（毫秒）
+     * @param minSteps 最少步数
      */
-    public void updateGameSession(String sessionId, MapModel model) {
+    public void updateGameSession(String sessionId, MapModel model, int steps, long gameTime, int minSteps) {
         // 确保服务处于运行状态
         ensureRunning();
 
@@ -404,8 +410,8 @@ public class OnlineViewer {
         }
 
         try {
-            sessionModels.put(sessionId, model);
-            broadcastUpdate(sessionId, model);
+            sessionModels.put(sessionId, model); // 仍然需要存储模型以备新连接时使用
+            broadcastUpdate(sessionId, model, steps, gameTime, minSteps);
         } catch (Exception e) {
             System.err.println("更新游戏会话时出错: " + e.getMessage());
         }
@@ -413,8 +419,14 @@ public class OnlineViewer {
 
     /**
      * 通过WebSocket广播游戏更新
+     *
+     * @param sessionId 会话ID
+     * @param model 游戏模型
+     * @param steps 当前步数
+     * @param gameTime 当前游戏时间（毫秒）
+     * @param minSteps 最少步数
      */
-    private void broadcastUpdate(String sessionId, MapModel model) {
+    private void broadcastUpdate(String sessionId, MapModel model, int steps, long gameTime, int minSteps) {
         if (wsServer == null || wsServer.getConnections().isEmpty()) {
             return; // 没有活动连接，不需要广播
         }
@@ -424,6 +436,9 @@ public class OnlineViewer {
             updateData.put("sessionId", sessionId);
             updateData.put("matrix", model.getMatrix());
             updateData.put("timestamp", System.currentTimeMillis());
+            updateData.put("steps", steps);
+            updateData.put("gameTime", gameTime);
+            updateData.put("minSteps", minSteps);
 
             String jsonUpdate = jsonMapper.writeValueAsString(updateData);
             wsServer.broadcast(jsonUpdate);
@@ -437,8 +452,11 @@ public class OnlineViewer {
      *
      * @param sessionId 会话ID
      * @param finalModel 最终的游戏模型
+     * @param finalSteps 最终步数
+     * @param finalGameTime 最终游戏时间
+     * @param finalMinSteps 最终最少步数 (通常是0或与当前状态一致)
      */
-    public void broadcastGameWon(String sessionId, MapModel finalModel) {
+    public void broadcastGameWon(String sessionId, MapModel finalModel, int finalSteps, long finalGameTime, int finalMinSteps) {
         if (wsServer == null || wsServer.getConnections().isEmpty() || sessionId == null || finalModel == null) {
             System.err.println("无法广播游戏胜利消息：WebSocket服务未运行，或会话ID/模型为空。");
             return;
@@ -448,18 +466,17 @@ public class OnlineViewer {
             Map<String, Object> gameWonData = new HashMap<>();
             gameWonData.put("type", "game_won");
             gameWonData.put("sessionId", sessionId);
-            gameWonData.put("matrix", finalModel.getMatrix());
+            gameWonData.put("matrix", finalModel.getMatrix()); // 最终棋盘状态
             gameWonData.put("timestamp", System.currentTimeMillis());
-            gameWonData.put("message", "游戏已胜利");
+            gameWonData.put("message", "游戏已胜利!");
+            gameWonData.put("steps", finalSteps);
+            gameWonData.put("gameTime", finalGameTime);
+            gameWonData.put("minSteps", finalMinSteps);
 
             String jsonMessage = jsonMapper.writeValueAsString(gameWonData);
 
-            // 遍历所有连接，只发送给匹配会话ID的客户端
-            // 注意：WebSocketServer 的 broadcast 方法是向所有连接广播
-            // 如果需要精确控制，需要修改 GameWebSocketServer 或在这里迭代连接
-            // 当前实现中，客户端会自行根据 sessionId 过滤消息，所以直接 broadcast 也可以
             wsServer.broadcast(jsonMessage);
-            System.out.println("已向会话 " + sessionId + " 广播游戏胜利消息。");
+            System.out.println("已向会话 " + sessionId + " 广播游戏胜利消息 (包含最终统计数据)。");
 
         } catch (Exception e) {
             System.err.println("广播游戏胜利消息时出错: " + e.getMessage());
@@ -663,15 +680,19 @@ public class OnlineViewer {
                     initialData.put("sessionId", sessionId);
                     initialData.put("matrix", model.getMatrix());
                     initialData.put("timestamp", System.currentTimeMillis());
+                    // 发送默认的初始统计数据
+                    initialData.put("steps", 0);
+                    initialData.put("gameTime", 0L);
+                    initialData.put("minSteps", -1); // -1 表示未知或不适用
 
                     String jsonData = jsonMapper.writeValueAsString(initialData);
                     conn.send(jsonData);
-                    System.out.println("已发送初始游戏数据到WebSocket客户端");
+                    System.out.println("已发送初始游戏数据 (包含默认统计) 到WebSocket客户端 for session: " + sessionId);
                 } catch (Exception e) {
                     System.err.println("发送初始状态时出错: " + e.getMessage());
                 }
             } else {
-                System.out.println("WebSocket连接的会话ID无效或不存在: " + sessionId);
+                System.out.println("WebSocket连接的会话ID无效或不存在: " + sessionId + ". 未发送初始数据.");
             }
         }
 

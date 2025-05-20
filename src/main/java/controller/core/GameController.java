@@ -204,7 +204,7 @@ public class GameController {
                 // 确保OnlineViewer服务在运行
                 onlineViewer.ensureRunning();
 
-                String sessionUrl = onlineViewer.createGameSession(model);
+                String sessionUrl = onlineViewer.createGameSession(model); // createGameSession可能也需要更新以发送初始统计数据
                 // 从URL中提取会话ID (URL现在包含多行)
                 String[] parts = sessionUrl.split("\n");
                 if (parts.length > 0) {
@@ -222,6 +222,7 @@ public class GameController {
                 System.err.println("创建游戏会话时出错: " + e.getMessage());
             }
         }
+        updateOnlineViewerState(); // 发送初始状态
     }
 
     /**
@@ -276,6 +277,7 @@ public class GameController {
                 System.err.println("创建新游戏会话时出错: " + e.getMessage());
             }
         }
+        updateOnlineViewerState(); // 发送重置后的状态
     }
 
     /**
@@ -316,13 +318,6 @@ public class GameController {
 
         // 在移动前保存当前地图状态
         int[][] beforeState = model.copyMatrix();
-        int originalRow = -1;
-        int originalCol = -1;
-
-        if (selectedBox != null) {
-            originalRow = selectedBox.getRow();
-            originalCol = selectedBox.getCol();
-        }
 
         // 根据不同类型的方块应用相应的移动策略
         moved = switch (blockId) {
@@ -356,11 +351,7 @@ public class GameController {
             this.activeHintPieceCoordinates = null; // 移动后清除活动提示状态
 
             // 更新网页视图
-            if (onlineViewer != null && currentSessionId != null && model != null) {
-                // 确保OnlineViewer服务在运行
-                onlineViewer.ensureRunning();
-                onlineViewer.updateGameSession(currentSessionId, model);
-            }
+            updateOnlineViewerState();
         } else {
             // 移动失败不播放音效
         }
@@ -382,13 +373,7 @@ public class GameController {
                 view.clearHint(); // 撤销后清除旧提示
             }
             this.activeHintPieceCoordinates = null; // 撤销后清除活动提示状态
-        }
-
-        // 更新网页视图
-        if (onlineViewer != null && currentSessionId != null && model != null) {
-            // 确保OnlineViewer服务在运行
-            onlineViewer.ensureRunning();
-            onlineViewer.updateGameSession(currentSessionId, model);
+            updateOnlineViewerState(); // 更新网页视图
         }
 
         return success;
@@ -408,13 +393,7 @@ public class GameController {
                 view.clearHint(); // 重做后清除旧提示
             }
             this.activeHintPieceCoordinates = null; // 重做后清除活动提示状态
-        }
-
-        // 更新网页视图
-        if (onlineViewer != null && currentSessionId != null && model != null) {
-            // 确保OnlineViewer服务在运行
-            onlineViewer.ensureRunning();
-            onlineViewer.updateGameSession(currentSessionId, model);
+            updateOnlineViewerState(); // 更新网页视图
         }
 
         return success;
@@ -508,11 +487,10 @@ public class GameController {
         if (this.activeHintPieceCoordinates != null && Arrays.equals(this.activeHintPieceCoordinates, newHintCoords)) {
             // 第二次点击，尝试自动移动
             System.out.println("Second click on hint for piece at (" + newHintCoords[0] + ", " + newHintCoords[1] + "). Attempting auto-move.");
-            long currentLayoutLong = model.getSerializedLayout();
             long nextOptimalLayoutLong = solverManager.getLastOptimalNextStepLayout();
 
             if (nextOptimalLayoutLong != -1) {
-                determineAndExecuteAutomaticHintMove(newHintCoords, currentLayoutLong, nextOptimalLayoutLong);
+                determineAndExecuteAutomaticHintMove(nextOptimalLayoutLong);
             } else {
                 System.err.println("Cannot auto-move: Next optimal layout is not available.");
                 // 保持提示高亮，但不清除 activeHintPieceCoordinates，允许用户再次尝试或手动移动
@@ -530,14 +508,16 @@ public class GameController {
 
     /**
      * 确定提示方块的移动方向并执行移动的私有方法
+     *
+     * @param nextOptimalLayoutLong 移动后的最佳棋盘布局
      */
-    private void determineAndExecuteAutomaticHintMove(int[] hintCoords, long currentLayoutLong, long nextOptimalLayoutLong) {
-        // hintCoords 在此新逻辑中不再直接用于确定移动方向。
-        // currentLayoutLong 代表了应用新布局之前的状态。
+    private void determineAndExecuteAutomaticHintMove(long nextOptimalLayoutLong) {
+        // hintCoords and currentLayoutLong parameters removed as they were unused.
+        // beforeState is derived from model.copyMatrix()
 
         try {
             // 保存自动应用前的棋盘状态，用于历史记录
-            int[][] beforeState = model.copyMatrix(); // 或者 BoardSerializer.deserialize(currentLayoutLong)
+            int[][] beforeState = model.copyMatrix();
 
             int[][] nextOptimalLayoutArray = BoardSerializer.deserialize(nextOptimalLayoutLong);
 
@@ -590,9 +570,7 @@ public class GameController {
             }
 
             // 更新网页视图
-            if (onlineViewer != null && currentSessionId != null && model != null) {
-                onlineViewer.updateGameSession(currentSessionId, model);
-            }
+            updateOnlineViewerState(); // Correctly update online viewer with all stats
 
         } catch (IllegalArgumentException e) {
             System.err.println("Error deserializing next optimal layout for auto-apply: " + e.getMessage());
@@ -650,16 +628,45 @@ public class GameController {
     }
 
     /**
-     * 清理资源，在游戏界面关闭时调用 确保网络服务和其他资源被正确关闭
+     * 更新 OnlineViewer 的游戏状态，包括棋盘、步数、时间和最少步数。 注意：此方法调用
+     * onlineViewer.updateGameSession，其签名假定已更改为接受额外参数。
      */
+    private void updateOnlineViewerState() {
+        if (onlineViewer != null && currentSessionId != null && model != null && view != null && timerManager != null) {
+            onlineViewer.ensureRunning(); // 确保服务正在运行
+
+            int currentJavaSteps = view.getSteps(); // This is the 0-indexed number of moves made
+            long gameTime = timerManager.getGameTimeInMillis();
+            int minStepsVal = view.getCurrentMinSteps();
+
+            // Send steps + 1 to the web client, making it effectively 1-indexed.
+            // If 0 moves made (initial state), web will show 1.
+            // If 1 move made, web will show 2.
+            onlineViewer.updateGameSession(currentSessionId, model, currentJavaSteps + 1, gameTime, minStepsVal);
+            
+            } 
+        }
+        
+
+            /**
+             * 
+             * 清理资源，在游戏界面关闭时调用 确保网络服务和其他资源被正确关闭
+             */
+            
+    
+
     public void shutdown() {
+        
         // 停止计时器
         if (timerManager != null) {
+            
             timerManager.stopTimer();
+            
         }
+    
 
-        // 关闭网络服务
-        if (onlineViewer != null) {
+// 关闭网络服务
+if (onlineViewer != null) {
             try {
                 System.out.println("正在关闭网页查看服务...");
                 onlineViewer.stop();

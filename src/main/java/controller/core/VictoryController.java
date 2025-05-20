@@ -224,7 +224,8 @@ public class VictoryController {
             if (gameController != null && gameController.getOnlineViewer() != null && model != null) {
                 String sessionId = gameController.getCurrentSessionId();
                 if (sessionId != null) {
-                    gameController.getOnlineViewer().broadcastGameWon(sessionId, model);
+                    // Pass currentMoveCount + 1 to make it consistent with updateOnlineViewerState
+                    gameController.getOnlineViewer().broadcastGameWon(sessionId, model, currentMoveCount + 1, gameTimeInMillis, minSteps);
                 } else {
                     System.err.println("无法广播游戏胜利消息：会话ID为空。");
                 }

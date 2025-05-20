@@ -37,6 +37,7 @@ public class GamePanel extends ListenerPanel {
     private int GRID_SIZE = 70;              // 网格大小（像素），改为非final以支持动态调整
     private BoxComponent selectedBox;        // 当前选中的盒子
     private BoxComponent currentlyHintedBox = null; // 当前高亮的提示方块
+    private int currentMinSteps = -1; // 新增字段，存储当前的最少步数值
 
     /**
      * 构造函数，初始化游戏面板
@@ -377,6 +378,7 @@ public class GamePanel extends ListenerPanel {
         if (this.minStepsLabel != null) {
             // 只有在练习模式下才显示最短步数
             if (model != null && model.getGameMode() == MapModel.PRACTICE_MODE) {
+                this.currentMinSteps = minSteps; // 存储最少步数值
                 if (minSteps >= 0) {
                     this.minStepsLabel.setText(String.format("Min Steps: %d", minSteps));
                 } else {
@@ -385,6 +387,7 @@ public class GamePanel extends ListenerPanel {
                 // 确保标签可见
                 this.minStepsLabel.setVisible(true);
             } else {
+                this.currentMinSteps = -1; // 非练习模式重置
                 // 在竞速模式下不显示最短步数
                 this.minStepsLabel.setVisible(false);
             }
@@ -467,6 +470,15 @@ public class GamePanel extends ListenerPanel {
      */
     public MapModel getModel() {
         return model;
+    }
+
+    /**
+     * 获取当前显示的最少步数值。
+     *
+     * @return 当前最少步数；如果未设置或不适用，则为 -1。
+     */
+    public int getCurrentMinSteps() {
+        return currentMinSteps;
     }
 
     /**
@@ -604,30 +616,34 @@ public class GamePanel extends ListenerPanel {
      * @param gridSize 新的网格大小
      */
     public void setGridSize(int gridSize) {
-        if (gridSize <= 0 || gridSize == this.GRID_SIZE || model == null) return;
-        
+        if (gridSize <= 0 || gridSize == this.GRID_SIZE || model == null) {
+            return;
+        }
+
         // 应用缩放因子使面板整体变小
         float scaleFactor = 0.85f; // 缩小到原来的85%
         int adjustedGridSize = Math.round(gridSize * scaleFactor);
-        
+
         // 确保最小大小
-        if (adjustedGridSize < 30) adjustedGridSize = 30;
-        
+        if (adjustedGridSize < 30) {
+            adjustedGridSize = 30;
+        }
+
         // 更新网格大小
         this.GRID_SIZE = adjustedGridSize;
-        
+
         // 调整面板大小
         this.setSize(model.getWidth() * GRID_SIZE + 4, model.getHeight() * GRID_SIZE + 4);
-        
+
         // 调整所有盒子的大小和位置
         for (BoxComponent box : boxes) {
             // 计算新的位置和大小
             int newX = Math.round(box.getCol() * GRID_SIZE + 2);
             int newY = Math.round(box.getRow() * GRID_SIZE + 2);
-            
+
             int boxType = box.getBlockType();
             int newWidth, newHeight;
-            
+
             switch (boxType) {
                 case 1: // 1x1
                     newWidth = GRID_SIZE;
@@ -648,11 +664,11 @@ public class GamePanel extends ListenerPanel {
                 default:
                     continue;
             }
-            
+
             // 设置新的位置和大小
             box.setBounds(newX, newY, newWidth, newHeight);
         }
-        
+
         // 重绘面板
         this.repaint();
     }
