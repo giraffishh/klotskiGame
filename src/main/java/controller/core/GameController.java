@@ -57,7 +57,7 @@ public class GameController {
     private final GameStateManager gameStateManager;
     private final SoundManager soundManager; // 新增音效管理器
 
-    // 新增：本地网页视图服务
+    // 本地网页视图服务
     private OnlineViewer onlineViewer;
 
     // 当前游戏会话ID
@@ -215,7 +215,7 @@ public class GameController {
                 }
 
                 // 在控制台显示所有URL选项
-                System.out.println("\n===== 华容道游戏网页查看器 =====");
+                System.out.println("\n===== Online Viewer =====");
                 System.out.println(sessionUrl);
                 System.out.println("==================================\n");
             } catch (Exception e) {
@@ -269,7 +269,7 @@ public class GameController {
                 }
 
                 // 在控制台显示所有URL选项
-                System.out.println("\n===== 华容道游戏网页查看器 =====");
+                System.out.println("\n===== OnlineViewer =====");
                 System.out.println(sessionUrl);
                 System.out.println("==================================\n");
             } catch (Exception e) {

@@ -80,7 +80,7 @@ public class OnlineViewer {
                 System.out.println("==============================");
             } else {
                 System.err.println("无法启动网页服务 - 请检查网络连接和防火墙设置");
-                System.err.println("特别是检查HTTP端口 " + httpPort + " 是否被其他应用占用");
+                System.err.println("请检查HTTP端口 " + httpPort + " 是否被其他应用占用");
             }
         } catch (Exception e) {
             System.err.println("初始化网页服务时出错: " + e.getMessage());

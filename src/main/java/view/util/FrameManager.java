@@ -55,7 +55,7 @@ public class FrameManager {
         loginFrame = new LoginFrame(460, 370);
 
         // 创建游戏窗口（不传入地图模型）
-        gameFrame = new GameFrame(700, 550, null);
+        gameFrame = new GameFrame(720, 550, null);
         gameFrame.setVisible(false);
 
         // 创建主页窗口
@@ -63,7 +63,7 @@ public class FrameManager {
         homeFrame.setVisible(false);
 
         // 创建关卡选择界面
-        levelSelectFrame = new LevelSelectFrame(700, 550);
+        levelSelectFrame = new LevelSelectFrame(720, 550);
         LevelSelectController levelSelectController = new LevelSelectController(levelSelectFrame);
         levelSelectFrame.setController(levelSelectController);
         levelSelectFrame.setVisible(false);
