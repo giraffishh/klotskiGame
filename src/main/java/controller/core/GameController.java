@@ -14,9 +14,9 @@ import controller.game.state.GameStateManager;
 import controller.game.timer.TimerManager;
 import controller.storage.save.SaveManager;
 import controller.util.BoardSerializer;
-import controller.web.WebViewService; // 新增导入
 import model.Direction;
 import model.MapModel;
+import service.OnlineViewer;
 import view.game.BoxComponent;
 import view.game.GameFrame;
 import view.game.GamePanel;
@@ -58,7 +58,7 @@ public class GameController {
     private final SoundManager soundManager; // 新增音效管理器
 
     // 新增：本地网页视图服务
-    private WebViewService webViewService;
+    private OnlineViewer onlineViewer;
 
     // 当前游戏会话ID
     private String currentSessionId;
@@ -117,7 +117,7 @@ public class GameController {
                 model, view, historyManager, victoryController, solverManager, timerManager);
 
         // 初始化本地网页视图服务
-        this.webViewService = WebViewService.getInstance();
+        this.onlineViewer = OnlineViewer.getInstance();
     }
 
     /**
@@ -199,9 +199,9 @@ public class GameController {
         }
 
         // 创建新的游戏会话并获取URL
-        if (webViewService != null && model != null) {
+        if (onlineViewer != null && model != null) {
             try {
-                String sessionUrl = webViewService.createGameSession(model);
+                String sessionUrl = onlineViewer.createGameSession(model);
                 // 从URL中提取会话ID (URL现在包含多行)
                 String[] parts = sessionUrl.split("\n");
                 if (parts.length > 0) {
@@ -245,9 +245,9 @@ public class GameController {
         this.activeHintPieceCoordinates = null; // 重置模型时清除活动提示
 
         // 创建新的游戏会话
-        if (webViewService != null && newModel != null) {
+        if (onlineViewer != null && newModel != null) {
             try {
-                String sessionUrl = webViewService.createGameSession(newModel);
+                String sessionUrl = onlineViewer.createGameSession(newModel);
                 // 从URL中提取会话ID (URL现在包含多行)
                 String[] parts = sessionUrl.split("\n");
                 if (parts.length > 0) {
@@ -345,8 +345,8 @@ public class GameController {
             this.activeHintPieceCoordinates = null; // 移动后清除活动提示状态
 
             // 更新网页视图
-            if (webViewService != null && currentSessionId != null && model != null) {
-                webViewService.updateGameSession(currentSessionId, model);
+            if (onlineViewer != null && currentSessionId != null && model != null) {
+                onlineViewer.updateGameSession(currentSessionId, model);
             }
         } else {
             // 移动失败不播放音效
@@ -372,8 +372,8 @@ public class GameController {
         }
 
         // 更新网页视图
-        if (webViewService != null && currentSessionId != null && model != null) {
-            webViewService.updateGameSession(currentSessionId, model);
+        if (onlineViewer != null && currentSessionId != null && model != null) {
+            onlineViewer.updateGameSession(currentSessionId, model);
         }
 
         return success;
@@ -396,8 +396,8 @@ public class GameController {
         }
 
         // 更新网页视图
-        if (webViewService != null && currentSessionId != null && model != null) {
-            webViewService.updateGameSession(currentSessionId, model);
+        if (onlineViewer != null && currentSessionId != null && model != null) {
+            onlineViewer.updateGameSession(currentSessionId, model);
         }
 
         return success;
@@ -573,8 +573,8 @@ public class GameController {
             }
 
             // 更新网页视图
-            if (webViewService != null && currentSessionId != null && model != null) {
-                webViewService.updateGameSession(currentSessionId, model);
+            if (onlineViewer != null && currentSessionId != null && model != null) {
+                onlineViewer.updateGameSession(currentSessionId, model);
             }
 
         } catch (IllegalArgumentException e) {
