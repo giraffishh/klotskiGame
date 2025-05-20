@@ -199,8 +199,10 @@ public class BoxComponent extends JComponent {
         Graphics2D g2d = (Graphics2D) g.create(); // 创建副本以便局部修改
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        int arcSize = 12; // 圆角大小
-        int margin = isSelected ? 3 : (isHovered ? 2 : 1); // 根据状态调整边距
+        // 根据组件大小自适应圆角大小和边距
+        int arcSize = Math.max(6, Math.min(12, getWidth() / 10));
+        int margin = isSelected ? Math.max(2, Math.min(3, getWidth() / 30)) : 
+                    (isHovered ? Math.max(1, Math.min(2, getWidth() / 40)) : Math.max(1, getWidth() / 50));
 
         // 填充方块颜色，如果悬停在上面则略微变亮，选中则增加饱和度
         Color fillColor;
@@ -256,43 +258,50 @@ public class BoxComponent extends JComponent {
             g2d.setComposite(oldComposite);
         }
 
+        // 调整边框粗细，适应不同大小
+        float borderThickness = getWidth() / 30f;
+        float selectedThickness = Math.max(borderThickness * 1.3f, 2.5f);
+        float hoverThickness = Math.max(borderThickness * 1.2f, 2.0f);
+        float normalThickness = Math.max(borderThickness * 0.8f, 1.5f);
+
         // 简化边框绘制逻辑，避免多重边框叠加
         if (isSelected) {
             // 选中状态
             g2d.setColor(FrameUtil.SELECTED_BORDER_COLOR);
-            g2d.setStroke(new BasicStroke(3.5f));
-            g2d.drawRoundRect(2, 2, getWidth() - 5, getHeight() - 5, arcSize, arcSize);
+            g2d.setStroke(new BasicStroke(selectedThickness));
+            g2d.drawRoundRect(margin - 1, margin - 1, getWidth() - (margin - 1) * 2, getHeight() - (margin - 1) * 2, arcSize, arcSize);
         } else if (isHovered) {
             // 悬停状态：金色边框
             g2d.setColor(FrameUtil.HOVER_BORDER_COLOR);
-            g2d.setStroke(new BasicStroke(3.0f));
-            g2d.drawRoundRect(2, 2, getWidth() - 5, getHeight() - 5, arcSize, arcSize);
+            g2d.setStroke(new BasicStroke(hoverThickness));
+            g2d.drawRoundRect(margin - 1, margin - 1, getWidth() - (margin - 1) * 2, getHeight() - (margin - 1) * 2, arcSize, arcSize);
 
             // 添加轻微的外发光效果
             g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f));
             g2d.setColor(FrameUtil.HOVER_GLOW);
-            g2d.setStroke(new BasicStroke(4.5f));
-            g2d.drawRoundRect(1, 1, getWidth() - 3, getHeight() - 3, arcSize + 1, arcSize + 1);
+            g2d.setStroke(new BasicStroke(hoverThickness * 1.5f));
+            g2d.drawRoundRect(margin - 2, margin - 2, getWidth() - (margin - 2) * 2, getHeight() - (margin - 2) * 2, arcSize + 1, arcSize + 1);
         } else {
             // 普通状态：深灰色边框
             g2d.setColor(FrameUtil.NORMAL_BORDER_COLOR);
-            g2d.setStroke(new BasicStroke(2.0f));
-            g2d.drawRoundRect(1, 1, getWidth() - 3, getHeight() - 3, arcSize, arcSize);
+            g2d.setStroke(new BasicStroke(normalThickness));
+            g2d.drawRoundRect(margin - 1, margin - 1, getWidth() - (margin - 1) * 2, getHeight() - (margin - 1) * 2, arcSize, arcSize);
 
-            // 添加微妙的高光效果，增强立体感
+            // 添加微妙的高光效果，增强立体感 - 根据大小调整
             g2d.setColor(FrameUtil.HIGHLIGHT_COLOR);
-            g2d.setStroke(new BasicStroke(1.2f));
-            g2d.drawLine(4, 4, getWidth() - 5, 4);
-            g2d.drawLine(4, 4, 4, getHeight() - 5);
+            g2d.setStroke(new BasicStroke(normalThickness * 0.6f));
+            int highLightMargin = Math.max(3, getWidth() / 20);
+            g2d.drawLine(highLightMargin, highLightMargin, getWidth() - highLightMargin, highLightMargin);
+            g2d.drawLine(highLightMargin, highLightMargin, highLightMargin, getHeight() - highLightMargin);
         }
 
-        // 绘制提示边框 (呼吸荧光效果)
+        // 绘制提示边框 (呼吸荧光效果) - 适应不同大小
         if (isHinted) {
             Graphics2D g2dHint = (Graphics2D) g2d.create();
             // 设置透明度
             g2dHint.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, currentHintAlpha));
             g2dHint.setColor(HINT_BORDER_COLOR);
-            g2dHint.setStroke(new BasicStroke(3.5f));
+            g2dHint.setStroke(new BasicStroke(Math.max(selectedThickness * 1.1f, 3f)));
             g2dHint.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arcSize + 2, arcSize + 2);
             g2dHint.dispose();
         }

@@ -34,7 +34,8 @@ public class GamePanel extends ListenerPanel {
     private JLabel minStepsLabel;            // 最短步数显示标签
     private JLabel timeLabel;                // 用时显示标签
     private int steps;                       // 当前步数
-    private final int GRID_SIZE = 70;        // 网格大小（像素），调整为更大尺寸
+    private int GRID_SIZE = 70;        // 网格大小（像素），改为非final，支持动态调整
+    private double currentScale = 1.0;  // 当前缩放比例
     private BoxComponent selectedBox;        // 当前选中的盒子
     private BoxComponent currentlyHintedBox = null; // 当前高亮的提示方块
 
@@ -62,6 +63,65 @@ public class GamePanel extends ListenerPanel {
     }
 
     /**
+     * 调整网格大小和所有盒子的大小和位置
+     * 
+     * @param scale 缩放比例
+     */
+    public void adjustGridSize(double scale) {
+        if (Math.abs(currentScale - scale) < 0.01) {
+            return; // 如果比例变化很小，不进行调整
+        }
+        
+        currentScale = scale;
+        int newGridSize = (int)(70 * scale); // 基于默认网格大小(70)计算新的网格大小
+        
+        if (newGridSize < 30) {
+            newGridSize = 30; // 设置最小网格大小以确保可用性
+        }
+        
+        // 更新网格大小
+        GRID_SIZE = newGridSize;
+        
+        // 调整面板大小 - 确保边框宽度也适当缩放
+        if (model != null) {
+            int borderWidth = Math.max(2, (int)(4 * scale));
+            this.setSize(model.getWidth() * GRID_SIZE + borderWidth, 
+                        model.getHeight() * GRID_SIZE + borderWidth);
+        }
+        
+        // 重新调整所有盒子的大小和位置
+        for (BoxComponent box : boxes) {
+            int row = box.getRow();
+            int col = box.getCol();
+            int blockType = box.getBlockType();
+            
+            // 根据方块类型调整大小
+            switch (blockType) {
+                case 1: // 1x1 单元格
+                    box.setSize(GRID_SIZE, GRID_SIZE);
+                    break;
+                case 2: // 2x1 水平方块
+                    box.setSize(GRID_SIZE * 2, GRID_SIZE);
+                    break;
+                case 3: // 1x2 垂直方块
+                    box.setSize(GRID_SIZE, GRID_SIZE * 2);
+                    break;
+                case 4: // 2x2 大方块
+                    box.setSize(GRID_SIZE * 2, GRID_SIZE * 2);
+                    break;
+            }
+            
+            // 调整盒子位置 - 考虑边框宽度
+            int margin = Math.max(1, (int)(2 * scale));
+            box.setLocation(col * GRID_SIZE + margin, row * GRID_SIZE + margin);
+        }
+        
+        // 重绘面板
+        this.revalidate();
+        this.repaint();
+    }
+    
+    /**
      * 设置或更新游戏地图模型
      *
      * @param model 新的游戏地图模型
@@ -75,9 +135,7 @@ public class GamePanel extends ListenerPanel {
     }
 
     /**
-     * 初始化游戏，根据模型数据创建盒子组件 地图示例: {1, 2, 2, 1, 1}, {3, 4, 4, 2, 2}, {3, 4, 4, 1,
-     * 0}, {1, 2, 2, 1, 0}, {1, 1, 1, 1, 1} 其中: 1 - 单元格盒子 (1x1) 2 - 水平盒子 (2x1) 3
-     * - 垂直盒子 (1x2) 4 - 大盒子 (2x2) 0 - 空白区域
+     * 初始化游戏，根据模型数据创建盒子组件
      */
     public void initialGame() {
         // 确保模型不为null
@@ -95,6 +153,9 @@ public class GamePanel extends ListenerPanel {
                 map[i][j] = model.getId(i, j);
             }
         }
+
+        // 边框宽度随缩放调整
+        int margin = Math.max(1, (int)(2 * currentScale));
 
         // 构建盒子组件
         for (int i = 0; i < map.length; i++) {
@@ -131,7 +192,7 @@ public class GamePanel extends ListenerPanel {
                     map[i + 1][j + 1] = 0;
                 }
                 if (box != null) {
-                    box.setLocation(j * GRID_SIZE + 2, i * GRID_SIZE + 2);
+                    box.setLocation(j * GRID_SIZE + margin, i * GRID_SIZE + margin);
                     boxes.add(box);
                     this.add(box);
                 }
@@ -164,7 +225,8 @@ public class GamePanel extends ListenerPanel {
         if (model == null) {
             // 边框 - 使用柔和的深灰色边框
             this.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(FrameUtil.PANEL_BORDER_COLOR, 2),
+                    BorderFactory.createLineBorder(FrameUtil.PANEL_BORDER_COLOR, 
+                            Math.max(1, (int)(2 * currentScale))),
                     BorderFactory.createEmptyBorder(1, 1, 1, 1)
             ));
             return;
@@ -172,7 +234,8 @@ public class GamePanel extends ListenerPanel {
 
         // 绘制网格线 - 使用更柔和的淡灰色线条
         g2d.setColor(FrameUtil.GRID_LINE_COLOR);
-        g2d.setStroke(new BasicStroke(0.5f));
+        float strokeWidth = Math.max(0.5f, (float)(0.5f * currentScale));
+        g2d.setStroke(new BasicStroke(strokeWidth));
 
         // 绘制水平线
         for (int i = 0; i <= model.getHeight(); i++) {
@@ -184,9 +247,10 @@ public class GamePanel extends ListenerPanel {
             g2d.drawLine(i * GRID_SIZE, 0, i * GRID_SIZE, model.getHeight() * GRID_SIZE);
         }
 
-        // 边框 - 使用柔和的深灰色边框
+        // 边框 - 使用柔和的深灰色边框，边框宽度随缩放调整
+        int borderWidth = Math.max(1, (int)(2 * currentScale));
         this.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(FrameUtil.PANEL_BORDER_COLOR, 2),
+                BorderFactory.createLineBorder(FrameUtil.PANEL_BORDER_COLOR, borderWidth),
                 BorderFactory.createEmptyBorder(1, 1, 1, 1)
         ));
     }
@@ -449,6 +513,24 @@ public class GamePanel extends ListenerPanel {
      */
     public int getGRID_SIZE() {
         return GRID_SIZE;
+    }
+    
+    /**
+     * 获取当前网格大小
+     * 
+     * @return 当前网格大小
+     */
+    public int getGridSize() {
+        return GRID_SIZE;
+    }
+    
+    /**
+     * 获取当前缩放比例
+     * 
+     * @return 当前缩放比例
+     */
+    public double getCurrentScale() {
+        return currentScale;
     }
 
     /**
