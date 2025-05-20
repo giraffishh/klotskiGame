@@ -32,10 +32,12 @@ public class SettingsController {
         String currentTheme = appSettings.getCurrentTheme();
         String currentBlockTheme = appSettings.getCurrentBlockTheme();
         boolean controlButtonsEnabled = appSettings.isControlButtonsEnabled();
+        boolean musicEnabled = appSettings.isMusicEnabled();
         
         settingsView.displayThemeSetting(currentTheme);
         settingsView.displayBlockThemeSetting(currentBlockTheme);
         settingsView.displayControlButtonsSetting(controlButtonsEnabled);
+        settingsView.displayMusicSetting(musicEnabled);
     }
 
     /**
@@ -46,20 +48,24 @@ public class SettingsController {
         String selectedTheme = settingsView.getSelectedTheme();
         String selectedBlockTheme = settingsView.getSelectedBlockTheme();
         boolean controlButtonsEnabled = settingsView.isControlButtonsEnabled();
+        boolean musicEnabled = settingsView.isMusicEnabled();
         UserSession session = UserSession.getInstance();
 
         // 检查设置是否变化
         String currentTheme = appSettings.getCurrentTheme();
         String currentBlockTheme = appSettings.getCurrentBlockTheme();
         boolean currentControlButtonsEnabled = appSettings.isControlButtonsEnabled();
+        boolean currentMusicEnabled = appSettings.isMusicEnabled();
         boolean settingsChanged = !currentTheme.equals(selectedTheme) || 
                                  !currentBlockTheme.equals(selectedBlockTheme) ||
-                                 currentControlButtonsEnabled != controlButtonsEnabled;
+                                 currentControlButtonsEnabled != controlButtonsEnabled ||
+                                 currentMusicEnabled != musicEnabled;
 
         // 应用设置
         boolean themeApplied = appSettings.setCurrentTheme(selectedTheme);
         boolean blockThemeApplied = appSettings.setCurrentBlockTheme(selectedBlockTheme);
         boolean controlButtonsApplied = appSettings.setControlButtonsEnabled(controlButtonsEnabled);
+        boolean musicApplied = appSettings.setMusicEnabled(musicEnabled);
         
         // 重置图片缓存
         ImageManager.resetImageCache();

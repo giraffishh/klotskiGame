@@ -50,4 +50,16 @@ public interface SettingsView {
      * @return 是否启用控制按钮
      */
     boolean isControlButtonsEnabled();
+
+    /**
+     * 显示背景音乐设置
+     * @param enabled 是否启用背景音乐
+     */
+    void displayMusicSetting(boolean enabled);
+
+    /**
+     * 获取当前背景音乐设置
+     * @return 是否启用背景音乐
+     */
+    boolean isMusicEnabled();
 }

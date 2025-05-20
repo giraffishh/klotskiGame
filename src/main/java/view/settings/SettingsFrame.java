@@ -17,6 +17,7 @@ public class SettingsFrame extends JFrame implements SettingsView {
     private JComboBox<String> themeComboBox;
     private JComboBox<String> blockThemeComboBox;
     private JComboBox<String> controlButtonsComboBox; 
+    private JComboBox<String> musicComboBox; // 新增背景音乐设置下拉框
     private JButton saveButton;
     private JButton cancelButton;
     
@@ -72,7 +73,9 @@ public class SettingsFrame extends JFrame implements SettingsView {
         settingsPanel.add(Box.createVerticalStrut(10));
         settingsPanel.add(createBlockThemePanel());
         settingsPanel.add(Box.createVerticalStrut(10));
-        settingsPanel.add(createControlButtonsPanel()); // 新增控制按钮面板
+        settingsPanel.add(createControlButtonsPanel());
+        settingsPanel.add(Box.createVerticalStrut(10));
+        settingsPanel.add(createMusicPanel()); // 添加背景音乐设置面板
         
         // 添加按钮面板
         mainPanel.add(createButtonPanel(), BorderLayout.SOUTH);
@@ -134,6 +137,26 @@ public class SettingsFrame extends JFrame implements SettingsView {
         
         panel.add(label);
         panel.add(controlButtonsComboBox);
+        
+        return panel;
+    }
+    
+    /**
+     * 创建背景音乐设置面板
+     */
+    private JPanel createMusicPanel() {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        JLabel label = new JLabel("Background Music:");
+        label.setFont(FontManager.getRegularFont(16));
+        
+        musicComboBox = new JComboBox<>(new String[]{"Disabled", "Enabled"});
+        musicComboBox.setFont(FontManager.getRegularFont(16));
+        musicComboBox.setPreferredSize(new Dimension(150, 30));
+        
+        panel.add(label);
+        panel.add(musicComboBox);
         
         return panel;
     }
@@ -223,6 +246,19 @@ public class SettingsFrame extends JFrame implements SettingsView {
     public boolean isControlButtonsEnabled() {
         return controlButtonsComboBox != null && 
                "Enabled".equals(controlButtonsComboBox.getSelectedItem());
+    }
+
+    @Override
+    public void displayMusicSetting(boolean enabled) {
+        if (musicComboBox != null) {
+            musicComboBox.setSelectedItem(enabled ? "Enabled" : "Disabled");
+        }
+    }
+
+    @Override
+    public boolean isMusicEnabled() {
+        return musicComboBox != null && 
+               "Enabled".equals(musicComboBox.getSelectedItem());
     }
 
     @Override
