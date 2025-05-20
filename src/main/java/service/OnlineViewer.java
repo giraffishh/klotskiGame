@@ -1,5 +1,10 @@
 package service;
 
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.Font; // 新增导入
+import java.awt.GridLayout;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -17,6 +22,23 @@ import java.util.Random;
 import java.util.Scanner;
 import java.util.concurrent.Executors;
 
+import javax.swing.BorderFactory;
+import javax.swing.ImageIcon;
+import javax.swing.JDialog;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.EncodeHintType;
+import com.google.zxing.WriterException;
+import com.google.zxing.client.j2se.MatrixToImageWriter;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.qrcode.QRCodeWriter;
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
+
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
@@ -24,7 +46,6 @@ import org.java_websocket.server.WebSocketServer;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import model.MapModel;
 
@@ -248,7 +269,7 @@ public class OnlineViewer {
     }
 
     /**
-     * 创建新的游戏会话并返回唯一URL
+     * 创建新的游戏会话并返回唯一URL，同时显示包含二维码的弹窗
      */
     public String createGameSession(MapModel model) {
         // 确保服务处于运行状态
@@ -262,16 +283,112 @@ public class OnlineViewer {
             String sessionId = generateSessionId();
             sessionModels.put(sessionId, model);
 
+            String lanUrl = "http://" + localIpAddress + ":" + httpPort + "/?session=" + sessionId;
+            String publicUrl = "http://3.tcp.cpolar.top:10026/?session=" + sessionId; // 根据实际公网映射URL调整
+
             StringBuilder urls = new StringBuilder();
             urls.append("本地访问: http://localhost:").append(httpPort).append("/?session=").append(sessionId).append("\n");
-            urls.append("网络访问: http://").append(localIpAddress).append(":").append(httpPort).append("/?session=").append(sessionId).append("\n");
-            urls.append("公网访问 (Cpolar): http://3.tcp.cpolar.top:10026/?session=").append(sessionId);
+            urls.append("局域网访问: ").append(lanUrl).append("\n");
+            urls.append("公网访问 (Cpolar): ").append(publicUrl);
+
+            // 生成二维码并显示弹窗
+            try {
+                BufferedImage lanQRCode = generateQRCodeImage(lanUrl, 200, 200);
+                BufferedImage publicQRCode = generateQRCodeImage(publicUrl, 200, 200);
+
+                // 在Swing事件调度线程中显示弹窗
+                SwingUtilities.invokeLater(()
+                        -> displayQRCodePopup(lanQRCode, lanUrl, publicQRCode, publicUrl)
+                );
+
+            } catch (WriterException e) {
+                System.err.println("生成二维码失败: " + e.getMessage());
+                // 即使二维码生成失败，也继续返回URL字符串
+            }
 
             return urls.toString();
         } catch (Exception e) {
             System.err.println("创建游戏会话时出错: " + e.getMessage());
             return "创建会话时出错: " + e.getMessage();
         }
+    }
+
+    /**
+     * 生成二维码图像
+     *
+     * @param text 要编码的文本 (URL)
+     * @param width 二维码宽度
+     * @param height 二维码高度
+     * @return BufferedImage 类型的二维码图像
+     * @throws WriterException 如果生成失败
+     */
+    private static BufferedImage generateQRCodeImage(String text, int width, int height) throws WriterException {
+        QRCodeWriter qrCodeWriter = new QRCodeWriter();
+        Map<EncodeHintType, Object> hints = new HashMap<>();
+        hints.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.L);
+        hints.put(EncodeHintType.CHARACTER_SET, "UTF-8");
+        hints.put(EncodeHintType.MARGIN, 1); // 调整边距
+
+        BitMatrix bitMatrix = qrCodeWriter.encode(text, BarcodeFormat.QR_CODE, width, height, hints);
+        return MatrixToImageWriter.toBufferedImage(bitMatrix);
+    }
+
+    /**
+     * 显示包含二维码和URL的弹窗
+     *
+     * @param lanQRCode 局域网二维码图像
+     * @param lanUrl 局域网URL
+     * @param publicQRCode 公网二维码图像
+     * @param publicUrl 公网URL
+     */
+    private void displayQRCodePopup(BufferedImage lanQRCode, String lanUrl, BufferedImage publicQRCode, String publicUrl) {
+        // 将第三个参数 'true' (模态) 改为 'false' (非模态)
+        JDialog dialog = new JDialog((java.awt.Frame) null, "游戏访问链接二维码", false);
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        dialog.setLayout(new BorderLayout(10, 10)); // 主布局，带间距
+
+        // 将 GridLayout(1, 2, ...) 改为 GridLayout(2, 1, 0, 15) 使其垂直排列，并调整垂直间距
+        JPanel mainPanel = new JPanel(new GridLayout(2, 1, 0, 15));
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10)); // 给主面板添加边距
+
+        // 局域网二维码面板
+        JPanel lanPanel = new JPanel(new BorderLayout(5, 5));
+        JLabel lanTitleLabel = new JLabel("局域网访问 (LAN)", SwingConstants.CENTER);
+        lanTitleLabel.setFont(new Font(lanTitleLabel.getFont().getName(), Font.BOLD, 16)); // 加粗并设置字体大小
+        JLabel lanImageLabel = new JLabel(new ImageIcon(lanQRCode));
+        JLabel lanUrlOnlyLabel = new JLabel(lanUrl, SwingConstants.CENTER); // 只显示URL
+        lanUrlOnlyLabel.setFont(new Font(lanUrlOnlyLabel.getFont().getName(), Font.PLAIN, 12));
+
+        lanPanel.add(lanTitleLabel, BorderLayout.NORTH);
+        lanPanel.add(lanImageLabel, BorderLayout.CENTER);
+        lanPanel.add(lanUrlOnlyLabel, BorderLayout.SOUTH);
+        mainPanel.add(lanPanel);
+
+        // 公网二维码面板
+        JPanel publicPanel = new JPanel(new BorderLayout(5, 5));
+        JLabel publicTitleLabel = new JLabel("公网访问 (Cpolar没给钱很慢)", SwingConstants.CENTER);
+        publicTitleLabel.setFont(new Font(publicTitleLabel.getFont().getName(), Font.BOLD, 16)); // 加粗并设置字体大小
+        JLabel publicImageLabel = new JLabel(new ImageIcon(publicQRCode));
+        JLabel publicUrlOnlyLabel = new JLabel(publicUrl, SwingConstants.CENTER); // 只显示URL
+        publicUrlOnlyLabel.setFont(new Font(publicUrlOnlyLabel.getFont().getName(), Font.PLAIN, 12));
+
+        publicPanel.add(publicTitleLabel, BorderLayout.NORTH);
+        publicPanel.add(publicImageLabel, BorderLayout.CENTER);
+        publicPanel.add(publicUrlOnlyLabel, BorderLayout.SOUTH);
+        mainPanel.add(publicPanel);
+
+        dialog.add(mainPanel, BorderLayout.CENTER);
+
+        // 添加一个总标题或说明
+        JLabel overallTitleLabel = new JLabel("请扫描二维码或在浏览器中打开链接访问游戏", SwingConstants.CENTER);
+        overallTitleLabel.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
+        dialog.add(overallTitleLabel, BorderLayout.NORTH);
+
+        dialog.pack();
+        // 调整最小尺寸以适应垂直布局
+        dialog.setMinimumSize(new Dimension(380, 700));
+        dialog.setLocationRelativeTo(null);
+        dialog.setVisible(true);
     }
 
     /**
