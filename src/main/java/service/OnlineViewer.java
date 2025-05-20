@@ -1,4 +1,4 @@
-package controller.web;
+package service;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -29,8 +29,8 @@ import model.MapModel;
 /**
  * 提供本地网页视图服务，将华容道游戏布局实时显示在网页上
  */
-public class WebViewService {
-    private static WebViewService instance;
+public class OnlineViewer {
+    private static OnlineViewer instance;
     private int httpPort = 8080; // 改为实例变量，允许端口配置
     private int wsPort = 8081;   // 改为实例变量，允许端口配置
     private HttpServer httpServer;
@@ -42,14 +42,14 @@ public class WebViewService {
     private final Map<String, MapModel> sessionModels = new HashMap<>();
     
     // 单例访问
-    public static WebViewService getInstance() {
+    public static OnlineViewer getInstance() {
         if (instance == null) {
-            instance = new WebViewService();
+            instance = new OnlineViewer();
         }
         return instance;
     }
     
-    private WebViewService() {
+    private OnlineViewer() {
         try {
             // 获取本机IP地址
             localIpAddress = getLocalIpAddress();
