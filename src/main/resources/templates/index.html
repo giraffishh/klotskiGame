@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>华容道游戏查看器</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; text-align: center; }
+        h1 { color: #333; }
+        .message { margin: 30px; padding: 20px; background-color: #f8f9fa; border-radius: 5px; }
+        .footer { margin-top: 50px; font-size: 12px; color: #888; }
+    </style>
+</head>
+<body>
+    <h1>华容道游戏查看器</h1>
+    <div class="message">
+        <p>请从游戏客户端访问特定会话链接。</p>
+        <p>每次开始新游戏时，会自动生成会话链接。</p>
+        <p>服务器状态: <a href="/status" target="_blank">检查状态</a></p>
+    </div>
+    <div class="footer">
+        <p>服务器端口: HTTP {{HTTP_PORT}} / WS {{WS_PORT}}</p>
+    </div>
+</body>
+</html>

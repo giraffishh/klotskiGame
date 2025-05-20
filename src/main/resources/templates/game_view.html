@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>华容道游戏 - 会话 {{SESSION_ID}}</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/template/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>华容道游戏查看器</h1>
+        <div class="session-info">会话ID: <span id="session-id">{{SESSION_ID}}</span></div>
+        <div class="connection-status">连接状态: <span id="connection-status">正在连接...</span></div>
+        <div class="last-update">最后更新: <span id="last-update">加载中...</span></div>
+        <div class="game-board" id="game-board">
+            <div class="loading">加载游戏数据中...</div>
+        </div>
+        <div class="debug-info">
+            <button id="toggle-debug">显示调试信息</button>
+            <div id="debug-panel" style="display:none; margin-top:10px; text-align:left; padding:10px; background:#f8f8f8; border-radius:5px;">
+                <p>WebSocket端口: <span id="ws-port">{{WS_PORT}}</span></p>
+                <p>连接URL: <span id="ws-url">ws://{{LOCAL_IP}}:{{WS_PORT}}?session={{SESSION_ID}}</span></p>
+                <div id="log-container" style="max-height:200px; overflow-y:auto; background:#eee; padding:5px;"></div>
+            </div>
+        </div>
+    </div>
+    <script>
+        // 传递会话ID给JavaScript
+        const sessionId = "{{SESSION_ID}}";
+        const wsPort = {{WS_PORT}};
+        const localIpAddress = "{{LOCAL_IP}}";
+    </script>
+    <script src="/template/game.js"></script>
+</body>
+</html>
