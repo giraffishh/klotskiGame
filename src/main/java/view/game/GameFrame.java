@@ -98,9 +98,9 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
 
         // 计算右侧控制区域的起始位置和尺寸
         int controlX = panelX + panelWidth - 10;
-        int controlY = panelY ;
+        int controlY = panelY;
         int controlWidth = windowWidth - controlX - 50; // 右边距从40增加到50
-        int buttonWidth = Math.min((controlWidth -20) / 2 + 20, 120); // 限制按钮最大宽度
+        int buttonWidth = Math.min((controlWidth - 20) / 2 + 20, 120); // 限制按钮最大宽度
 
         // 用时显示标签 - 放在最上方
         this.timeLabel = FrameUtil.createTitleLabel("Time: 00:00.00", JLabel.CENTER);
@@ -155,7 +155,7 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
 
         // 提示按钮 - 放在撤销/重做下方
         this.hintBtn = FrameUtil.createStyledButton("Hint", true, SvgIconManager.getHintIcon()); // 添加图标
-        hintBtn.setBounds(controlX + buttonWidth/2 +10, controlY, buttonWidth, 45); 
+        hintBtn.setBounds(controlX + buttonWidth / 2 + 10, controlY, buttonWidth, 45);
         this.add(hintBtn);
         controlY += 55;
 
@@ -188,7 +188,7 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
                 }
                 // 如果 shouldClose 为 false，则不执行任何操作，窗口保持打开
             }
-            
+
             @Override
             public void windowClosed(WindowEvent e) {
                 // 在窗口完全关闭时确保网络连接被关闭
@@ -211,97 +211,132 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
      * 调整窗口大小变化时的界面布局
      */
     private void adjustLayoutForNewSize() {
-        if (gamePanel == null || gamePanel.getModel() == null) return;
-        
+        if (gamePanel == null || gamePanel.getModel() == null) {
+            return;
+        }
+
         int frameWidth = getWidth();
         int frameHeight = getHeight();
-        
+
         // 计算控制区域所需最小宽度
         int minControlWidth = 220;
-        
+
         // 计算游戏面板的最大可用空间
         int maxPanelWidth = frameWidth - minControlWidth - 60; // 左右边距
         int maxPanelHeight = frameHeight - 100; // 上下边距
-        
+
         // 获取地图尺寸
         int mapWidth = gamePanel.getModel().getWidth();
         int mapHeight = gamePanel.getModel().getHeight();
-        
+
         // 计算新的网格大小，保持地图的宽高比
         int newGridSize = Math.min(
-            maxPanelWidth / mapWidth,
-            maxPanelHeight / mapHeight
+                maxPanelWidth / mapWidth,
+                maxPanelHeight / mapHeight
         );
-        
+
         // 设置最小网格大小限制
         newGridSize = Math.max(newGridSize, 30);
-        
-        // 更新游戏面板的网格大小
+
+        // 更新游戏面板的网格大小 (这也会更新 gamePanel 的尺寸)
         gamePanel.setGridSize(newGridSize);
-        
-        // 计算游戏面板的新尺寸
-        int newPanelWidth = newGridSize * mapWidth + 4;
-        int newPanelHeight = newGridSize * mapHeight + 4;
-        
+
+        // 获取游戏面板更新后的实际尺寸
+        int newPanelWidth = gamePanel.getWidth();
+        int newPanelHeight = gamePanel.getHeight();
+
         // 计算控制区域宽度，至少保证minControlWidth
         int controlWidth = Math.max(minControlWidth, frameWidth - newPanelWidth - 100);
-        
-        // 重新定位游戏面板（左侧居中）
-        int panelX = 50;
-        int panelY = (frameHeight - newPanelHeight) / 2;
+
+        // 重新定位游戏面板
+        int panelX = 50; // X 坐标保持不变 (左侧边距50)
+
+        // --- 新的 panelY 计算逻辑 ---
+        int panelY_centered = (frameHeight - newPanelHeight) / 2; // 原始居中 Y
+
+        int downwardShift = 15; // 向下移动的像素量
+        int minPanelYClearance = 60; // 棋盘顶部的最小 Y 坐标 (确保在 Home 按钮下方，Home 按钮底部 y=45, 45+15=60)
+        int minBottomPanelMargin = 25; // 棋盘底部与窗口底部的最小间距
+
+        int panelY = panelY_centered + downwardShift;
+
+        // 确保 panelY 不小于最小顶部间隙
+        panelY = Math.max(panelY, minPanelYClearance);
+
+        // 确保 panelY 不会导致底部间隙过小
+        // (frameHeight - newPanelHeight) 是总的垂直空白区域
+        // panelY 最大不能超过 frameHeight - newPanelHeight - minBottomPanelMargin
+        panelY = Math.min(panelY, frameHeight - newPanelHeight - minBottomPanelMargin);
+
+        // 最后再次确保 panelY 不会因为 minBottomPanelMargin 的限制而变得过小，至少要满足 minPanelYClearance
+        // 这种情况可能在 frameHeight 非常小，导致 minPanelYClearance 和 minBottomPanelMargin 冲突时发生
+        if (panelY < minPanelYClearance && (newPanelHeight + minPanelYClearance + minBottomPanelMargin <= frameHeight)) {
+            panelY = minPanelYClearance;
+        }
+        // --- 结束新的 panelY 计算逻辑 ---
+
         gamePanel.setLocation(panelX, panelY);
-        
+
         // 更新控制组件位置
         updateControlComponentsPosition(panelX + newPanelWidth + 20, panelY, controlWidth, newPanelHeight);
     }
-    
+
     /**
      * 更新控制组件的位置
      */
     private void updateControlComponentsPosition(int x, int y, int width, int height) {
         // Home按钮保持在左上角
-        homeBtn.setBounds(10, 10, 100, 35);
-        
+        homeBtn.setBounds(20, 20, 100, 35);
+
         // 计算按钮宽度
         int buttonWidth = Math.min((width - 20) / 2, 120);
-        
+        int buttonPairGap = 10; // 按钮对之间的间隙
+
         // 时间标签
         timeLabel.setBounds(x, y, width, 30);
-        
+
         // 步数标签
         stepLabel.setBounds(x, y + 35, width, 30);
-        
+
         // 最短步数标签
         minStepsLabel.setBounds(x, y + 70, width, 30);
-        
+
+        // --- 居中按钮对的计算 ---
+        // 一对按钮（例如重启和保存）及其间隙的总宽度
+        int totalButtonPairWidth = 2 * buttonWidth + buttonPairGap;
+        // 按钮对在控制区域内居中时的起始 X 偏移量（相对于控制区域的 x）
+        int buttonPairStartXOffset = (width - totalButtonPairWidth) / 2;
+        // 按钮对的绝对起始 X 坐标
+        int absoluteButtonPairStartX = x + buttonPairStartXOffset;
+
         // 重启和保存按钮
-        restartBtn.setBounds(x, y + 110, buttonWidth, 45);
-        saveBtn.setBounds(x + buttonWidth + 10, y + 110, buttonWidth, 45);
-        
+        restartBtn.setBounds(absoluteButtonPairStartX, y + 110, buttonWidth, 45);
+        saveBtn.setBounds(absoluteButtonPairStartX + buttonWidth + buttonPairGap, y + 110, buttonWidth, 45);
+
         // 撤销和重做按钮
-        undoBtn.setBounds(x, y + 165, buttonWidth, 45);
-        redoBtn.setBounds(x + buttonWidth + 10, y + 165, buttonWidth, 45);
-        
-        // 提示按钮
+        undoBtn.setBounds(absoluteButtonPairStartX, y + 165, buttonWidth, 45);
+        redoBtn.setBounds(absoluteButtonPairStartX + buttonWidth + buttonPairGap, y + 165, buttonWidth, 45);
+
+        // 提示按钮 (单个按钮居中)
         hintBtn.setBounds(x + (width - buttonWidth) / 2, y + 220, buttonWidth, 45);
-        
+
         // 方向按钮
         int dirButtonSize = 40;
         int dirButtonGap = 15;
         int centerX = x + width / 2 - dirButtonSize / 2;
         int dirControlsY = y + 275;
-        
+
         // 上方向按钮
         upBtn.setBounds(centerX, dirControlsY, dirButtonSize, dirButtonSize);
-        
+
         // 左、下、右方向按钮
-        leftBtn.setBounds(centerX - dirButtonSize - dirButtonGap, dirControlsY + dirButtonSize + dirButtonGap, 
-                          dirButtonSize, dirButtonSize);
-        downBtn.setBounds(centerX, dirControlsY + dirButtonSize + dirButtonGap, 
-                         dirButtonSize, dirButtonSize);
-        rightBtn.setBounds(centerX + dirButtonSize + dirButtonGap, dirControlsY + dirButtonSize + dirButtonGap, 
-                          dirButtonSize, dirButtonSize);
-        
+        leftBtn.setBounds(centerX - dirButtonSize - dirButtonGap, dirControlsY + dirButtonSize + dirButtonGap,
+                dirButtonSize, dirButtonSize);
+        downBtn.setBounds(centerX, dirControlsY + dirButtonSize + dirButtonGap,
+                dirButtonSize, dirButtonSize);
+        rightBtn.setBounds(centerX + dirButtonSize + dirButtonGap, dirControlsY + dirButtonSize + dirButtonGap,
+                dirButtonSize, dirButtonSize);
+
         // 重新绘制
         revalidate();
         repaint();
@@ -656,7 +691,7 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
 
         // 重绘游戏面板
         gamePanel.repaint();
-        
+
         // 更新控制按钮的可见性
         updateControlButtonsVisibility();
     }
@@ -666,7 +701,7 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         // 检查是否启用控制按钮
         AppSettings appSettings = AppSettings.getInstance();
         boolean controlButtonsEnabled = appSettings.isControlButtonsEnabled();
-        
+
         // 创建按钮
         int dirButtonSize = 40; // 方向按钮大小
         int dirButtonGap = 15;  // 按钮之间的间隙
@@ -705,12 +740,20 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
      */
     public void updateControlButtonsVisibility() {
         boolean controlButtonsEnabled = AppSettings.getInstance().isControlButtonsEnabled();
-        
-        if (upBtn != null) upBtn.setVisible(controlButtonsEnabled);
-        if (downBtn != null) downBtn.setVisible(controlButtonsEnabled);
-        if (leftBtn != null) leftBtn.setVisible(controlButtonsEnabled);
-        if (rightBtn != null) rightBtn.setVisible(controlButtonsEnabled);
-        
+
+        if (upBtn != null) {
+            upBtn.setVisible(controlButtonsEnabled);
+        }
+        if (downBtn != null) {
+            downBtn.setVisible(controlButtonsEnabled);
+        }
+        if (leftBtn != null) {
+            leftBtn.setVisible(controlButtonsEnabled);
+        }
+        if (rightBtn != null) {
+            rightBtn.setVisible(controlButtonsEnabled);
+        }
+
         this.revalidate();
         this.repaint();
     }
