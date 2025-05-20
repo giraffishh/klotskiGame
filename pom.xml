@@ -56,7 +56,6 @@
             <artifactId>mongodb-driver-sync</artifactId>
             <version>4.9.1</version>
         </dependency>
-        <!-- 添加WebSocket依赖 -->
         <dependency>
             <groupId>org.java-websocket</groupId>
             <artifactId>Java-WebSocket</artifactId>
