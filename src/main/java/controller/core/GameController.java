@@ -204,7 +204,19 @@ public class GameController {
                 // 确保OnlineViewer服务在运行
                 onlineViewer.ensureRunning();
 
-                String sessionUrl = onlineViewer.createGameSession(model);
+                // 初始状态
+                int initialSteps = 0;
+                long initialTime = 0;
+                int initialMinSteps = model.getTargetMinSteps(); // 或 solverManager.getLastCalculatedMinStepsToSolve() 如果适用初始状态
+                if (model.getGameMode() == MapModel.PRACTICE_MODE && solverManager != null) {
+                    // 对于练习模式，初始最小步数可以从求解器获取（如果已计算）
+                    // 否则使用关卡目标值
+                    initialMinSteps = solverManager.getLastCalculatedMinStepsToSolve(model.getSerializedLayout());
+                    if (initialMinSteps == -1) initialMinSteps = model.getTargetMinSteps();
+                }
+
+
+                String sessionUrl = onlineViewer.createGameSession(model, initialSteps, initialTime, initialMinSteps);
                 // 从URL中提取会话ID (URL现在包含多行)
                 String[] parts = sessionUrl.split("\n");
                 if (parts.length > 0) {
@@ -258,7 +270,16 @@ public class GameController {
                 // 确保OnlineViewer服务在运行
                 onlineViewer.ensureRunning();
 
-                String sessionUrl = onlineViewer.createGameSession(newModel);
+                // 初始状态
+                int initialSteps = 0;
+                long initialTime = 0;
+                int initialMinSteps = newModel.getTargetMinSteps();
+                if (newModel.getGameMode() == MapModel.PRACTICE_MODE && solverManager != null) {
+                     initialMinSteps = solverManager.getLastCalculatedMinStepsToSolve(newModel.getSerializedLayout());
+                     if (initialMinSteps == -1) initialMinSteps = newModel.getTargetMinSteps();
+                }
+
+                String sessionUrl = onlineViewer.createGameSession(newModel, initialSteps, initialTime, initialMinSteps);
                 // 从URL中提取会话ID (URL现在包含多行)
                 String[] parts = sessionUrl.split("\n");
                 if (parts.length > 0) {
@@ -285,6 +306,19 @@ public class GameController {
         gameStateManager.restartGame();
         this.activeHintPieceCoordinates = null; // 重启游戏时清除活动提示
         // view.clearHint() 应该由 gameStateManager.restartGame -> view.resetGame() 间接触发
+
+        // 重启后也更新OnlineViewer的状态
+        if (onlineViewer != null && currentSessionId != null && model != null && view != null) {
+            onlineViewer.ensureRunning();
+            int currentSteps = view.getSteps(); // 应为 0
+            long currentTime = timerManager.getGameTimeInMillis(); // 应为 0
+            int minSteps = model.getTargetMinSteps();
+            if (model.getGameMode() == MapModel.PRACTICE_MODE && solverManager != null) {
+                minSteps = solverManager.getLastCalculatedMinStepsToSolve(model.getSerializedLayout());
+                if (minSteps == -1) minSteps = model.getTargetMinSteps();
+            }
+            onlineViewer.updateGameSession(currentSessionId, model, currentSteps, currentTime, minSteps);
+        }
     }
 
     /**
@@ -356,10 +390,18 @@ public class GameController {
             this.activeHintPieceCoordinates = null; // 移动后清除活动提示状态
 
             // 更新网页视图
-            if (onlineViewer != null && currentSessionId != null && model != null) {
+            if (onlineViewer != null && currentSessionId != null && model != null && view != null) {
                 // 确保OnlineViewer服务在运行
                 onlineViewer.ensureRunning();
-                onlineViewer.updateGameSession(currentSessionId, model);
+                int currentSteps = view.getSteps();
+                long currentTime = timerManager.getGameTimeInMillis();
+                int minSteps = model.getTargetMinSteps(); // 默认值
+                if (model.getGameMode() == MapModel.PRACTICE_MODE && solverManager != null) {
+                     // 获取求解器计算的当前状态到解决的最小步数
+                    minSteps = solverManager.getLastCalculatedMinStepsToSolve(model.getSerializedLayout());
+                    if (minSteps == -1) minSteps = model.getTargetMinSteps(); // 回退到关卡目标
+                }
+                onlineViewer.updateGameSession(currentSessionId, model, currentSteps, currentTime, minSteps);
             }
         } else {
             // 移动失败不播放音效
@@ -382,14 +424,26 @@ public class GameController {
                 view.clearHint(); // 撤销后清除旧提示
             }
             this.activeHintPieceCoordinates = null; // 撤销后清除活动提示状态
+
+            // 更新网页视图
+            if (onlineViewer != null && currentSessionId != null && model != null && view != null) {
+                onlineViewer.ensureRunning();
+                int currentSteps = view.getSteps();
+                long currentTime = timerManager.getGameTimeInMillis();
+                int minSteps = model.getTargetMinSteps();
+                 if (model.getGameMode() == MapModel.PRACTICE_MODE && solverManager != null) {
+                    minSteps = solverManager.getLastCalculatedMinStepsToSolve(model.getSerializedLayout());
+                    if (minSteps == -1) minSteps = model.getTargetMinSteps();
+                }
+                onlineViewer.updateGameSession(currentSessionId, model, currentSteps, currentTime, minSteps);
+            }
         }
 
-        // 更新网页视图
-        if (onlineViewer != null && currentSessionId != null && model != null) {
-            // 确保OnlineViewer服务在运行
-            onlineViewer.ensureRunning();
-            onlineViewer.updateGameSession(currentSessionId, model);
-        }
+        // 更新网页视图 (即使不成功，也可能需要更新，因为状态可能已改变，但这里我们只在成功时更新)
+        // if (onlineViewer != null && currentSessionId != null && model != null) {
+        // onlineViewer.ensureRunning();
+        // onlineViewer.updateGameSession(currentSessionId, model);
+        // }
 
         return success;
     }
@@ -408,14 +462,26 @@ public class GameController {
                 view.clearHint(); // 重做后清除旧提示
             }
             this.activeHintPieceCoordinates = null; // 重做后清除活动提示状态
+
+            // 更新网页视图
+            if (onlineViewer != null && currentSessionId != null && model != null && view != null) {
+                onlineViewer.ensureRunning();
+                int currentSteps = view.getSteps();
+                long currentTime = timerManager.getGameTimeInMillis();
+                int minSteps = model.getTargetMinSteps();
+                if (model.getGameMode() == MapModel.PRACTICE_MODE && solverManager != null) {
+                    minSteps = solverManager.getLastCalculatedMinStepsToSolve(model.getSerializedLayout());
+                    if (minSteps == -1) minSteps = model.getTargetMinSteps();
+                }
+                onlineViewer.updateGameSession(currentSessionId, model, currentSteps, currentTime, minSteps);
+            }
         }
 
-        // 更新网页视图
-        if (onlineViewer != null && currentSessionId != null && model != null) {
-            // 确保OnlineViewer服务在运行
-            onlineViewer.ensureRunning();
-            onlineViewer.updateGameSession(currentSessionId, model);
-        }
+        // 更新网页视图 (即使不成功，也可能需要更新)
+        // if (onlineViewer != null && currentSessionId != null && model != null) {
+        // onlineViewer.ensureRunning();
+        // onlineViewer.updateGameSession(currentSessionId, model);
+        // }
 
         return success;
     }
@@ -590,8 +656,16 @@ public class GameController {
             }
 
             // 更新网页视图
-            if (onlineViewer != null && currentSessionId != null && model != null) {
-                onlineViewer.updateGameSession(currentSessionId, model);
+            if (onlineViewer != null && currentSessionId != null && model != null && view != null) {
+                onlineViewer.ensureRunning();
+                int currentSteps = view.getSteps();
+                long currentTime = timerManager.getGameTimeInMillis();
+                int minSteps = model.getTargetMinSteps();
+                if (model.getGameMode() == MapModel.PRACTICE_MODE && solverManager != null) {
+                    minSteps = solverManager.getLastCalculatedMinStepsToSolve(model.getSerializedLayout());
+                    if (minSteps == -1) minSteps = model.getTargetMinSteps();
+                }
+                onlineViewer.updateGameSession(currentSessionId, model, currentSteps, currentTime, minSteps);
             }
 
         } catch (IllegalArgumentException e) {
@@ -614,9 +688,27 @@ public class GameController {
             // 获取当前游戏状态参数
             long gameTime = timerManager.getGameTimeInMillis();
             int moveCount = view.getSteps();
+            int minSteps = model.getTargetMinSteps(); // 或者从solverManager获取最终的
+            if (model.getGameMode() == MapModel.PRACTICE_MODE && solverManager != null) {
+                 minSteps = solverManager.getLastCalculatedMinStepsToSolve(model.getSerializedLayout());
+                 if (minSteps == -1) minSteps = 0; // 强制胜利时，如果无法计算，则设为0
+            }
+
 
             // 直接调用胜利检查，传入0作为最小步数（确保触发胜利条件）
-            victoryController.checkVictory(0, gameTime, moveCount);
+            // victoryController.checkVictory(0, gameTime, moveCount); // 旧的
+            victoryController.checkVictory(minSteps, gameTime, moveCount);
+
+
+            // 假设 OnlineViewer 有一个 notifyGameWon 方法
+            if (onlineViewer != null && currentSessionId != null && model != null) {
+                onlineViewer.ensureRunning();
+                // 注意：victoryController.checkVictory 内部可能会调用 OnlineViewer.notifyGameWon
+                // 如果是这样，这里的调用可能是多余的，或者需要协调。
+                // 为简单起见，假设 victoryController 会处理通知。
+                // 如果 victoryController 不处理，则需要在这里调用：
+                // onlineViewer.notifyGameWon(currentSessionId, "Victory Forced!", model.getMatrix(), moveCount, gameTime, minSteps);
+            }
 
             System.out.println("Victory forced by shortcut key");
         }
