@@ -2,9 +2,9 @@ package controller.core;
 
 import java.util.Arrays;
 
-import controller.game.history.HistoryManager; // 新增导入
-import controller.game.movement.BigBlockMover; // 新增导入
-import controller.game.movement.BlockMover; // 新增导入
+import controller.game.history.HistoryManager;
+import controller.game.movement.BigBlockMover;
+import controller.game.movement.BlockMover;
 import controller.game.movement.HorizontalBlockMover;
 import controller.game.movement.SingleBlockMover;
 import controller.game.movement.VerticalBlockMover;
@@ -14,6 +14,7 @@ import controller.game.state.GameStateManager;
 import controller.game.timer.TimerManager;
 import controller.storage.save.SaveManager;
 import controller.util.BoardSerializer;
+import controller.web.WebViewService; // 新增导入
 import model.Direction;
 import model.MapModel;
 import view.game.BoxComponent;
@@ -55,6 +56,12 @@ public class GameController {
     private final SolverManager solverManager;
     private final GameStateManager gameStateManager;
     private final SoundManager soundManager; // 新增音效管理器
+
+    // 新增：本地网页视图服务
+    private WebViewService webViewService;
+
+    // 当前游戏会话ID
+    private String currentSessionId;
 
     private int[] activeHintPieceCoordinates = null; // 新增：存储当前激活的提示方块坐标
 
@@ -108,6 +115,9 @@ public class GameController {
         // 初始化游戏状态管理器
         this.gameStateManager = new GameStateManager(
                 model, view, historyManager, victoryController, solverManager, timerManager);
+
+        // 初始化本地网页视图服务
+        this.webViewService = WebViewService.getInstance();
     }
 
     /**
@@ -187,6 +197,28 @@ public class GameController {
         if (view != null) {
             view.clearHint();
         }
+
+        // 创建新的游戏会话并获取URL
+        if (webViewService != null && model != null) {
+            try {
+                String sessionUrl = webViewService.createGameSession(model);
+                // 从URL中提取会话ID (URL现在包含多行)
+                String[] parts = sessionUrl.split("\n");
+                if (parts.length > 0) {
+                    String firstUrl = parts[0];
+                    if (firstUrl.contains("session=")) {
+                        currentSessionId = firstUrl.split("session=")[1];
+                    }
+                }
+                
+                // 在控制台显示所有URL选项
+                System.out.println("\n===== 华容道游戏网页查看器 =====");
+                System.out.println(sessionUrl);
+                System.out.println("==================================\n");
+            } catch (Exception e) {
+                System.err.println("创建游戏会话时出错: " + e.getMessage());
+            }
+        }
     }
 
     /**
@@ -211,8 +243,28 @@ public class GameController {
         // 移除重启背景音乐的代码，已经在登录时处理了
         gameStateManager.resetWithNewModel(newModel, newView);
         this.activeHintPieceCoordinates = null; // 重置模型时清除活动提示
-        // view.clearHint() 应该由 gameStateManager.resetWithNewModel -> view.resetGame() 间接触发
-        // 或者在这里显式调用 if (this.view != null) this.view.clearHint();
+
+        // 创建新的游戏会话
+        if (webViewService != null && newModel != null) {
+            try {
+                String sessionUrl = webViewService.createGameSession(newModel);
+                // 从URL中提取会话ID (URL现在包含多行)
+                String[] parts = sessionUrl.split("\n");
+                if (parts.length > 0) {
+                    String firstUrl = parts[0];
+                    if (firstUrl.contains("session=")) {
+                        currentSessionId = firstUrl.split("session=")[1];
+                    }
+                }
+                
+                // 在控制台显示所有URL选项
+                System.out.println("\n===== 华容道游戏网页查看器 =====");
+                System.out.println(sessionUrl);
+                System.out.println("==================================\n");
+            } catch (Exception e) {
+                System.err.println("创建新游戏会话时出错: " + e.getMessage());
+            }
+        }
     }
 
     /**
@@ -291,6 +343,11 @@ public class GameController {
                 view.clearHint(); // 移动后清除旧提示
             }
             this.activeHintPieceCoordinates = null; // 移动后清除活动提示状态
+
+            // 更新网页视图
+            if (webViewService != null && currentSessionId != null && model != null) {
+                webViewService.updateGameSession(currentSessionId, model);
+            }
         } else {
             // 移动失败不播放音效
         }
@@ -313,6 +370,12 @@ public class GameController {
             }
             this.activeHintPieceCoordinates = null; // 撤销后清除活动提示状态
         }
+
+        // 更新网页视图
+        if (webViewService != null && currentSessionId != null && model != null) {
+            webViewService.updateGameSession(currentSessionId, model);
+        }
+
         return success;
     }
 
@@ -331,6 +394,12 @@ public class GameController {
             }
             this.activeHintPieceCoordinates = null; // 重做后清除活动提示状态
         }
+
+        // 更新网页视图
+        if (webViewService != null && currentSessionId != null && model != null) {
+            webViewService.updateGameSession(currentSessionId, model);
+        }
+
         return success;
     }
 
@@ -443,11 +512,7 @@ public class GameController {
     }
 
     /**
-     * 根据当前布局和下一步最佳布局，确定提示方块的移动方向并执行移动。
-     *
-     * @param hintCoords 提示方块的坐标 [row, col] (该单元格在移动后会变空)
-     * @param currentLayoutLong 当前棋盘布局的序列化长整型
-     * @param nextOptimalLayoutLong 下一步最佳棋盘布局的序列化长整型
+     * 确定提示方块的移动方向并执行移动的私有方法
      */
     private void determineAndExecuteAutomaticHintMove(int[] hintCoords, long currentLayoutLong, long nextOptimalLayoutLong) {
         // hintCoords 在此新逻辑中不再直接用于确定移动方向。
@@ -505,6 +570,11 @@ public class GameController {
             }
             if (solverManager != null && timerManager != null && view != null) {
                 solverManager.updateMinStepsDisplay(timerManager.getGameTimeInMillis(), view.getSteps());
+            }
+
+            // 更新网页视图
+            if (webViewService != null && currentSessionId != null && model != null) {
+                webViewService.updateGameSession(currentSessionId, model);
             }
 
         } catch (IllegalArgumentException e) {
