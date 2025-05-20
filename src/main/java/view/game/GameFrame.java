@@ -1,14 +1,7 @@
 package view.game;
 
-import java.awt.Component;
-import java.awt.Dimension;
-import java.awt.Rectangle;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.util.HashMap;
-import java.util.Map;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -62,12 +55,6 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
 
     // 胜利界面
     private final VictoryFrame victoryFrame;
-    
-    // 窗口大小调整相关
-    private Dimension initialFrameSize; // 初始窗口大小
-    private Map<Component, Rectangle> initialComponentBounds; // 组件初始位置和大小
-    private Rectangle initialPanelBounds; // 游戏面板初始位置和大小
-    private boolean isAdjusting = false; // 防止递归调整
 
     /**
      * 创建游戏窗口
@@ -97,10 +84,6 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         int windowWidth = Math.max(width, panelWidth + 350); // 从300增加到350
         int windowHeight = Math.max(height, panelHeight + 80);
         this.setSize(windowWidth, windowHeight);
-        
-        // 存储初始窗口大小，用于后续计算缩放比例
-        initialFrameSize = new Dimension(windowWidth, windowHeight);
-        initialComponentBounds = new HashMap<>();
 
         // 设置窗口居中显示
         this.setLocationRelativeTo(null);
@@ -109,7 +92,6 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         int panelX = (windowWidth - panelWidth) / 2 - 100; // 从-80增加到-100，给右侧更多空间
         int panelY = (windowHeight - panelHeight) / 2;
         gamePanel.setLocation(panelX, panelY);
-        initialPanelBounds = new Rectangle(panelX, panelY, panelWidth, panelHeight);
         this.add(gamePanel);
 
         // 计算右侧控制区域的起始位置和尺寸
@@ -121,21 +103,18 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         // 用时显示标签 - 放在最上方
         this.timeLabel = FrameUtil.createTitleLabel("Time: 00:00.00", JLabel.CENTER);
         timeLabel.setBounds(controlX, controlY, controlWidth, 30);
-        initialComponentBounds.put(timeLabel, new Rectangle(controlX, controlY, controlWidth, 30));
         this.add(timeLabel);
         controlY += 35;
 
         // 步数显示标签 - 放在中间
         this.stepLabel = FrameUtil.createTitleLabel("Steps: 0", JLabel.CENTER);
         stepLabel.setBounds(controlX, controlY, controlWidth, 30);
-        initialComponentBounds.put(stepLabel, new Rectangle(controlX, controlY, controlWidth, 30));
         this.add(stepLabel);
         controlY += 35;
 
         // 最短步数显示标签 - 放在最下方
         this.minStepsLabel = FrameUtil.createTitleLabel("Min Steps: --", JLabel.CENTER);
         minStepsLabel.setBounds(controlX, controlY, controlWidth, 30);
-        initialComponentBounds.put(minStepsLabel, new Rectangle(controlX, controlY, controlWidth, 30));
         this.add(minStepsLabel);
         controlY += 40;
 
@@ -153,25 +132,21 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         // 第一行按钮：左侧重启，右侧保存
         this.restartBtn = FrameUtil.createStyledButton("Restart", true, SvgIconManager.getRestartIcon());
         restartBtn.setBounds(controlX, controlY, buttonWidth, 45);
-        initialComponentBounds.put(restartBtn, new Rectangle(controlX, controlY, buttonWidth, 45));
         this.add(restartBtn);
 
         this.saveBtn = FrameUtil.createStyledButton("Save", true, SvgIconManager.getSaveIcon());
         saveBtn.setBounds(controlX + buttonWidth + 20, controlY, buttonWidth, 45);
-        initialComponentBounds.put(saveBtn, new Rectangle(controlX + buttonWidth + 20, controlY, buttonWidth, 45));
         this.add(saveBtn);
         controlY += 55;
 
         // 第二行按钮：左侧撤销，右侧重做
         this.undoBtn = FrameUtil.createStyledButton("Undo", false, SvgIconManager.getUndoIcon());
         undoBtn.setBounds(controlX, controlY, buttonWidth, 45);
-        initialComponentBounds.put(undoBtn, new Rectangle(controlX, controlY, buttonWidth, 45));
         undoBtn.setEnabled(false); // 初始时禁用
         this.add(undoBtn);
 
         this.redoBtn = FrameUtil.createStyledButton("Redo", false, SvgIconManager.getRedoIcon());
         redoBtn.setBounds(controlX + buttonWidth + 20, controlY, buttonWidth, 45);
-        initialComponentBounds.put(redoBtn, new Rectangle(controlX + buttonWidth + 20, controlY, buttonWidth, 45));
         redoBtn.setEnabled(false); // 初始时禁用
         this.add(redoBtn);
         controlY += 55;
@@ -179,7 +154,6 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         // 提示按钮 - 放在撤销/重做下方
         this.hintBtn = FrameUtil.createStyledButton("Hint", true, SvgIconManager.getHintIcon()); // 添加图标
         hintBtn.setBounds(controlX + buttonWidth/2 +10, controlY, buttonWidth, 45); 
-        initialComponentBounds.put(hintBtn, new Rectangle(controlX + buttonWidth/2 +10, controlY, buttonWidth, 45));
         this.add(hintBtn);
         controlY += 55;
 
@@ -215,121 +189,6 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
                 // 如果 shouldClose 为 false，则不执行任何操作，窗口保持打开
             }
         });
-        
-        // 添加窗口大小变化监听器
-        this.addComponentListener(new ComponentAdapter() {
-            @Override
-            public void componentResized(ComponentEvent e) {
-                // 调整所有组件大小和位置
-                if (!isAdjusting) {
-                    adjustComponentsToWindowSize();
-                }
-            }
-        });
-    }
-
-    /**
-     * 根据窗口大小调整所有组件的大小和位置
-     */
-    private void adjustComponentsToWindowSize() {
-        if (initialFrameSize == null || initialFrameSize.width <= 0 || initialFrameSize.height <= 0) {
-            return;
-        }
-        
-        isAdjusting = true;
-        
-        try {
-            // 计算缩放比例
-            double scaleX = (double) getWidth() / initialFrameSize.width;
-            double scaleY = (double) getHeight() / initialFrameSize.height;
-            double scale = Math.min(scaleX, scaleY); // 使用较小的缩放比例保持比例
-            
-            // 调整游戏面板 - 只调整网格大小和位置，不设置大小
-            if (gamePanel != null && initialPanelBounds != null) {
-                // 先调整网格大小，让GamePanel自己计算合适的面板大小
-                gamePanel.adjustGridSize(scale);
-                
-                // 只调整位置，保持面板居中
-                int newX = (int) (initialPanelBounds.x * scaleX);
-                int newY = (int) (initialPanelBounds.y * scaleY);
-                
-                // 如果面板大小已经改变，重新计算居中位置
-                if (gamePanel.getWidth() != initialPanelBounds.width || 
-                    gamePanel.getHeight() != initialPanelBounds.height) {
-                    newX = (getWidth() - gamePanel.getWidth()) / 2 - (int)(100 * scaleX);
-                    newY = (getHeight() - gamePanel.getHeight()) / 2;
-                }
-                
-                gamePanel.setLocation(newX, newY);
-            }
-            
-            // 调整其他所有组件
-            for (Map.Entry<Component, Rectangle> entry : initialComponentBounds.entrySet()) {
-                Component comp = entry.getKey();
-                Rectangle initialBounds = entry.getValue();
-                
-                if (comp != null && initialBounds != null) {
-                    int newX = (int) (initialBounds.x * scaleX);
-                    int newY = (int) (initialBounds.y * scaleY);
-                    int newWidth = (int) (initialBounds.width * scaleX);
-                    int newHeight = (int) (initialBounds.height * scaleY);
-                    
-                    comp.setBounds(newX, newY, newWidth, newHeight);
-                }
-            }
-            
-            // 调整方向按钮位置
-            adjustDirectionButtonPositions(scaleX, scaleY);
-            
-            this.revalidate();
-            this.repaint();
-        } finally {
-            isAdjusting = false;
-        }
-    }
-    
-    /**
-     * 调整方向按钮位置
-     */
-    private void adjustDirectionButtonPositions(double scaleX, double scaleY) {
-        if (upBtn != null && downBtn != null && leftBtn != null && rightBtn != null) {
-            // 获取四个方向按钮的初始位置
-            Rectangle upBounds = initialComponentBounds.get(upBtn);
-            Rectangle downBounds = initialComponentBounds.get(downBtn);
-            Rectangle leftBounds = initialComponentBounds.get(leftBtn);
-            Rectangle rightBounds = initialComponentBounds.get(rightBtn);
-            
-            if (upBounds != null && downBounds != null && leftBounds != null && rightBounds != null) {
-                // 调整每个按钮的位置和大小
-                upBtn.setBounds(
-                    (int)(upBounds.x * scaleX),
-                    (int)(upBounds.y * scaleY),
-                    (int)(upBounds.width * scaleX),
-                    (int)(upBounds.height * scaleY)
-                );
-                
-                downBtn.setBounds(
-                    (int)(downBounds.x * scaleX),
-                    (int)(downBounds.y * scaleY),
-                    (int)(downBounds.width * scaleX),
-                    (int)(downBounds.height * scaleY)
-                );
-                
-                leftBtn.setBounds(
-                    (int)(leftBounds.x * scaleX),
-                    (int)(leftBounds.y * scaleY),
-                    (int)(leftBounds.width * scaleX),
-                    (int)(leftBounds.height * scaleY)
-                );
-                
-                rightBtn.setBounds(
-                    (int)(rightBounds.x * scaleX),
-                    (int)(rightBounds.y * scaleY),
-                    (int)(rightBounds.width * scaleX),
-                    (int)(rightBounds.height * scaleY)
-                );
-            }
-        }
     }
 
     /**
@@ -476,7 +335,6 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
                 int panelX = (this.getWidth() - gamePanel.getWidth()) / 2 - 100;
                 int panelY = (this.getHeight() - gamePanel.getHeight()) / 2;
                 gamePanel.setLocation(panelX, panelY);
-                initialPanelBounds = new Rectangle(panelX, panelY, gamePanel.getWidth(), gamePanel.getHeight());
                 this.add(gamePanel);
             } else {
                 gamePanel.setModel(mapModel);
@@ -512,12 +370,6 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
             updateUndoRedoButtons(false, false);
 
             this.setLocationRelativeTo(null);
-            
-            // 重新调整所有组件位置和大小
-            if (initialFrameSize != null) {
-                adjustComponentsToWindowSize();
-            }
-            
             revalidate();
             repaint();
 
@@ -705,7 +557,6 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         // 上方向按钮
         this.upBtn = FrameUtil.createDirectionButton("↑");
         upBtn.setBounds(centerX, controlY, dirButtonSize, dirButtonSize);
-        initialComponentBounds.put(upBtn, new Rectangle(centerX, controlY, dirButtonSize, dirButtonSize));
         upBtn.setVisible(controlButtonsEnabled);
         this.add(upBtn);
 
@@ -714,20 +565,17 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         // 左、右方向按钮
         this.leftBtn = FrameUtil.createDirectionButton("←");
         leftBtn.setBounds(centerX - dirButtonSize - dirButtonGap, controlY, dirButtonSize, dirButtonSize);
-        initialComponentBounds.put(leftBtn, new Rectangle(centerX - dirButtonSize - dirButtonGap, controlY, dirButtonSize, dirButtonSize));
         leftBtn.setVisible(controlButtonsEnabled);
         this.add(leftBtn);
 
         this.rightBtn = FrameUtil.createDirectionButton("→");
         rightBtn.setBounds(centerX + dirButtonSize + dirButtonGap, controlY, dirButtonSize, dirButtonSize);
-        initialComponentBounds.put(rightBtn, new Rectangle(centerX + dirButtonSize + dirButtonGap, controlY, dirButtonSize, dirButtonSize));
         rightBtn.setVisible(controlButtonsEnabled);
         this.add(rightBtn);
 
         // 下方向按钮
         this.downBtn = FrameUtil.createDirectionButton("↓");
         downBtn.setBounds(centerX, controlY, dirButtonSize, dirButtonSize);
-        initialComponentBounds.put(downBtn, new Rectangle(centerX, controlY, dirButtonSize, dirButtonSize));
         downBtn.setVisible(controlButtonsEnabled);
         this.add(downBtn);
     }
