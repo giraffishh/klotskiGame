@@ -2,9 +2,8 @@ package controller.game.history;
 
 import java.util.Stack;
 
-import model.Direction;
+import controller.util.BoardSerializer; // 新增导入
 import model.MapModel;
-import view.game.BoxComponent;
 import view.game.GameFrame;
 import view.game.GamePanel;
 
@@ -57,23 +56,11 @@ public class HistoryManager {
     /**
      * 记录移动操作
      */
-    public void recordMove(int[][] beforeState, int originalRow, int originalCol,
-            BoxComponent selectedBox, int blockId, Direction direction) {
-        // 检查 selectedBox 是否为 null
-        if (selectedBox == null) {
-            System.err.println("Error recording move: selectedBox is null");
-            return;
-        }
+    public void recordMove(int[][] beforeState, long layoutAfterMove) {
         // 记录移动操作 - 使用外部定义的 MoveRecord
         MoveRecord record = new MoveRecord(
                 beforeState,
-                model.copyMatrix(),
-                originalRow,
-                originalCol,
-                selectedBox.getRow(),
-                selectedBox.getCol(),
-                blockId,
-                direction
+                layoutAfterMove
         );
 
         // 添加到撤销栈
@@ -106,12 +93,11 @@ public class HistoryManager {
         // 恢复到移动前的状态
         model.setMatrix(record.getBeforeState());
 
-        // 更新视图
-        updateViewAfterUndoRedo(record, true);
-
-        // 更新步数 (确保 view 不为 null)
+        // 更新视图 (确保 view 不为 null)
         if (view != null) {
-            view.setSteps(view.getSteps() - 1);
+            int currentSteps = view.getSteps();
+            view.resetGame(); // resetGame 会将步数置0，所以需要先保存
+            view.setSteps(currentSteps - 1); // 恢复并减1
         }
 
         // 更新按钮状态
@@ -139,14 +125,22 @@ public class HistoryManager {
         undoStack.push(record);
 
         // 应用移动后的状态
-        model.setMatrix(record.getAfterState());
+        try {
+            int[][] layoutArray = BoardSerializer.deserialize(record.getLayoutAfterMove());
+            model.setMatrix(layoutArray);
+        } catch (IllegalArgumentException e) {
+            System.err.println("Error deserializing layout during redo: " + e.getMessage());
+            // 如果反序列化失败，可能需要回滚操作或采取其他错误处理
+            undoStack.pop(); // 从撤销栈中移除刚刚添加的记录
+            redoStack.push(record); // 将其放回重做栈
+            return false;
+        }
 
-        // 更新视图
-        updateViewAfterUndoRedo(record, false);
-
-        // 更新步数 (确保 view 不为 null)
+        // 更新视图 (确保 view 不为 null)
         if (view != null) {
-            view.setSteps(view.getSteps() + 1);
+            int currentSteps = view.getSteps();
+            view.resetGame(); // resetGame 会将步数置0，所以需要先保存
+            view.setSteps(currentSteps + 1); // 恢复并加1
         }
 
         // 更新按钮状态
@@ -173,92 +167,6 @@ public class HistoryManager {
         if (parentFrame != null) {
             parentFrame.updateUndoRedoButtons(canUndo(), canRedo());
         }
-    }
-
-    /**
-     * 在撤销/重做后更新视图
-     */
-    private void updateViewAfterUndoRedo(MoveRecord record, boolean isUndo) { // 使用外部定义的 MoveRecord
-        // 添加 view 的 null 检查
-        if (view == null) {
-            System.err.println("Error updating view: GamePanel is null");
-            return;
-        }
-        // 根据记录找到对应的方块
-        BoxComponent targetBlock = findBlockByPosition(
-                isUndo ? record.getNewRow() : record.getOriginalRow(),
-                isUndo ? record.getNewCol() : record.getOriginalCol(),
-                record.getBlockId()
-        );
-
-        if (targetBlock != null) {
-            int targetRow, targetCol;
-
-            if (isUndo) {
-                // 撤销操作：恢复到原始位置
-                targetRow = record.getOriginalRow();
-                targetCol = record.getOriginalCol();
-            } else {
-                // 重做操作：恢复到移动后的位置
-                targetRow = record.getNewRow();
-                targetCol = record.getNewCol();
-            }
-
-            // 更新方块位置
-            targetBlock.setRow(targetRow);
-            targetBlock.setCol(targetCol);
-            targetBlock.setLocation(targetCol * view.getGRID_SIZE() + 2,
-                    targetRow * view.getGRID_SIZE() + 2);
-
-            // 如果当前正好是选中的方块，更新选中状态
-            BoxComponent selectedBox = view.getSelectedBox();
-            if (selectedBox != null && selectedBox == targetBlock) {
-                targetBlock.setSelected(true);
-            } else if (selectedBox != null) {
-                // 如果撤销/重做后，之前选中的方块不再是移动的方块，取消其选中状态
-                // 或者根据需要，保持选中状态或选中移动后的方块
-                // selectedBox.setSelected(false); // 取消选中之前的方块
-                // view.setSelectedBox(targetBlock); // 选中移动后的方块
-                // targetBlock.setSelected(true);
-            }
-
-            // 重绘方块
-            targetBlock.repaint();
-        } else {
-            System.err.println("无法找到要撤销/重做的方块，位置: "
-                    + (isUndo ? record.getNewRow() : record.getOriginalRow()) + ","
-                    + (isUndo ? record.getNewCol() : record.getOriginalCol())
-                    + " ID: " + record.getBlockId());
-            // 尝试通过重新构建视图来恢复？（可能代价较高）
-            // view.resetGame(); // 这会丢失当前状态，不是好方法
-        }
-
-        // 重绘整个面板
-        view.repaint();
-    }
-
-    /**
-     * 根据位置和方块类型ID查找方块组件
-     */
-    private BoxComponent findBlockByPosition(int row, int col, int blockId) {
-        // 添加 view 的 null 检查
-        if (view == null || view.getBoxes() == null) {
-            System.err.println("Error finding block: GamePanel or boxes list is null");
-            return null;
-        }
-        // 从GamePanel获取所有方块组件
-        for (BoxComponent box : view.getBoxes()) {
-            // 检查方块的左上角坐标是否匹配
-            if (box.getRow() == row && box.getCol() == col) {
-                // 进一步验证方块类型是否匹配 (可选，但更健壮)
-                // 这需要 BoxComponent 存储其类型 ID，或者根据尺寸推断
-                // 例如: if (matchesType(box, blockId)) return box;
-                return box; // 简化：假设左上角坐标唯一标识一个方块
-            }
-        }
-        // 如果找不到，可能是在撤销/重做过程中状态不一致
-        System.err.println("Block not found at row=" + row + ", col=" + col + " with ID=" + blockId);
-        return null;
     }
 
     /**

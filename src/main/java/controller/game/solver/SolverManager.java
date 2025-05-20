@@ -17,6 +17,7 @@ public class SolverManager {
     private GamePanel view;
     private VictoryController victoryController;
     private int[] lastCalculatedHint; // 新增：存储上一次计算的提示
+    private long lastOptimalNextStepLayout = -1; // 新增：存储与提示对应的下一步最佳布局
 
     /**
      * 构造函数
@@ -99,6 +100,7 @@ public class SolverManager {
      */
     public void updateMinStepsDisplay(long gameTimeInMillis, int moveCount) {
         this.lastCalculatedHint = null; // 每次更新前重置提示
+        this.lastOptimalNextStepLayout = -1; // 每次更新前重置下一步布局
         try {
             // 获取当前游戏布局的序列化表示
             long currentActualLayout = model.getSerializedLayout(); // 当前实际布局
@@ -128,19 +130,22 @@ public class SolverManager {
                     long pathStep0Layout = path.get(0).getLayout();
                     long nextOptimalStepLayout = path.get(1).getLayout();
 
+                    long effectiveNextOptimalLayout = nextOptimalStepLayout;
+
                     // 检查路径的第0步是否与当前实际布局对称
                     if (pathStep0Layout != currentActualLayout) {
                         System.out.println("Hint: Path is based on the symmetric form of the current layout. Adjusting next step for hint.");
                         // 对称反转 nextOptimalStepLayout 以匹配当前实际棋盘
-                        nextOptimalStepLayout = KlotskiSolver.getSymmetricLayout(nextOptimalStepLayout);
+                        effectiveNextOptimalLayout = KlotskiSolver.getSymmetricLayout(nextOptimalStepLayout);
                         // 验证：反转后的 pathStep0 应该等于 currentActualLayout
                         if (KlotskiSolver.getSymmetricLayout(pathStep0Layout) != currentActualLayout) {
                             System.err.println("Symmetry logic error: Flipped pathStep0Layout does not match currentActualLayout.");
                         }
                     }
 
-                    // 使用 currentActualLayout 和（可能已调整的）nextOptimalStepLayout 来生成提示
-                    this.lastCalculatedHint = findMovedPieceCoordinates(currentActualLayout, nextOptimalStepLayout);
+                    // 使用 currentActualLayout 和（可能已调整的）effectiveNextOptimalLayout 来生成提示
+                    this.lastCalculatedHint = findMovedPieceCoordinates(currentActualLayout, effectiveNextOptimalLayout);
+                    this.lastOptimalNextStepLayout = effectiveNextOptimalLayout; // 存储调整后的下一步布局
 
                     if (this.lastCalculatedHint != null) {
                         System.out.println("Hint generated for piece at: (" + this.lastCalculatedHint[0] + ", " + this.lastCalculatedHint[1] + ") based on optimal path from current state.");
@@ -149,6 +154,7 @@ public class SolverManager {
                     }
                 } else {
                     this.lastCalculatedHint = null; // 路径不足以生成提示
+                    this.lastOptimalNextStepLayout = -1;
                     System.out.println("Path from current state is too short to generate a hint.");
                 }
 
@@ -165,6 +171,7 @@ public class SolverManager {
                 // 如果找不到路径，显示默认值
                 view.setMinSteps(-1);
                 this.lastCalculatedHint = null; // 没有路径，无法提示
+                this.lastOptimalNextStepLayout = -1;
                 System.out.println("No solution found for current layout");
             }
         } catch (Exception e) {
@@ -176,6 +183,7 @@ public class SolverManager {
             }
             view.setMinSteps(-1);
             this.lastCalculatedHint = null; // 出错时无法提示
+            this.lastOptimalNextStepLayout = -1;
         }
     }
 
@@ -190,6 +198,15 @@ public class SolverManager {
             System.out.println("Hint: No hint available from last update or not solvable.");
         }
         return this.lastCalculatedHint;
+    }
+
+    /**
+     * 获取与上一个计算的提示相关联的下一步最佳棋盘布局。
+     *
+     * @return 下一步最佳棋盘布局的长整型表示；如果无有效提示或布局，则返回 -1。
+     */
+    public long getLastOptimalNextStepLayout() {
+        return this.lastOptimalNextStepLayout;
     }
 
     /**

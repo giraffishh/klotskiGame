@@ -1,8 +1,10 @@
 package controller.core;
 
-import controller.game.history.HistoryManager;
-import controller.game.movement.BigBlockMover;
-import controller.game.movement.BlockMover;
+import java.util.Arrays;
+
+import controller.game.history.HistoryManager; // 新增导入
+import controller.game.movement.BigBlockMover; // 新增导入
+import controller.game.movement.BlockMover; // 新增导入
 import controller.game.movement.HorizontalBlockMover;
 import controller.game.movement.SingleBlockMover;
 import controller.game.movement.VerticalBlockMover;
@@ -11,6 +13,7 @@ import controller.game.sound.SoundManager;
 import controller.game.state.GameStateManager;
 import controller.game.timer.TimerManager;
 import controller.storage.save.SaveManager;
+import controller.util.BoardSerializer;
 import model.Direction;
 import model.MapModel;
 import view.game.BoxComponent;
@@ -52,6 +55,8 @@ public class GameController {
     private final SolverManager solverManager;
     private final GameStateManager gameStateManager;
     private final SoundManager soundManager; // 新增音效管理器
+
+    private int[] activeHintPieceCoordinates = null; // 新增：存储当前激活的提示方块坐标
 
     /**
      * 构造函数初始化控制器，建立视图和模型之间的连接
@@ -175,10 +180,13 @@ public class GameController {
 
         // 预热音效系统，确保第一次移动有声音
         soundManager.preloadSoundSystem();
-        
+
         // 不在这里启动背景音乐，因为已经在登录后启动了
-        
         gameStateManager.initializeGame();
+        this.activeHintPieceCoordinates = null; // 初始化时清除活动提示
+        if (view != null) {
+            view.clearHint();
+        }
     }
 
     /**
@@ -201,8 +209,10 @@ public class GameController {
         }
 
         // 移除重启背景音乐的代码，已经在登录时处理了
-        
         gameStateManager.resetWithNewModel(newModel, newView);
+        this.activeHintPieceCoordinates = null; // 重置模型时清除活动提示
+        // view.clearHint() 应该由 gameStateManager.resetWithNewModel -> view.resetGame() 间接触发
+        // 或者在这里显式调用 if (this.view != null) this.view.clearHint();
     }
 
     /**
@@ -210,6 +220,8 @@ public class GameController {
      */
     public void restartGame() {
         gameStateManager.restartGame();
+        this.activeHintPieceCoordinates = null; // 重启游戏时清除活动提示
+        // view.clearHint() 应该由 gameStateManager.restartGame -> view.resetGame() 间接触发
     }
 
     /**
@@ -267,15 +279,18 @@ public class GameController {
         if (moved) {
             // 播放移动音效
             soundManager.playSound(SoundManager.SoundType.MOVE);
-            
+
             // 记录移动操作到历史管理器
-            historyManager.recordMove(beforeState, originalRow, originalCol, selectedBox, blockId, direction);
+            // 不再传递 selectedBox, blockId, direction, originalRow, originalCol
+            // 而是传递移动前的状态和移动后的序列化布局
+            historyManager.recordMove(beforeState, model.getSerializedLayout());
 
             // 更新最短步数显示 (此方法内部已包含提示的计算和存储)
             solverManager.updateMinStepsDisplay(timerManager.getGameTimeInMillis(), view.getSteps());
             if (view != null) {
                 view.clearHint(); // 移动后清除旧提示
             }
+            this.activeHintPieceCoordinates = null; // 移动后清除活动提示状态
         } else {
             // 移动失败不播放音效
         }
@@ -296,6 +311,7 @@ public class GameController {
             if (view != null) {
                 view.clearHint(); // 撤销后清除旧提示
             }
+            this.activeHintPieceCoordinates = null; // 撤销后清除活动提示状态
         }
         return success;
     }
@@ -313,6 +329,7 @@ public class GameController {
             if (view != null) {
                 view.clearHint(); // 重做后清除旧提示
             }
+            this.activeHintPieceCoordinates = null; // 重做后清除活动提示状态
         }
         return success;
     }
@@ -378,8 +395,7 @@ public class GameController {
             if (view != null) {
                 view.clearHint(); // 清除任何可能存在的旧提示
             }
-            // 可选：通过弹窗或状态栏告知用户
-            // JOptionPane.showMessageDialog(parentFrame, "Hints are only available in Practice Mode.", "Hint Unavailable", JOptionPane.INFORMATION_MESSAGE);
+            this.activeHintPieceCoordinates = null; // 清除非练习模式下的活动提示
             return;
         }
 
@@ -392,17 +408,111 @@ public class GameController {
             return;
         }
 
-        int[] hintCoordinates = solverManager.getNextMoveHint();
+        int[] newHintCoords = solverManager.getNextMoveHint();
 
-        if (hintCoordinates != null && hintCoordinates.length == 2) {
-            System.out.println("Hint: Suggested piece to move is at (" + hintCoordinates[0] + ", " + hintCoordinates[1] + ")");
-            // 调用 GamePanel 的方法来高亮显示这个棋子
-            // 假设 GamePanel 有一个 highlightPieceForHint(int row, int col) 方法
-            view.highlightPieceForHint(hintCoordinates[0], hintCoordinates[1]);
+        if (newHintCoords == null) {
+            // 没有可用的提示 (已解决, 无解, 或错误)
+            System.out.println("No hint available.");
+            this.activeHintPieceCoordinates = null;
+            view.clearHint(); // 清除任何现有的提示高亮
+            return;
+        }
+
+        // 检查是否是第二次点击相同的提示
+        if (this.activeHintPieceCoordinates != null && Arrays.equals(this.activeHintPieceCoordinates, newHintCoords)) {
+            // 第二次点击，尝试自动移动
+            System.out.println("Second click on hint for piece at (" + newHintCoords[0] + ", " + newHintCoords[1] + "). Attempting auto-move.");
+            long currentLayoutLong = model.getSerializedLayout();
+            long nextOptimalLayoutLong = solverManager.getLastOptimalNextStepLayout();
+
+            if (nextOptimalLayoutLong != -1) {
+                determineAndExecuteAutomaticHintMove(newHintCoords, currentLayoutLong, nextOptimalLayoutLong);
+            } else {
+                System.err.println("Cannot auto-move: Next optimal layout is not available.");
+                // 保持提示高亮，但不清除 activeHintPieceCoordinates，允许用户再次尝试或手动移动
+                // 或者选择清除提示：
+                // this.activeHintPieceCoordinates = null;
+                // view.clearHint();
+            }
         } else {
-            System.out.println("No hint available (already solved, unsolvable, or error).");
-            // 可以选择通知 GamePanel 清除任何现有的提示高亮
-            view.clearHint();
+            // 第一次点击此提示，或提示了新的方块
+            System.out.println("Hint: Suggested piece to move is at (" + newHintCoords[0] + ", " + newHintCoords[1] + ")");
+            this.activeHintPieceCoordinates = newHintCoords;
+            view.highlightPieceForHint(newHintCoords[0], newHintCoords[1]);
+        }
+    }
+
+    /**
+     * 根据当前布局和下一步最佳布局，确定提示方块的移动方向并执行移动。
+     *
+     * @param hintCoords 提示方块的坐标 [row, col] (该单元格在移动后会变空)
+     * @param currentLayoutLong 当前棋盘布局的序列化长整型
+     * @param nextOptimalLayoutLong 下一步最佳棋盘布局的序列化长整型
+     */
+    private void determineAndExecuteAutomaticHintMove(int[] hintCoords, long currentLayoutLong, long nextOptimalLayoutLong) {
+        // hintCoords 在此新逻辑中不再直接用于确定移动方向。
+        // currentLayoutLong 代表了应用新布局之前的状态。
+
+        try {
+            // 保存自动应用前的棋盘状态，用于历史记录
+            int[][] beforeState = model.copyMatrix(); // 或者 BoardSerializer.deserialize(currentLayoutLong)
+
+            int[][] nextOptimalLayoutArray = BoardSerializer.deserialize(nextOptimalLayoutLong);
+
+            System.out.println("Auto-applying optimal layout directly.");
+
+            // 0. 在视图重置步数之前，保存当前步数
+            int currentStepsBeforeApply = 0;
+            if (view != null) {
+                currentStepsBeforeApply = view.getSteps();
+            }
+
+            // 1. 直接更新模型
+            model.setMatrix(nextOptimalLayoutArray);
+
+            // 获取移动后的序列化布局，用于历史记录
+            long layoutAfterAutoMove = model.getSerializedLayout();
+
+            // 2. 更新视图以反映模型的更改
+            // GamePanel.resetGame() 会清除现有棋子并根据 model 重新初始化棋盘，
+            // 同时会将 view 内部的 steps 重置为0。
+            if (view != null) {
+                view.resetGame();
+                // 3. 恢复并增加步数
+                view.setSteps(currentStepsBeforeApply + 1);
+            }
+
+            // 3.5. 记录这次自动应用到历史管理器
+            if (historyManager != null) {
+                historyManager.recordMove(beforeState, layoutAfterAutoMove);
+            }
+
+            // 4. 播放移动音效
+            if (soundManager != null) {
+                soundManager.playSound(SoundManager.SoundType.MOVE);
+            }
+
+            // 5. 清除当前的提示状态
+            this.activeHintPieceCoordinates = null;
+            if (view != null) {
+                view.clearHint();
+            }
+
+            // 6. 更新求解器状态和最小步数显示（基于新的棋盘布局）
+            //    确保计时器已启动（如果这是第一“步”）
+            if (timerManager != null && !timerManager.isTimerRunning() && view != null && view.getSteps() > 0) {
+                timerManager.startTimer();
+            }
+            if (solverManager != null && timerManager != null && view != null) {
+                solverManager.updateMinStepsDisplay(timerManager.getGameTimeInMillis(), view.getSteps());
+            }
+
+        } catch (IllegalArgumentException e) {
+            System.err.println("Error deserializing next optimal layout for auto-apply: " + e.getMessage());
+            this.activeHintPieceCoordinates = null; // 出错时也清除提示
+            if (view != null) {
+                view.clearHint();
+            }
         }
     }
 
@@ -427,7 +537,7 @@ public class GameController {
 
     /**
      * 获取音效管理器
-     * 
+     *
      * @return 音效管理器实例
      */
     public SoundManager getSoundManager() {
