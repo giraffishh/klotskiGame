@@ -1,0 +1,86 @@
+/* 华容道游戏查看器样式 */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f5f5f5;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+h1 {
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.session-info {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 10px;
+}
+
+.last-update {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 20px;
+}
+
+.game-board {
+    display: grid;
+    grid-gap: 5px;
+    background-color: #4a4a4a;
+    padding: 5px;
+    border-radius: 5px;
+    max-width: 600px;
+    margin: 0 auto;
+    aspect-ratio: 4/5;
+}
+
+.cell {
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 24px;
+}
+
+.empty {
+    background-color: #222;
+}
+
+.piece {
+    background-color: #e74c3c;
+    box-shadow: 0 3px 5px rgba(0,0,0,0.2);
+    color: white;
+}
+
+.piece-1 {
+    background-color: #f39c12;
+}
+
+.piece-2 {
+    background-color: #9b59b6;
+}
+
+.piece-3 {
+    background-color: #3498db;
+}
+
+.piece-4 {
+    background-color: #2ecc71;
+}
+
+.loading {
+    grid-column: span 4;
+    grid-row: span 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 18px;
+}
