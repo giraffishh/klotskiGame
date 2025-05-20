@@ -606,8 +606,15 @@ public class GamePanel extends ListenerPanel {
     public void setGridSize(int gridSize) {
         if (gridSize <= 0 || gridSize == this.GRID_SIZE || model == null) return;
         
+        // 应用缩放因子使面板整体变小
+        float scaleFactor = 0.85f; // 缩小到原来的85%
+        int adjustedGridSize = Math.round(gridSize * scaleFactor);
+        
+        // 确保最小大小
+        if (adjustedGridSize < 30) adjustedGridSize = 30;
+        
         // 更新网格大小
-        this.GRID_SIZE = gridSize;
+        this.GRID_SIZE = adjustedGridSize;
         
         // 调整面板大小
         this.setSize(model.getWidth() * GRID_SIZE + 4, model.getHeight() * GRID_SIZE + 4);
