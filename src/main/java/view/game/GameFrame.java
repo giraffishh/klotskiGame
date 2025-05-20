@@ -182,13 +182,19 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
                 boolean shouldClose = returnToHomeAndConfirm();
                 if (shouldClose) {
                     // 如果 returnToHomeAndConfirm 返回 true (用户确认且导航成功)
-                    // 那么 FrameManager 已经隐藏了 GameFrame
-                    // 我们还需要确保监听器被移除
+                    // 那么我们已经在 returnToHomeAndConfirm 中调用了 controller.shutdown()
                     UserSession.getInstance().removeListener(GameFrame.this);
-                    // GameFrame 已经被 FrameManager.navigateFromGameToHome() 隐藏
                     // dispose(); // 如果需要释放资源，可以取消注释，但通常 setVisible(false) 就够了
                 }
                 // 如果 shouldClose 为 false，则不执行任何操作，窗口保持打开
+            }
+            
+            @Override
+            public void windowClosed(WindowEvent e) {
+                // 在窗口完全关闭时确保网络连接被关闭
+                if (controller != null) {
+                    controller.shutdown();
+                }
             }
         });
 
@@ -413,6 +419,10 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
                 JOptionPane.WARNING_MESSAGE);
 
         if (result == JOptionPane.YES_OPTION) {
+            // 在导航到主页之前先关闭控制器和网络连接
+            if (controller != null) {
+                controller.shutdown(); // 确保在关闭窗口时关闭网络连接
+            }
             FrameManager.getInstance().navigateFromGameToHome();
             return true; // 用户确认，导航已执行
         } else {
@@ -697,9 +707,9 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
         boolean controlButtonsEnabled = AppSettings.getInstance().isControlButtonsEnabled();
         
         if (upBtn != null) upBtn.setVisible(controlButtonsEnabled);
-        if (downBtn != null) downBtn.setVisible(controlButtonsEnabled); // 修正变量名
-        if (leftBtn != null) leftBtn.setVisible(controlButtonsEnabled); // 修正变量名
-        if (rightBtn != null) rightBtn.setVisible(controlButtonsEnabled); // 修正变量名
+        if (downBtn != null) downBtn.setVisible(controlButtonsEnabled);
+        if (leftBtn != null) leftBtn.setVisible(controlButtonsEnabled);
+        if (rightBtn != null) rightBtn.setVisible(controlButtonsEnabled);
         
         this.revalidate();
         this.repaint();

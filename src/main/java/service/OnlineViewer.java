@@ -53,6 +53,12 @@ public class OnlineViewer {
     
     private OnlineViewer() {
         initServer();
+        
+        // 添加JVM关闭钩子，确保程序退出时关闭所有连接
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            System.out.println("检测到程序退出，正在关闭网络服务...");
+            stop();
+        }));
     }
     
     /**
@@ -203,9 +209,30 @@ public class OnlineViewer {
     }
     
     /**
+     * 检查服务是否正在运行
+     * @return 如果HTTP和WebSocket服务都在运行，则返回true
+     */
+    public boolean isRunning() {
+        return httpServer != null && wsServer != null;
+    }
+    
+    /**
+     * 如果服务已停止，则重新启动服务
+     */
+    public void ensureRunning() {
+        if (!isRunning()) {
+            System.out.println("网页服务已停止，正在重新启动...");
+            initServer();
+        }
+    }
+    
+    /**
      * 创建新的游戏会话并返回唯一URL
      */
     public String createGameSession(MapModel model) {
+        // 确保服务处于运行状态
+        ensureRunning();
+        
         if (httpServer == null) {
             return "网页服务未启动，无法创建会话";
         }
@@ -229,6 +256,9 @@ public class OnlineViewer {
      * 更新特定会话的游戏模型
      */
     public void updateGameSession(String sessionId, MapModel model) {
+        // 确保服务处于运行状态
+        ensureRunning();
+        
         if (wsServer == null) {
             System.err.println("WebSocket服务未启动，无法更新会话");
             return;
@@ -275,19 +305,33 @@ public class OnlineViewer {
      * 停止服务
      */
     public void stop() {
+        if (wsServer != null) {
+            try {
+                // 发送关闭消息给所有连接的客户端
+                Map<String, Object> closeData = new HashMap<>();
+                closeData.put("type", "server_shutdown");
+                closeData.put("message", "游戏已关闭");
+                closeData.put("timestamp", System.currentTimeMillis());
+                
+                String closeMessage = jsonMapper.writeValueAsString(closeData);
+                wsServer.broadcast(closeMessage);
+                
+                // 给客户端一点时间处理关闭消息
+                Thread.sleep(200);
+                
+                // 关闭WebSocket服务器
+                wsServer.stop();
+                wsServer = null;
+                System.out.println("WebSocket服务已停止");
+            } catch (Exception e) {
+                System.err.println("停止WebSocket服务器时出错: " + e.getMessage());
+            }
+        }
+        
         if (httpServer != null) {
             httpServer.stop(0);
             httpServer = null;
             System.out.println("HTTP服务已停止");
-        }
-        if (wsServer != null) {
-            try {
-                wsServer.stop();
-                wsServer = null;
-                System.out.println("WebSocket服务已停止");
-            } catch (InterruptedException e) {
-                System.err.println("停止WebSocket服务器时出错: " + e.getMessage());
-            }
         }
     }
     

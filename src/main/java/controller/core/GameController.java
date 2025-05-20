@@ -201,6 +201,9 @@ public class GameController {
         // 创建新的游戏会话并获取URL
         if (onlineViewer != null && model != null) {
             try {
+                // 确保OnlineViewer服务在运行
+                onlineViewer.ensureRunning();
+                
                 String sessionUrl = onlineViewer.createGameSession(model);
                 // 从URL中提取会话ID (URL现在包含多行)
                 String[] parts = sessionUrl.split("\n");
@@ -247,6 +250,9 @@ public class GameController {
         // 创建新的游戏会话
         if (onlineViewer != null && newModel != null) {
             try {
+                // 确保OnlineViewer服务在运行
+                onlineViewer.ensureRunning();
+                
                 String sessionUrl = onlineViewer.createGameSession(newModel);
                 // 从URL中提取会话ID (URL现在包含多行)
                 String[] parts = sessionUrl.split("\n");
@@ -346,6 +352,8 @@ public class GameController {
 
             // 更新网页视图
             if (onlineViewer != null && currentSessionId != null && model != null) {
+                // 确保OnlineViewer服务在运行
+                onlineViewer.ensureRunning();
                 onlineViewer.updateGameSession(currentSessionId, model);
             }
         } else {
@@ -373,6 +381,8 @@ public class GameController {
 
         // 更新网页视图
         if (onlineViewer != null && currentSessionId != null && model != null) {
+            // 确保OnlineViewer服务在运行
+            onlineViewer.ensureRunning();
             onlineViewer.updateGameSession(currentSessionId, model);
         }
 
@@ -397,6 +407,8 @@ public class GameController {
 
         // 更新网页视图
         if (onlineViewer != null && currentSessionId != null && model != null) {
+            // 确保OnlineViewer服务在运行
+            onlineViewer.ensureRunning();
             onlineViewer.updateGameSession(currentSessionId, model);
         }
 
@@ -612,5 +624,32 @@ public class GameController {
      */
     public SoundManager getSoundManager() {
         return soundManager;
+    }
+    
+    /**
+     * 清理资源，在游戏界面关闭时调用
+     * 确保网络服务和其他资源被正确关闭
+     */
+    public void shutdown() {
+        // 停止计时器
+        if (timerManager != null) {
+            timerManager.stopTimer();
+        }
+        
+        // 关闭网络服务
+        if (onlineViewer != null) {
+            try {
+                System.out.println("正在关闭网页查看服务...");
+                onlineViewer.stop();
+                System.out.println("网页查看服务已关闭");
+            } catch (Exception e) {
+                System.err.println("关闭网页查看服务时出错: " + e.getMessage());
+            }
+        }
+        
+        // 释放其他可能需要清理的资源
+        if (soundManager != null) {
+            soundManager.stopBackgroundMusic();
+        }
     }
 }

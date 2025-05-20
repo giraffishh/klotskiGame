@@ -15,14 +15,6 @@
         <div class="game-board" id="game-board">
             <div class="loading">加载游戏数据中...</div>
         </div>
-        <div class="debug-info">
-            <button id="toggle-debug">显示调试信息</button>
-            <div id="debug-panel" style="display:none; margin-top:10px; text-align:left; padding:10px; background:#f8f8f8; border-radius:5px;">
-                <p>WebSocket端口: <span id="ws-port">{{WS_PORT}}</span></p>
-                <p>连接URL: <span id="ws-url">ws://{{LOCAL_IP}}:{{WS_PORT}}?session={{SESSION_ID}}</span></p>
-                <div id="log-container" style="max-height:200px; overflow-y:auto; background:#eee; padding:5px;"></div>
-            </div>
-        </div>
     </div>
     <script>
         // 传递会话ID给JavaScript
