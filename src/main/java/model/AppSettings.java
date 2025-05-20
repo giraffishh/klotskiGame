@@ -27,9 +27,11 @@ public class AppSettings implements UserSessionListener {
     private static final String DEFAULT_THEME = "Light";
     private static final String DEFAULT_BLOCK_THEME = "Default";
     private static final String DEFAULT_CONTROL_BUTTONS_ENABLED = "false"; // 默认为不启用
+    private static final String DEFAULT_MUSIC_ENABLED = "false"; // 默认为不启用背景音乐
     private static final String THEME_KEY = "theme";
     private static final String BLOCK_THEME_KEY = "blocktheme";
     private static final String CONTROL_BUTTONS_KEY = "controlbuttons";
+    private static final String MUSIC_ENABLED_KEY = "musicenabled";
     
     /**
      * 私有构造方法
@@ -76,6 +78,7 @@ public class AppSettings implements UserSessionListener {
         currentSettings.put(THEME_KEY, DEFAULT_THEME);
         currentSettings.put(BLOCK_THEME_KEY, DEFAULT_BLOCK_THEME);
         currentSettings.put(CONTROL_BUTTONS_KEY, DEFAULT_CONTROL_BUTTONS_ENABLED);
+        currentSettings.put(MUSIC_ENABLED_KEY, DEFAULT_MUSIC_ENABLED);
         
         // 应用默认主题
         applyCurrentTheme();
@@ -198,6 +201,37 @@ public class AppSettings implements UserSessionListener {
         // 如果值发生了变化，通知界面管理器刷新
         if (oldValue != enabled) {
             FrameManager.getInstance().refreshGameInterface();
+        }
+        
+        return result;
+    }
+    
+    /**
+     * 获取是否启用背景音乐
+     * @return 是否启用背景音乐
+     */
+    public boolean isMusicEnabled() {
+        return Boolean.parseBoolean(getSetting(MUSIC_ENABLED_KEY, DEFAULT_MUSIC_ENABLED));
+    }
+
+    /**
+     * 设置是否启用背景音乐
+     * @param enabled 是否启用
+     * @return 是否成功应用设置
+     */
+    public boolean setMusicEnabled(boolean enabled) {
+        boolean oldValue = isMusicEnabled();
+        currentSettings.put(MUSIC_ENABLED_KEY, String.valueOf(enabled));
+        settingsChanged = true;
+        boolean result = saveSetting(MUSIC_ENABLED_KEY, String.valueOf(enabled));
+        
+        // 如果值发生了变化，通知音频管理器
+        if (oldValue != enabled) {
+            if (enabled) {
+                FrameManager.getInstance().startBackgroundMusic();
+            } else {
+                FrameManager.getInstance().stopBackgroundMusic();
+            }
         }
         
         return result;

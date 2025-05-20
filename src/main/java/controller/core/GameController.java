@@ -7,6 +7,7 @@ import controller.game.movement.HorizontalBlockMover;
 import controller.game.movement.SingleBlockMover;
 import controller.game.movement.VerticalBlockMover;
 import controller.game.solver.SolverManager;
+import controller.game.sound.SoundManager;
 import controller.game.state.GameStateManager;
 import controller.game.timer.TimerManager;
 import controller.storage.save.SaveManager;
@@ -15,6 +16,7 @@ import model.MapModel;
 import view.game.BoxComponent;
 import view.game.GameFrame;
 import view.game.GamePanel;
+import view.util.FrameManager;
 import view.victory.VictoryView;
 
 /**
@@ -49,6 +51,7 @@ public class GameController {
     private final TimerManager timerManager;
     private final SolverManager solverManager;
     private final GameStateManager gameStateManager;
+    private final SoundManager soundManager; // 新增音效管理器
 
     /**
      * 构造函数初始化控制器，建立视图和模型之间的连接
@@ -85,6 +88,9 @@ public class GameController {
 
         // 初始化求解器管理器
         this.solverManager = new SolverManager(model, view, victoryController);
+
+        // 使用FrameManager中的共享SoundManager实例
+        this.soundManager = FrameManager.getInstance().getSoundManager();
 
         // 初始化游戏存档管理器
         this.saveManager = new SaveManager(view, model);
@@ -167,6 +173,8 @@ public class GameController {
             parentFrame.setHintButtonVisible(isPracticeMode); // 根据模式显示/隐藏提示按钮
         }
 
+        // 不在这里启动背景音乐，因为已经在登录后启动了
+        
         gameStateManager.initializeGame();
     }
 
@@ -189,6 +197,8 @@ public class GameController {
             parentFrame.setHintButtonVisible(isPracticeMode); // 根据模式显示/隐藏提示按钮
         }
 
+        // 移除重启背景音乐的代码，已经在登录时处理了
+        
         gameStateManager.resetWithNewModel(newModel, newView);
     }
 
@@ -252,6 +262,9 @@ public class GameController {
 
         // 如果移动成功，记录操作并更新最短步数显示
         if (moved) {
+            // 播放移动音效
+            soundManager.playSound(SoundManager.SoundType.MOVE);
+            
             // 记录移动操作到历史管理器
             historyManager.recordMove(beforeState, originalRow, originalCol, selectedBox, blockId, direction);
 
@@ -260,6 +273,8 @@ public class GameController {
             if (view != null) {
                 view.clearHint(); // 移动后清除旧提示
             }
+        } else {
+            // 移动失败不播放音效
         }
 
         return moved;
@@ -405,5 +420,14 @@ public class GameController {
 
             System.out.println("Victory forced by shortcut key");
         }
+    }
+
+    /**
+     * 获取音效管理器
+     * 
+     * @return 音效管理器实例
+     */
+    public SoundManager getSoundManager() {
+        return soundManager;
     }
 }

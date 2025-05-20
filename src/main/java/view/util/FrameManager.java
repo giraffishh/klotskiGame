@@ -1,6 +1,7 @@
 package view.util;
 
 import controller.core.LevelSelectController;
+import controller.game.sound.SoundManager;
 import model.AppSettings;
 import view.game.GameFrame;
 import view.home.HomeFrame;
@@ -22,12 +23,16 @@ public class FrameManager {
     private GameFrame gameFrame;
     private LevelSelectFrame levelSelectFrame;
     private SettingsFrame settingsFrame;
+    
+    // 添加音效管理器实例
+    private SoundManager soundManager;
 
     /**
      * 私有构造函数，确保只能通过getInstance()方法获取实例
      */
     private FrameManager() {
         // 私有构造函数，防止外部直接创建实例
+        soundManager = new SoundManager(); // 初始化音效管理器
     }
 
     /**
@@ -174,6 +179,13 @@ public class FrameManager {
             homeFrame.initialize(); // 初始化Home页面
         }
         showHomeFrame();
+        
+        // 根据用户设置决定是否播放背景音乐
+        if (AppSettings.getInstance().isMusicEnabled()) {
+            startBackgroundMusic();
+        } else {
+            stopBackgroundMusic(); // 确保音乐停止
+        }
     }
 
     /**
@@ -274,6 +286,9 @@ public class FrameManager {
             loginFrame.resetForm(); // 重置登录表单
             showLoginFrame();
         }
+        
+        // 停止背景音乐
+        stopBackgroundMusic();
     }
 
     /**
@@ -306,6 +321,51 @@ public class FrameManager {
         // 刷新关卡选择界面（如果正在显示）
         if (levelSelectFrame != null && levelSelectFrame.isVisible()) {
             levelSelectFrame.refreshDisplay();
+        }
+    }
+
+    /**
+     * 获取音效管理器实例
+     * 
+     * @return 音效管理器实例
+     */
+    public SoundManager getSoundManager() {
+        return soundManager;
+    }
+    
+    /**
+     * 开始播放背景音乐
+     */
+    public void startBackgroundMusic() {
+        if (soundManager != null) {
+            soundManager.startBackgroundMusic();
+        }
+    }
+    
+    /**
+     * 停止背景音乐
+     */
+    public void stopBackgroundMusic() {
+        if (soundManager != null) {
+            soundManager.stopBackgroundMusic();
+        }
+    }
+    
+    /**
+     * 暂停背景音乐
+     */
+    public void pauseBackgroundMusic() {
+        if (soundManager != null) {
+            soundManager.pauseBackgroundMusic();
+        }
+    }
+    
+    /**
+     * 恢复播放背景音乐
+     */
+    public void resumeBackgroundMusic() {
+        if (soundManager != null) {
+            soundManager.resumeBackgroundMusic();
         }
     }
 }
