@@ -203,7 +203,7 @@ public class GameController {
             try {
                 // 确保OnlineViewer服务在运行
                 onlineViewer.ensureRunning();
-                
+
                 String sessionUrl = onlineViewer.createGameSession(model);
                 // 从URL中提取会话ID (URL现在包含多行)
                 String[] parts = sessionUrl.split("\n");
@@ -257,7 +257,7 @@ public class GameController {
             try {
                 // 确保OnlineViewer服务在运行
                 onlineViewer.ensureRunning();
-                
+
                 String sessionUrl = onlineViewer.createGameSession(newModel);
                 // 从URL中提取会话ID (URL现在包含多行)
                 String[] parts = sessionUrl.split("\n");
@@ -630,17 +630,34 @@ public class GameController {
     public SoundManager getSoundManager() {
         return soundManager;
     }
-    
+
     /**
-     * 清理资源，在游戏界面关闭时调用
-     * 确保网络服务和其他资源被正确关闭
+     * 获取 OnlineViewer 实例
+     *
+     * @return OnlineViewer 实例
+     */
+    public OnlineViewer getOnlineViewer() {
+        return onlineViewer;
+    }
+
+    /**
+     * 获取当前游戏会话ID
+     *
+     * @return 当前会话ID，如果未设置则可能为null
+     */
+    public String getCurrentSessionId() {
+        return currentSessionId;
+    }
+
+    /**
+     * 清理资源，在游戏界面关闭时调用 确保网络服务和其他资源被正确关闭
      */
     public void shutdown() {
         // 停止计时器
         if (timerManager != null) {
             timerManager.stopTimer();
         }
-        
+
         // 关闭网络服务
         if (onlineViewer != null) {
             try {
@@ -651,7 +668,7 @@ public class GameController {
                 System.err.println("关闭网页查看服务时出错: " + e.getMessage());
             }
         }
-        
+
         // 释放其他可能需要清理的资源
         if (soundManager != null) {
             soundManager.stopBackgroundMusic();

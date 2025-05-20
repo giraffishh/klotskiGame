@@ -220,6 +220,27 @@ public class VictoryController {
                 parentFrame.setVisible(false);
             }
 
+            // 在关闭 OnlineViewer 服务之前，广播游戏胜利消息
+            if (gameController != null && gameController.getOnlineViewer() != null && model != null) {
+                String sessionId = gameController.getCurrentSessionId();
+                if (sessionId != null) {
+                    gameController.getOnlineViewer().broadcastGameWon(sessionId, model);
+                } else {
+                    System.err.println("无法广播游戏胜利消息：会话ID为空。");
+                }
+            }
+
+            // 关闭 OnlineViewer 服务
+            if (gameController != null && gameController.getOnlineViewer() != null) {
+                try {
+                    System.out.println("游戏胜利，正在关闭网页查看服务...");
+                    gameController.getOnlineViewer().stop(); // stop() 内部会发送 server_shutdown
+                    System.out.println("网页查看服务已因游戏胜利关闭。");
+                } catch (Exception e) {
+                    System.err.println("游戏胜利后关闭网页查看服务时出错: " + e.getMessage());
+                }
+            }
+
             return true;
         }
         return false;
