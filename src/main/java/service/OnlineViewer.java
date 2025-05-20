@@ -76,9 +76,11 @@ public class OnlineViewer {
                 System.out.println("HTTP服务 (本地): http://localhost:" + httpPort);
                 System.out.println("HTTP服务 (网络): http://" + localIpAddress + ":" + httpPort);
                 System.out.println("WebSocket服务: 端口 " + wsPort);
+                System.out.println("可以使用浏览器访问以上地址查看游戏状态");
                 System.out.println("==============================");
             } else {
                 System.err.println("无法启动网页服务 - 请检查网络连接和防火墙设置");
+                System.err.println("特别是检查HTTP端口 " + httpPort + " 是否被其他应用占用");
             }
         } catch (Exception e) {
             System.err.println("初始化网页服务时出错: " + e.getMessage());
@@ -95,25 +97,42 @@ public class OnlineViewer {
         
         while (attempts < maxAttempts) {
             try {
-                httpPort = findAvailablePort(8000, 9000);
-                wsPort = findAvailablePort(httpPort + 1, 9001);
+                // 固定HTTP端口为8080
+                httpPort = 8080;
+                System.out.println("尝试使用固定HTTP端口 " + httpPort);
+                
+                // 仅为WebSocket查找可用端口，从8081开始尝试
+                wsPort = findAvailablePort(8081, 9001);
+                System.out.println("找到可用的WebSocket端口 " + wsPort);
                 
                 // 启动HTTP服务器
+                System.out.println("开始创建HTTP服务器，绑定端口 " + httpPort + "...");
                 httpServer = HttpServer.create(new InetSocketAddress(httpPort), 0);
                 httpServer.createContext("/", new MainHandler());
                 httpServer.createContext("/status", new StatusHandler());
                 httpServer.createContext("/template", new TemplateHandler());
                 httpServer.setExecutor(Executors.newCachedThreadPool());
                 httpServer.start();
+                System.out.println("HTTP服务器创建成功，端口 " + httpPort + " 监听中");
                 
                 // 启动WebSocket服务器
                 wsServer = new GameWebSocketServer(wsPort);
                 wsServer.start();
+                System.out.println("WebSocket服务器已启动，监听端口: " + wsPort);
                 
                 return true;
             } catch (IOException e) {
                 attempts++;
                 cleanupPartialServers();
+                
+                // 如果错误是8080端口不可用，直接报错并退出循环
+                if (e.getMessage() != null && e.getMessage().contains("8080")) {
+                    System.err.println("错误: HTTP端口 " + httpPort + " 已被占用，无法启动服务");
+                    System.err.println("请检查是否有其他应用正在使用此端口，或者尝试关闭这些应用后重启游戏");
+                    System.err.println("技术错误信息: " + e.getMessage());
+                    return false;
+                }
+                
                 System.err.println("尝试 " + attempts + "/" + maxAttempts + " 失败: " + e.getMessage());
             }
         }
@@ -329,6 +348,7 @@ public class OnlineViewer {
         }
         
         if (httpServer != null) {
+            System.out.println("正在停止HTTP服务，端口: " + httpPort);
             httpServer.stop(0);
             httpServer = null;
             System.out.println("HTTP服务已停止");
