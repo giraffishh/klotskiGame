@@ -351,4 +351,56 @@ public class SoundManager {
         
         System.out.println("音频资源已释放");
     }
+    
+    /**
+     * 预热音效系统，播放一个静音的音效以确保系统初始化
+     * 解决第一次移动没有音效的问题
+     */
+    public void preloadSoundSystem() {
+        // 暂存当前音量
+        float currentVolume = this.volume;
+        
+        try {
+            // 临时将音量设为0
+            this.volume = 0.0f;
+            
+            // 播放移动音效但不发出声音
+            Clip clip = soundClips.get(SoundType.MOVE);
+            if (clip != null) {
+                try {
+                    if (clip.isRunning()) {
+                        clip.stop();
+                    }
+                    clip.setFramePosition(0);
+                    
+                    // 设置音量为0（静音）
+                    if (clip.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
+                        FloatControl gainControl = 
+                            (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
+                        gainControl.setValue(-80.0f); // 实质上是静音
+                    }
+                    
+                    clip.start();
+                    
+                    // 等待短暂时间确保音频系统初始化
+                    try {
+                        Thread.sleep(10);
+                    } catch (InterruptedException e) {
+                        // 忽略中断异常
+                    }
+                    
+                    // 停止播放
+                    clip.stop();
+                    clip.setFramePosition(0);
+                    
+                    System.out.println("音效系统预热完成");
+                } catch (Exception e) {
+                    System.err.println("预热音效系统失败: " + e.getMessage());
+                }
+            }
+        } finally {
+            // 恢复原来的音量设置
+            this.volume = currentVolume;
+        }
+    }
 }

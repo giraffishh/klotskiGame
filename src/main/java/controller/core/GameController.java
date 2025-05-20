@@ -173,6 +173,9 @@ public class GameController {
             parentFrame.setHintButtonVisible(isPracticeMode); // 根据模式显示/隐藏提示按钮
         }
 
+        // 预热音效系统，确保第一次移动有声音
+        soundManager.preloadSoundSystem();
+        
         // 不在这里启动背景音乐，因为已经在登录后启动了
         
         gameStateManager.initializeGame();
