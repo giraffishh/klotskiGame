@@ -1,5 +1,7 @@
 package view.game;
 
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
@@ -189,6 +191,114 @@ public class GameFrame extends JFrame implements UserSession.UserSessionListener
                 // 如果 shouldClose 为 false，则不执行任何操作，窗口保持打开
             }
         });
+
+        // 添加窗口大小变化监听器
+        this.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                adjustLayoutForNewSize();
+            }
+        });
+    }
+
+    /**
+     * 调整窗口大小变化时的界面布局
+     */
+    private void adjustLayoutForNewSize() {
+        if (gamePanel == null || gamePanel.getModel() == null) return;
+        
+        int frameWidth = getWidth();
+        int frameHeight = getHeight();
+        
+        // 计算控制区域所需最小宽度
+        int minControlWidth = 220;
+        
+        // 计算游戏面板的最大可用空间
+        int maxPanelWidth = frameWidth - minControlWidth - 60; // 左右边距
+        int maxPanelHeight = frameHeight - 100; // 上下边距
+        
+        // 获取地图尺寸
+        int mapWidth = gamePanel.getModel().getWidth();
+        int mapHeight = gamePanel.getModel().getHeight();
+        
+        // 计算新的网格大小，保持地图的宽高比
+        int newGridSize = Math.min(
+            maxPanelWidth / mapWidth,
+            maxPanelHeight / mapHeight
+        );
+        
+        // 设置最小网格大小限制
+        newGridSize = Math.max(newGridSize, 30);
+        
+        // 更新游戏面板的网格大小
+        gamePanel.setGridSize(newGridSize);
+        
+        // 计算游戏面板的新尺寸
+        int newPanelWidth = newGridSize * mapWidth + 4;
+        int newPanelHeight = newGridSize * mapHeight + 4;
+        
+        // 计算控制区域宽度，至少保证minControlWidth
+        int controlWidth = Math.max(minControlWidth, frameWidth - newPanelWidth - 100);
+        
+        // 重新定位游戏面板（左侧居中）
+        int panelX = 50;
+        int panelY = (frameHeight - newPanelHeight) / 2;
+        gamePanel.setLocation(panelX, panelY);
+        
+        // 更新控制组件位置
+        updateControlComponentsPosition(panelX + newPanelWidth + 20, panelY, controlWidth, newPanelHeight);
+    }
+    
+    /**
+     * 更新控制组件的位置
+     */
+    private void updateControlComponentsPosition(int x, int y, int width, int height) {
+        // Home按钮保持在左上角
+        homeBtn.setBounds(10, 10, 100, 35);
+        
+        // 计算按钮宽度
+        int buttonWidth = Math.min((width - 20) / 2, 120);
+        
+        // 时间标签
+        timeLabel.setBounds(x, y, width, 30);
+        
+        // 步数标签
+        stepLabel.setBounds(x, y + 35, width, 30);
+        
+        // 最短步数标签
+        minStepsLabel.setBounds(x, y + 70, width, 30);
+        
+        // 重启和保存按钮
+        restartBtn.setBounds(x, y + 110, buttonWidth, 45);
+        saveBtn.setBounds(x + buttonWidth + 10, y + 110, buttonWidth, 45);
+        
+        // 撤销和重做按钮
+        undoBtn.setBounds(x, y + 165, buttonWidth, 45);
+        redoBtn.setBounds(x + buttonWidth + 10, y + 165, buttonWidth, 45);
+        
+        // 提示按钮
+        hintBtn.setBounds(x + (width - buttonWidth) / 2, y + 220, buttonWidth, 45);
+        
+        // 方向按钮
+        int dirButtonSize = 40;
+        int dirButtonGap = 15;
+        int centerX = x + width / 2 - dirButtonSize / 2;
+        int dirControlsY = y + 275;
+        
+        // 上方向按钮
+        upBtn.setBounds(centerX, dirControlsY, dirButtonSize, dirButtonSize);
+        
+        // 左、下、右方向按钮
+        leftBtn.setBounds(centerX - dirButtonSize - dirButtonGap, dirControlsY + dirButtonSize + dirButtonGap, 
+                          dirButtonSize, dirButtonSize);
+        downBtn.setBounds(centerX, dirControlsY + dirButtonSize + dirButtonGap, 
+                         dirButtonSize, dirButtonSize);
+        rightBtn.setBounds(centerX + dirButtonSize + dirButtonGap, dirControlsY + dirButtonSize + dirButtonGap, 
+                          dirButtonSize, dirButtonSize);
+        
+        // 重新绘制
+        revalidate();
+        repaint();
     }
 
     /**

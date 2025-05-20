@@ -34,7 +34,7 @@ public class GamePanel extends ListenerPanel {
     private JLabel minStepsLabel;            // 最短步数显示标签
     private JLabel timeLabel;                // 用时显示标签
     private int steps;                       // 当前步数
-    private final int GRID_SIZE = 70;        // 网格大小（像素），调整为更大尺寸
+    private int GRID_SIZE = 70;              // 网格大小（像素），改为非final以支持动态调整
     private BoxComponent selectedBox;        // 当前选中的盒子
     private BoxComponent currentlyHintedBox = null; // 当前高亮的提示方块
 
@@ -596,5 +596,57 @@ public class GamePanel extends ListenerPanel {
             return true;
         }
         return false;
+    }
+
+    /**
+     * 设置网格大小并重新布局所有方块
+     *
+     * @param gridSize 新的网格大小
+     */
+    public void setGridSize(int gridSize) {
+        if (gridSize <= 0 || gridSize == this.GRID_SIZE || model == null) return;
+        
+        // 更新网格大小
+        this.GRID_SIZE = gridSize;
+        
+        // 调整面板大小
+        this.setSize(model.getWidth() * GRID_SIZE + 4, model.getHeight() * GRID_SIZE + 4);
+        
+        // 调整所有盒子的大小和位置
+        for (BoxComponent box : boxes) {
+            // 计算新的位置和大小
+            int newX = Math.round(box.getCol() * GRID_SIZE + 2);
+            int newY = Math.round(box.getRow() * GRID_SIZE + 2);
+            
+            int boxType = box.getBlockType();
+            int newWidth, newHeight;
+            
+            switch (boxType) {
+                case 1: // 1x1
+                    newWidth = GRID_SIZE;
+                    newHeight = GRID_SIZE;
+                    break;
+                case 2: // 2x1 水平
+                    newWidth = GRID_SIZE * 2;
+                    newHeight = GRID_SIZE;
+                    break;
+                case 3: // 1x2 垂直
+                    newWidth = GRID_SIZE;
+                    newHeight = GRID_SIZE * 2;
+                    break;
+                case 4: // 2x2 曹操
+                    newWidth = GRID_SIZE * 2;
+                    newHeight = GRID_SIZE * 2;
+                    break;
+                default:
+                    continue;
+            }
+            
+            // 设置新的位置和大小
+            box.setBounds(newX, newY, newWidth, newHeight);
+        }
+        
+        // 重绘面板
+        this.repaint();
     }
 }
