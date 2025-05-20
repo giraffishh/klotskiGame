@@ -88,6 +88,7 @@ function connectWebSocket() {
                     log('收到游戏胜利通知: ' + data.message);
                     gameIsWon = true;
                     updateGameBoard(data.matrix); // 更新到最终胜利状态
+                    updateGameStats(data.steps, data.gameTime, data.minSteps !== undefined ? data.minSteps : -1); // 更新最终统计数据
                     updateLastUpdateTime(data.timestamp);
                     updateConnectionStatus(data.message); // 更新状态为“游戏已胜利”
                     if (socket && socket.readyState === WebSocket.OPEN) {
@@ -120,6 +121,7 @@ function connectWebSocket() {
                 
                 if (data.sessionId === sessionId && !gameIsWon) { // 只有在游戏未胜利时才更新棋盘
                     updateGameBoard(data.matrix);
+                    updateGameStats(data.steps, data.gameTime, data.minSteps !== undefined ? data.minSteps : -1);
                     updateLastUpdateTime(data.timestamp);
                 }
             } catch (e) {
@@ -199,6 +201,7 @@ function tryAlternativeConnection() {
                     log('收到游戏胜利通知 (备用连接): ' + data.message);
                     gameIsWon = true;
                     updateGameBoard(data.matrix);
+                    updateGameStats(data.steps, data.gameTime, data.minSteps !== undefined ? data.minSteps : -1);
                     updateLastUpdateTime(data.timestamp);
                     updateConnectionStatus(data.message);
                      if (socket && socket.readyState === WebSocket.OPEN) {
@@ -229,6 +232,7 @@ function tryAlternativeConnection() {
                 
                 if (data.sessionId === sessionId && !gameIsWon) {
                     updateGameBoard(data.matrix);
+                    updateGameStats(data.steps, data.gameTime, data.minSteps !== undefined ? data.minSteps : -1);
                     updateLastUpdateTime(data.timestamp);
                 }
             } catch (e) { log('解析数据错误: ' + e.message, true); }
@@ -344,6 +348,40 @@ function updateGameBoard(matrix) {
     // 设置棋盘网格的行列定义
     board.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
     board.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+}
+
+// 更新游戏统计信息
+function updateGameStats(steps, gameTimeMillis, minSteps) {
+    const stepsElement = document.getElementById('game-steps');
+    const timeElement = document.getElementById('game-time');
+    const minStepsElement = document.getElementById('game-min-steps');
+
+    if (stepsElement) {
+        stepsElement.textContent = steps !== undefined ? steps : '0';
+    }
+    if (timeElement) {
+        timeElement.textContent = formatGameTime(gameTimeMillis !== undefined ? gameTimeMillis : 0);
+    }
+    if (minStepsElement) {
+        if (minSteps !== undefined && minSteps >= 0) {
+            minStepsElement.textContent = minSteps;
+        } else {
+            minStepsElement.textContent = '--';
+        }
+    }
+}
+
+// 格式化游戏时间 (毫秒 -> MM:SS.ss)
+function formatGameTime(millis) {
+    if (millis === undefined || millis === null) return '00:00.00';
+    let totalSeconds = Math.floor(millis / 1000);
+    let centiseconds = Math.floor((millis % 1000) / 10); // 取厘秒 (两位)
+    let minutes = Math.floor(totalSeconds / 60);
+    let seconds = totalSeconds % 60;
+
+    const pad = (num, size = 2) => num.toString().padStart(size, '0');
+
+    return `${pad(minutes)}:${pad(seconds)}.${pad(centiseconds)}`;
 }
 
 // 获取方块标签

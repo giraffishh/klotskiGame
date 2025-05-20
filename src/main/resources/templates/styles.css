@@ -29,6 +29,26 @@ h1 {
     margin-bottom: 20px;
 }
 
+.game-stats {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: #e9e9e9;
+    border-radius: 5px;
+}
+
+.stat-item {
+    text-align: center;
+    font-size: 16px;
+    color: #333;
+}
+
+.stat-item span:first-child {
+    font-weight: bold;
+    margin-right: 5px;
+}
+
 .game-board {
     display: grid;
     grid-gap: 5px;

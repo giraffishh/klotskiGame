@@ -12,6 +12,22 @@
         <div class="session-info">会话ID: <span id="session-id">{{SESSION_ID}}</span></div>
         <div class="connection-status">连接状态: <span id="connection-status">正在连接...</span></div>
         <div class="last-update">最后更新: <span id="last-update">加载中...</span></div>
+        
+        <div class="game-stats">
+            <div class="stat-item">
+                <span>时间:</span>
+                <span id="game-time">00:00.00</span>
+            </div>
+            <div class="stat-item">
+                <span>步数:</span>
+                <span id="game-steps">0</span>
+            </div>
+            <div class="stat-item">
+                <span>最少步数:</span>
+                <span id="game-min-steps">--</span>
+            </div>
+        </div>
+
         <div class="game-board" id="game-board">
             <div class="loading">加载游戏数据中...</div>
         </div>
