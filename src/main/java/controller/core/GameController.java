@@ -213,7 +213,7 @@ public class GameController {
                         currentSessionId = firstUrl.split("session=")[1];
                     }
                 }
-                
+
                 // 在控制台显示所有URL选项
                 System.out.println("\n===== 华容道游戏网页查看器 =====");
                 System.out.println(sessionUrl);
@@ -234,6 +234,11 @@ public class GameController {
         this.model = newModel;
         this.view = newView;
         this.view.setController(this);
+
+        // 更新 SaveManager 中的模型和视图引用
+        if (this.saveManager != null) {
+            this.saveManager.updateReferences(newView, newModel);
+        }
 
         // 根据游戏模式控制UI元素
         if (parentFrame != null) {
@@ -262,7 +267,7 @@ public class GameController {
                         currentSessionId = firstUrl.split("session=")[1];
                     }
                 }
-                
+
                 // 在控制台显示所有URL选项
                 System.out.println("\n===== 华容道游戏网页查看器 =====");
                 System.out.println(sessionUrl);
