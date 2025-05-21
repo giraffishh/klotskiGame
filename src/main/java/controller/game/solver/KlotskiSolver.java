@@ -153,7 +153,6 @@ public class KlotskiSolver {
     }
 
     private static List<Long> generateSuccessorLayouts(long currentLayout) {
-        /* ... Same robust implementation ... */
         List<Long> successorLayouts = new ArrayList<>();
         boolean[] processedCell = new boolean[TOTAL_CELLS];
         for (int r = 0; r < ROWS; r++) {
@@ -249,20 +248,22 @@ public class KlotskiSolver {
     }
 
     /**
-     * Calculates an enhanced heuristic value for A*. h(I) = max(Manhattan(I),
-     * globalOptimalCost - trieGetMin_g(I)) Handles cases where global info is
-     * unavailable. 1. 利用全局最优路径信息: 我们知道从起点 O 到状态 I 的全局最短成本是 g_global(I) =
+     * Calculates an enhanced heuristic value for A*. h(I) = max(Manhattan(I),globalOptimalCost - trieGetMin_g(I)) Handles cases where global info is
+     * unavailable.
+     * 1. 利用全局最优路径信息: 我们知道从起点 O 到状态 I 的全局最短成本是 g_global(I) =
      * trieGetMin_g(I) 我们知道从起点 O 到目标 G 的全局最短成本是 g_global(G) = globalOptimalCost
      * 如果状态 I 位于某条从 O 到 G 的全局最优路径上，那么理论上 g_global(I) + h*(I) = g_global(G)，其中
      * h*(I) 是从 I 到 G 的真实最短成本 因此，h*(I) = g_global(G) - g_global(I)。 因此， h*(I) =
      * g_global(G) - g_global(I) 虽然状态 I 不一定在全局最优路径上，但 g_global(I) + h*(I) 总是大于等于
      * g_global(G)（因为 g_global(I) + h*(I) 是某条 O->G 路径的成本，而 g_global(G) 是最短成本）
      * 所以，h*(I) >= g_global(G) - g_global(I)，这意味着 diff = g_global(G) -
-     * g_global(I) 是真实剩余成本 h*(I) 的一个下界（当 diff >= 0 时） 2. 定义增强启发式 h_enhanced(I):
+     * g_global(I) 是真实剩余成本 h*(I) 的一个下界（当 diff >= 0 时）
+     * 2. 定义增强启发式 h_enhanced(I):
      * 我们可以结合现有的启发式和这个新的下界： h_enhanced(I) = max(h_manhattan(I),
      * globalOptimalCost - trieGetMin_g(I)) 重要: 这个计算只在 globalOptimalCost 有效（不是
      * MAX_VALUE）且 trieGetMin_g(I) 有效（不是 MAX_VALUE）并且 globalOptimalCost >=
-     * trieGetMin_g(I) 时才有意义 在其他情况下，我们应该只使用 h_manhattan(I) 3. 保持 A* 结构正确: A*
+     * trieGetMin_g(I) 时才有意义 在其他情况下，我们应该只使用 h_manhattan(I)
+     * 3. 保持 A* 结构正确: A*
      * 搜索本身仍然使用局部 g 值 (g_local)，从 Phase 3 的起始状态 S 开始计数（g_local(S) = 0） 优先级队列使用 f
      * = g_local + h_enhanced(I) 只使用标准的本地剪枝：基于 visitedInThisSearch 中的 g_local
      * (new_g_local >= visited_g_local) 不使用任何基于绝对 g 值或全局成本的额外剪枝规则

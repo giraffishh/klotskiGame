@@ -337,7 +337,7 @@ class LayoutConfig {
 public class KlotskiBenchmark {
 
     private static final long SOLVE_TIMEOUT_MS = 60 * 1000;
-    private static final int RUNS_PER_SOLVER = 50; // <<< Number of runs for averaging
+    private static final int RUNS_PER_SOLVER = 30; // <<< Number of runs for averaging
 
     /**
      * 定义测试布局的初始状态
@@ -429,9 +429,8 @@ public class KlotskiBenchmark {
         solvers.add(new BiBFSOptLayoutGenSolverWrapper(targetState));
         solvers.add(new BFSTrieOptLayoutGenSolverWrapper());
         //solvers.add(new ASearchTrieOptLayoutGenSolverWrapper());
-        
-        // 将新的求解器添加到最后，使其单独处理
-        solvers.add(new NewKlotskiSolverWrapper(new KlotskiSolver()));
+
+        //solvers.add(new NewKlotskiSolverWrapper(new KlotskiSolver()));
         
         //solvers.add(new PDBSolverWrapper());
         return solvers;

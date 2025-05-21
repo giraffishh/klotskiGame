@@ -2,7 +2,9 @@ package service;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.awt.Font; // 新增导入
+import java.awt.Font;
+import java.awt.GraphicsEnvironment;
+import java.awt.Rectangle;
 import java.awt.GridLayout;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -29,6 +31,8 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.zxing.BarcodeFormat;
@@ -64,6 +68,9 @@ public class OnlineViewer {
 
     // 存储会话ID到游戏模型的映射
     private final Map<String, MapModel> sessionModels = new HashMap<>();
+
+    // 新增：跟踪当前显示的二维码弹窗
+    private JDialog currentQRCodeDialog = null;
 
     // 单例访问
     public static OnlineViewer getInstance() {
@@ -286,30 +293,30 @@ public class OnlineViewer {
             String lanUrl = "http://" + localIpAddress + ":" + httpPort + "/?session=" + sessionId;
             String publicUrl = "http://3.tcp.cpolar.top:10026/?session=" + sessionId; // 根据实际公网映射URL调整
 
+            // 准备二维码
+            BufferedImage lanQRCode = generateQRCodeImage(lanUrl, 200, 200);
+            BufferedImage publicQRCode = generateQRCodeImage(publicUrl, 200, 200);
+
+            // 在EDT中显示弹窗
+            // 将所有需要在EDT中引用的final变量传递给lambda表达式
+            final BufferedImage finalLanQRCode = lanQRCode;
+            final String finalLanUrl = lanUrl;
+            final BufferedImage finalPublicQRCode = publicQRCode;
+            final String finalPublicUrl = publicUrl;
+
+            SwingUtilities.invokeLater(() -> {
+                displayQRCodePopup(finalLanQRCode, finalLanUrl, finalPublicQRCode, finalPublicUrl);
+            });
+
             StringBuilder urls = new StringBuilder();
             urls.append("本地访问: http://localhost:").append(httpPort).append("/?session=").append(sessionId).append("\n");
             urls.append("局域网访问: ").append(lanUrl).append("\n");
-            urls.append("公网访问 (Cpolar): ").append(publicUrl);
-
-            // 生成二维码并显示弹窗
-            try {
-                BufferedImage lanQRCode = generateQRCodeImage(lanUrl, 200, 200);
-                BufferedImage publicQRCode = generateQRCodeImage(publicUrl, 200, 200);
-
-                // 在Swing事件调度线程中显示弹窗
-                SwingUtilities.invokeLater(()
-                        -> displayQRCodePopup(lanQRCode, lanUrl, publicQRCode, publicUrl)
-                );
-
-            } catch (WriterException e) {
-                System.err.println("生成二维码失败: " + e.getMessage());
-                // 即使二维码生成失败，也继续返回URL字符串
-            }
+            urls.append("公网访问: ").append(publicUrl).append("\n");
 
             return urls.toString();
         } catch (Exception e) {
-            System.err.println("创建游戏会话时出错: " + e.getMessage());
-            return "创建会话时出错: " + e.getMessage();
+            System.err.println("创建游戏会话或二维码时出错: " + e.getMessage());
+            return "创建会话失败: " + e.getMessage();
         }
     }
 
@@ -342,8 +349,21 @@ public class OnlineViewer {
      * @param publicUrl 公网URL
      */
     private void displayQRCodePopup(BufferedImage lanQRCode, String lanUrl, BufferedImage publicQRCode, String publicUrl) {
+        // 检查是否已有弹窗可见
+        if (currentQRCodeDialog != null && currentQRCodeDialog.isVisible()) {
+            System.out.println("QR Code popup 已显示。将其置于顶层。");
+            currentQRCodeDialog.toFront();
+            currentQRCodeDialog.requestFocus();
+            return;
+        }
+
+        // 如果之前的弹窗存在但不可见（例如，已被处理），清除引用
+        if (currentQRCodeDialog != null) {
+            currentQRCodeDialog = null;
+        }
+
         // 将第三个参数 'true' (模态) 改为 'false' (非模态)
-        JDialog dialog = new JDialog((java.awt.Frame) null, "游戏访问链接二维码", false);
+        final JDialog dialog = new JDialog((java.awt.Frame) null, "游戏访问链接二维码", false);
         dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         dialog.setLayout(new BorderLayout(10, 10)); // 主布局，带间距
 
@@ -366,7 +386,7 @@ public class OnlineViewer {
 
         // 公网二维码面板
         JPanel publicPanel = new JPanel(new BorderLayout(5, 5));
-        JLabel publicTitleLabel = new JLabel("公网访问 (Cpolar没给钱很慢)", SwingConstants.CENTER);
+        JLabel publicTitleLabel = new JLabel("公网访问 (Cpolar 没给钱很慢)", SwingConstants.CENTER);
         publicTitleLabel.setFont(new Font(publicTitleLabel.getFont().getName(), Font.BOLD, 16)); // 加粗并设置字体大小
         JLabel publicImageLabel = new JLabel(new ImageIcon(publicQRCode));
         JLabel publicUrlOnlyLabel = new JLabel(publicUrl, SwingConstants.CENTER); // 只显示URL
@@ -387,8 +407,40 @@ public class OnlineViewer {
         dialog.pack();
         // 调整最小尺寸以适应垂直布局
         dialog.setMinimumSize(new Dimension(380, 700));
-        dialog.setLocationRelativeTo(null);
+
+        // 获取屏幕尺寸
+        Rectangle screenBounds = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration().getBounds();
+        int screenWidth = screenBounds.width;
+        int screenHeight = screenBounds.height;
+
+        // 获取对话框尺寸
+        Dimension dialogSize = dialog.getSize(); // 使用pack()和setMinimumSize()后的尺寸
+
+        // 计算位置使其在屏幕右侧，垂直居中
+        int x = screenWidth - dialogSize.width - 300; // 50像素的右边距
+        int y = (screenHeight - dialogSize.height) / 2;
+
+        // 确保对话框不会超出屏幕边界 (特别是对于较小屏幕)
+        if (x < 0) x = 0;
+        if (y < 0) y = 0;
+
+        dialog.setLocation(x, y);
+        // dialog.setLocationRelativeTo(null); // 替换为上面的 setLocation
+
+        // 添加 WindowListener 以在弹窗关闭时清除引用
+        dialog.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosed(WindowEvent e) {
+                if (dialog == currentQRCodeDialog) {
+                    currentQRCodeDialog = null;
+                    System.out.println("QR Code popup 已关闭，引用已清除。");
+                }
+            }
+        });
+
+        currentQRCodeDialog = dialog; // 存储对当前弹窗的引用
         dialog.setVisible(true);
+        System.out.println("QR Code popup 已显示。");
     }
 
     /**
